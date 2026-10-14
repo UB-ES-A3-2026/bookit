@@ -1,3 +1,3 @@
 from django.shortcuts import render
 
-# Create your views here.
+# Definiu aquí les vistes de l'API del mòdul.

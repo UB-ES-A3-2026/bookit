@@ -1,3 +1,3 @@
 from django.db import models
 
-# Create your models here.
+# Definiu aquí els models del mòdul.
