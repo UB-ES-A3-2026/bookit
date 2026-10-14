@@ -34,7 +34,12 @@ Ara mateix només hi ha l'estructura del repositori; la base de dades i els proj
 - Les ordres de test i lint s'afegiran aquí quan es creïn els projectes.
 
 ## Build i execució
-- S'afegirà a mesura que es creïn la base de dades i els projectes de backend i frontend.
+- Backend (des de `backend/`): `python -m venv .venv`, activar-lo i `pip install -r requirements.txt`.
+  Comprovació: `python manage.py check`. Servidor: `python manage.py runserver`.
+- Apps del backend (una per mòdul): `usuaris`, `cataleg`, `prestecs`. Cada app té el seu `urls.py`
+  inclòs a `config/urls.py` sota `/api/<app>/`.
+- No executeu `migrate` fins que existeixi el model d'usuari (US1-T1).
+- Frontend i base de dades: s'afegirà quan es creïn.
 
 ## Àrees sensibles
 Explica el pla i espera confirmació abans de tocar:
