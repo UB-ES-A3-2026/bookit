@@ -13,13 +13,7 @@ Ara mateix només hi ha l'estructura del repositori; la base de dades i els proj
 ## Convencions de l'equip
 - Noms de domini (models, apps, rutes) en català sense accents: `Usuari`, `Llibre`, `Prestec`, `cataleg`.
   Comentaris, docstrings i textos per a l'usuari en català, amb accents.
-- Branques: `main` (versió estable) ← `develop` (integració) ← una branca per bloc ← una branca per tasca.
-  - Branques de bloc, creades des de `develop`: `config` (tasques C) i una per història d'usuari (`US0`, `US1`, `US2`...).
-  - Branques de tasca, creades des de la branca del seu bloc: `C<n>-<descripcio>` o `US<n>-T<m>-<descripcio>`.
-    P. ex. `C13-agents-readme` (des de `config`) o `US1-T4-endpoint-registre` (des de `US1`).
-- Pull requests: tasca → branca del seu bloc; `config` → `develop` quan s'hi tanca una tasca que necessita una US;
-  US acabada → `develop`; `develop` → `main` al final de cada sprint. Mai es fa push directe a `main`, `develop`
-  ni a les branques de bloc.
+- Branques `<tipus>/US<n>-<descripcio>` (tipus: `feat`, `fix`, `test`, `docs`, `chore`, `refactor`).
 - Commits `<tipus>(<àmbit>): <descripció en imperatiu>`, p. ex. `feat(usuaris): afegeix l'endpoint de registre`.
 - Tot el codi del backend va a `backend/` i tot el del frontend a `frontend/`. Totes les rutes de l'API van sota `/api/`.
 
@@ -38,5 +32,5 @@ Ara mateix només hi ha l'estructura del repositori; la base de dades i els proj
 
 ## Àrees sensibles
 Explica el pla i espera confirmació abans de tocar:
-- El model d'usuari i qualsevol migració ja fusionada a `develop` (quan existeixin).
+- El model d'usuari i qualsevol migració ja fusionada a `main` (quan existeixin).
 - Autenticació i permisos dels endpoints.

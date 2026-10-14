@@ -34,42 +34,18 @@ Format de referència del tauler (Trello). L'estat viu es porta al tauler; aques
 |---|---|---|
 | **Backlog** | Tasques definides, encara no seleccionades per al sprint. | — |
 | **To Do** | Seleccionades al Sprint Planning, amb les dependències resoltes i l'etiqueta de delegació posada. | — |
-| **In Progress** | Algú hi treballa i té la branca de la tasca creada. | 1 per persona |
+| **In Progress** | Algú hi treballa i té la branca creada. | 1 per persona |
 | **Code Review** | PR oberta, esperant la revisió d'una persona (no de l'agent). | 3 |
 | **Testing** | QA comprova els criteris d'acceptació. | 3 |
-| **Done** | Compleix la Definition of Done ampliada i està fusionada a la branca del seu bloc (`config` o la seva US). | — |
+| **Done** | Compleix la Definition of Done ampliada i està fusionada a `main`. | — |
 
 ### Regles
 
-- **Branques**: una per bloc (`config`, `US0`, `US1`...) i una per tasca, creada des de la branca del seu bloc. Vegeu "Flux de branques".
 - **Pull, no push**: només s'agafa una tasca de To Do si no superes el teu límit d'In Progress.
 - **Columna plena = ajudar a buidar-la**: si Code Review o Testing estan al límit, abans d'agafar feina nova cal revisar o provar.
 - **Dependències**: una tasca no passa a To Do fins que totes les de "Depèn de" són a Done.
-- **Done** només si es compleix la DoD ampliada (checklist de la plantilla de PR). Una US es tanca quan totes les seves tasques són a Done i la seva branca s'ha fusionat a `develop`.
+- **Done** només si es compleix la DoD ampliada (checklist de la plantilla de PR). Una US es tanca quan totes les seves tasques són a Done.
 - **Bloquejos**: una tasca bloquejada es marca en vermell i es comenta al seguiment.
-
-### Flux de branques
-
-```
-main  ←  develop  ←  config  ←  C13-agents-readme
-                             ←  C3-projecte-django
-                  ←  US0     ←  US0-T10-pagina-inici
-                  ←  US1     ←  US1-T3-serializer-registre
-                             ←  US1-T4-endpoint-registre
-```
-
-| Branca | Es crea des de | La PR va cap a | Quan |
-|---|---|---|---|
-| `config` | `develop` | `develop` | Cada cop que s'hi tanca una tasca que necessita alguna US (p. ex. C3, C6, C7) |
-| `US<n>` | `develop` | `develop` | Quan totes les tasques de la US són a Done |
-| `C<n>-<descripcio>` | `config` | `config` | Quan la tasca està acabada |
-| `US<n>-T<m>-<descripcio>` | `US<n>` | `US<n>` | Quan la tasca està acabada |
-| `develop` | — | `main` | Al final de cada sprint |
-
-Les branques de tasca no porten barra (`config/C13` no és vàlid si ja existeix la branca `config`: git no permet una branca i una "carpeta" amb el mateix nom).
-Ningú fa push directe a `main`, `develop` ni a les branques de bloc.
-
-Abans de començar una US, porta-hi el que hi hagi de nou a `develop` (p. ex. la configuració): `git switch US1`, `git merge develop`.
 
 ### Etiquetes
 
@@ -100,7 +76,7 @@ Es fan una única vegada al Sprint 0 i no pertanyen a cap història d'usuari. C1
 | C6 | Crear la base de dades PostgreSQL (usuari, contrasenya i nom de la base de dades) amb volum persistent per no perdre les dades. | DevOps | C1 | | Backlog |
 | C7 | Connectar Django amb PostgreSQL (`psycopg`) llegint les credencials del fitxer `.env`, i afegir un `.env.example` al repositori. | Backend | C3, C6 | | Backlog |
 | C8 | Configurar la CI amb GitHub Actions: instal·lar dependències i executar els tests de backend i frontend a cada pull request. | DevOps | C3, C4 | | Backlog |
-| C9 | Protegir les branques `main` i `develop` a GitHub: pull request obligatòria, 1 aprovació i CI en verd. | DevOps | C8 | | Backlog |
+| C9 | Protegir la branca `main` a GitHub: pull request obligatòria, 1 aprovació i CI en verd. | DevOps | C8 | | Backlog |
 | C10 | Afegir tots els membres de l'equip com a col·laboradors del repositori. | DevOps | C1 | | Backlog |
 | C11 | Crear el tauler Kanban (Trello) amb les columnes, els límits de WIP i les etiquetes d'aquest document. | Scrum Master | — | | Backlog |
 | C12 | Triar l'eina d'agent de cada rol (Backend, Frontend, QA, DevOps) i instal·lar-la a VS Code. | Tot l'equip | — | | Backlog |
@@ -114,18 +90,17 @@ Es fan una única vegada al Sprint 0 i no pertanyen a cap història d'usuari. C1
 
 Comença a T9 per mantenir la numeració del document de tasques; T1–T8 són ara C1–C8.
 
-**Abast al Sprint 0**: la pàgina principal només té el botó "Registra't". El cercador, els filtres, "Buscar llibres" i "Veure tot el catàleg" queden fora i tornaran a la US de cerca del catàleg; per això s'ha eliminat la T12.
-
 | ID | Tasca | Rol | Depèn de | Delegació | Estat |
 |---|---|---|---|---|---|
 | T9 | Configurar el router amb rutes públiques: `/` (inici), `/login`, `/registre`. | Frontend | C4 | | Backlog |
-| T10 | Maquetar la pantalla d'inici (responsive) amb la capçalera i el botó "Registra't". | Frontend | T9 | | Backlog |
+| T10 | Maquetar la pantalla d'inici (responsive): capçalera amb "Iniciar sessió" i "Registra't", cercador, 3 filtres, botó "Buscar llibres" i "Veure tot el catàleg". | Frontend | T9 | | Backlog |
 | T11 | Crear un component reutilitzable de missatge/avís (toast o modal) per a "Funcionalitat no implementada". | Frontend | C4 | | Backlog |
-| T13 | Connectar el botó "Registra't" a la pantalla de registre (US1). Si encara no existeix, crear una pàgina buida (placeholder). | Frontend | T9, T10 | | Backlog |
+| T12 | Connectar el cercador, els 3 filtres, "Buscar llibres" i "Veure tot el catàleg" amb l'avís de T11. | Frontend | T10, T11 | | Backlog |
+| T13 | Connectar "Iniciar sessió" a la pantalla de login (US2) i "Registra't" a la de registre (US1). Si encara no existeixen, crear pàgines buides (placeholder). | Frontend | T9, T10 | | Backlog |
 | T14 | Guard de rutes: les accions de comanda redirigeixen a login/registre si no hi ha sessió (preparat per a quan existeixin). | Frontend | T9 | | Backlog |
 | T15 | Configurar els permisos per defecte de DRF: endpoints de consulta públics (`AllowAny`) i endpoints de comanda autenticats. | Backend | C3 | | Backlog |
 | T16 | Escriure els casos de prova a partir dels criteris d'acceptació. | QA | — | | Backlog |
-| T17 | Tests E2E de navegació (Playwright): cada botó porta a la pantalla correcta o mostra l'avís correcte. | QA | T10, T13, T16 | | Backlog |
+| T17 | Tests E2E de navegació (Playwright): cada botó porta a la pantalla correcta o mostra l'avís correcte. | QA | T12, T13, T16 | | Backlog |
 | T18 | Prova manual en local i validació amb el Product Owner. | QA | T9–T17 | | Backlog |
 
 ### US1 — Registre d'usuari
