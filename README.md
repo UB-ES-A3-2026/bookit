@@ -12,6 +12,7 @@ Projecte d'Enginyeria del Software (UB), treballat amb Scrum i tauler Kanban.
 | `AGENTS.md` | Instruccions del projecte per als agents d'IA |
 | `docs/plantilla-especificacio.md` | Plantilla per especificar tasques als agents |
 | `.github/pull_request_template.md` | Plantilla de PR amb la Definition of Done ampliada |
+| `.vscode/` | Configuració compartida de VS Code: extensions recomanades i format en desar |
 
 ## Stack tecnològic
 
@@ -21,6 +22,14 @@ Projecte d'Enginyeria del Software (UB), treballat amb Scrum i tauler Kanban.
 - **Entorn de desenvolupament**: VS Code com a IDE, Docker Compose (backend + frontend + PostgreSQL) i variables d'entorn en un fitxer `.env`.
 - **Control de versions i CI**: GitHub i GitHub Actions per executar els tests a cada pull request (sense desplegament de moment).
 - **Tests**: pytest-django (backend), Vitest (frontend) i Playwright (E2E).
+
+### Configuració de VS Code
+
+1. Obriu la carpeta arrel del repositori (no `backend/` ni `frontend/` per separat); si no, VS Code no aplica la configuració de `.vscode/`.
+2. Instal·leu les extensions recomanades quan VS Code ho proposi (o a la vista d'extensions, filtre `@recommended`): Python, Ruff, Vue (Official), ESLint, Prettier i Docker.
+3. El codi es formata en desar: Ruff per a Python i Prettier per a JavaScript, Vue, JSON, CSS, HTML i YAML. ESLint corregeix el que pot en desar.
+
+Les preferències personals (tema, tipus de lletra...) van a la configuració d'usuari, no a `.vscode/settings.json`.
 
 ---
 

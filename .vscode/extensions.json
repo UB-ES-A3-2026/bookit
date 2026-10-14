@@ -1,0 +1,16 @@
+{
+  // Extensions recomanades per a l'equip. VS Code les proposa en obrir el repositori.
+  "recommendations": [
+    // Backend (Python i Django)
+    "ms-python.python",
+    "charliermarsh.ruff",
+    // Frontend (Vue 3)
+    "Vue.volar",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    // Docker Compose
+    "ms-azuretools.vscode-docker"
+  ],
+  // Vetur és per a Vue 2 i entra en conflicte amb l'extensió oficial de Vue 3.
+  "unwantedRecommendations": ["octref.vetur"]
+}
