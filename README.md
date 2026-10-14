@@ -104,7 +104,7 @@ Es fan una única vegada al Sprint 0 i no pertanyen a cap història d'usuari. C1
 | C1 | Crear el repositori a GitHub amb l'estructura `backend/` i `frontend/`, `.gitignore`, README i normes de branques i pull requests. | DevOps | — | | Done |
 | C2 | Configurar VS Code per a l'equip: extensions recomanades (Python, Vue, Docker, ESLint, Prettier) i format automàtic compartit (`.vscode/settings.json`). | DevOps | C1 | | Backlog |
 | C3 | Crear el projecte Django amb Django REST Framework i l'estructura d'apps per mòduls (usuaris, catàleg, préstecs...). | Backend | C1 | | Backlog |
-| C4 | Crear el projecte Vue 3 amb Vite, Vue Router, Pinia i axios. | Frontend | C1 | | Backlog |
+| C4 | Crear el projecte Vue 3 amb Vite, Vue Router, Pinia i axios. | Frontend | C1 | Sergi Garcia | Backlog |
 | C5 | Crear el `docker-compose.yml` amb els serveis backend, frontend i PostgreSQL 16. | DevOps | C3, C4 | | Backlog |
 | C6 | Crear la base de dades PostgreSQL (usuari, contrasenya i nom de la base de dades) amb volum persistent per no perdre les dades. | DevOps | C1 | | Backlog |
 | C7 | Connectar Django amb PostgreSQL (`psycopg`) llegint les credencials del fitxer `.env`, i afegir un `.env.example` al repositori. | Backend | C3, C6 | | Backlog |
@@ -127,11 +127,11 @@ Comença a T9 per mantenir la numeració del document de tasques; T1–T8 són a
 
 | ID | Tasca | Rol | Depèn de | Delegació | Estat |
 |---|---|---|---|---|---|
-| T9 | Configurar el router amb rutes públiques: `/` (inici), `/login`, `/registre`. | Frontend | C4 | | Backlog |
-| T10 | Maquetar la pantalla d'inici (responsive) amb la capçalera i el botó "Registra't". | Frontend | T9 | | Backlog |
-| T11 | Crear un component reutilitzable de missatge/avís (toast o modal) per a "Funcionalitat no implementada". | Frontend | C4 | | Backlog |
-| T13 | Connectar el botó "Registra't" a la pantalla de registre (US1). Si encara no existeix, crear una pàgina buida (placeholder). | Frontend | T9, T10 | | Backlog |
-| T14 | Guard de rutes: les accions de comanda redirigeixen a login/registre si no hi ha sessió (preparat per a quan existeixin). | Frontend | T9 | | Backlog |
+| T9 | Configurar el router amb rutes públiques: `/` (inici), `/login`, `/registre`. | Frontend | C4 | Pau Albert| Backlog |
+| T10 | Maquetar la pantalla d'inici (responsive) amb la capçalera i el botó "Registra't". | Frontend | T9 | Pau Albert| Backlog |
+| T11 | Crear un component reutilitzable de missatge/avís (toast o modal) per a "Funcionalitat no implementada". | Frontend | C4 | Pau Albert | Backlog |
+| T13 | Connectar el botó "Registra't" a la pantalla de registre (US1). Si encara no existeix, crear una pàgina buida (placeholder). | Frontend | T9, T10 | Pau Albert| Backlog |
+| T14 | Guard de rutes: les accions de comanda redirigeixen a login/registre si no hi ha sessió (preparat per a quan existeixin). | Frontend | T9 | Pau Albert | Backlog |
 | T15 | Configurar els permisos per defecte de DRF: endpoints de consulta públics (`AllowAny`) i endpoints de comanda autenticats. | Backend | C3 | | Backlog |
 | T16 | Escriure els casos de prova a partir dels criteris d'acceptació. | QA | — | | Backlog |
 | T17 | Tests E2E de navegació (Playwright): cada botó porta a la pantalla correcta o mostra l'avís correcte. | QA | T10, T13, T16 | | Backlog |
@@ -147,11 +147,11 @@ Comença a T9 per mantenir la numeració del document de tasques; T1–T8 són a
 | T4 | Endpoint `POST /api/auth/register/` amb els missatges d'error exactes dels criteris ("Aquest correu electrònic ja està registrat", "Aquest usuari ja està registrat"). | Backend | T2, T3 | | Backlog |
 | T5 | Retornar els tokens JWT en el registre correcte (si decidiu login automàtic). | Backend | T4, US2-T1 | | Backlog |
 | T6 | Tests unitaris del backend: registre correcte, correu duplicat, carnet duplicat, camps buits, format invàlid. | Backend | T4 | | Backlog |
-| T7 | Maquetar el formulari de registre (responsive) amb el selector de tipus de compte (Usuari / Repartidor / Biblioteca). | Frontend | US0-T9 | | Backlog |
-| T8 | Validació al client: camps obligatoris, format del correu, coincidència de contrasenyes. | Frontend | T7 | | Backlog |
-| T9 | Connectar el formulari amb l'endpoint i mostrar els errors del backend al camp corresponent. | Frontend | T4, T8 | | Backlog |
-| T10 | Desar els tokens i redirigir a la pàgina principal si el registre és correcte. | Frontend | T5, T9 | | Backlog |
-| T11 | Opcions "Repartidor" i "Biblioteca" mostren "Funcionalitat no implementada" (component de la US0). | Frontend | T7, US0-T11 | | Backlog |
+| T7 | Maquetar el formulari de registre (responsive) amb el selector de tipus de compte (Usuari / Repartidor / Biblioteca). | Frontend | US0-T9 | Sergi Garcia | Backlog |
+| T8 | Validació al client: camps obligatoris, format del correu, coincidència de contrasenyes. | Frontend | T7 | Sergi Garcia | Backlog |
+| T9 | Connectar el formulari amb l'endpoint i mostrar els errors del backend al camp corresponent. | Frontend | T4, T8 | Sergi Garcia | Backlog |
+| T10 | Desar els tokens i redirigir a la pàgina principal si el registre és correcte. | Frontend | T5, T9 | Sergi Garcia | Backlog |
+| T11 | Opcions "Repartidor" i "Biblioteca" mostren "Funcionalitat no implementada" (component de la US0). | Frontend | T7, US0-T11 | Sergi Garcia | Backlog |
 | T12 | Casos de prova a partir dels criteris d'acceptació. | QA | — | | Backlog |
 | T13 | Tests E2E (Playwright): registre correcte amb redirecció, correu duplicat, carnet duplicat, Repartidor/Biblioteca. | QA | T10, T11, T12 | | Backlog |
 | T14 | Validació manual en local amb el Product Owner. | QA | T1–T13 | | Backlog |
