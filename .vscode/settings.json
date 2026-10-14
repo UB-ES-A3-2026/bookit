@@ -1,0 +1,32 @@
+{
+  // Format automàtic en desar, igual per a tot l'equip.
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+
+  // Coherent amb el .gitattributes: finals de línia LF.
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+
+  // Backend: Ruff formata el codi Python.
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+
+  // Frontend i fitxers de configuració: Prettier.
+  "[javascript][vue][json][jsonc][css][html][yaml]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  // Markdown no es formata en desar per no reescriure les taules de la documentació.
+  // Els espais finals es mantenen perquè en Markdown són un salt de línia.
+  "[markdown]": {
+    "editor.formatOnSave": false,
+    "files.trimTrailingWhitespace": false
+  },
+
+  // La configuració d'ESLint viurà dins de frontend/.
+  "eslint.workingDirectories": ["./frontend"]
+}
