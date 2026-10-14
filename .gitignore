@@ -1,0 +1,19 @@
+# Variables d'entorn (secrets)
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+
+# Editors i sistema operatiu
+.idea/
+.DS_Store
+Thumbs.db
