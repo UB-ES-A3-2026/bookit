@@ -156,25 +156,6 @@ Comença a T9 per mantenir la numeració del document de tasques; T1–T8 són a
 | T13 | Tests E2E (Playwright): registre correcte amb redirecció, correu duplicat, carnet duplicat, Repartidor/Biblioteca. | QA | T10, T11, T12 | | Backlog |
 | T14 | Validació manual en local amb el Product Owner. | QA | T1–T13 | | Backlog |
 | T15 | Afegir l'execució automàtica de migracions en arrencar el contenidor del backend i una base de dades PostgreSQL temporal a la CI per als tests. | DevOps | C5, C8, T2 | | Backlog |
-
-### US2 — Inici de sessió
-
-| ID | Tasca | Rol | Depèn de | Delegació | Estat |
-|---|---|---|---|---|---|
-| T1 | Configurar `simplejwt`: endpoints `POST /api/auth/token/` i `/api/auth/token/refresh/`, durada dels tokens i login per correu. | Backend | US1-T2 | | Backlog |
-| T2 | Afegir el rol de l'usuari al payload del token. | Backend | T1 | | Backlog |
-| T3 | Configurar l'autenticació JWT per defecte a DRF, perquè els endpoints protegits la requereixin. | Backend | T1 | | Backlog |
-| T4 | Missatge d'error genèric en credencials incorrectes, sense distingir correu o contrasenya. | Backend | T1 | | Backlog |
-| T5 | Tests unitaris: login correcte, contrasenya incorrecta, correu inexistent (mateix missatge), refresh del token. | Backend | T1–T4 | | Backlog |
-| T6 | Component modal reutilitzable que es tanca amb la creu o clicant fora. | Frontend | C4 | | Backlog |
-| T7 | Formulari de login dins del modal amb selector Usuari/Repartidor/Biblioteca, camps obligatoris (botó desactivat si n'hi ha algun de buit) i contrasenya emmascarada amb opció de veure-la. | Frontend | T6 | | Backlog |
-| T8 | Store d'autenticació (Pinia): login, logout, desar tokens i estat de l'usuari. | Frontend | C4 | | Backlog |
-| T9 | Client HTTP (axios) amb interceptors: afegir `Authorization: Bearer` a cada petició i renovar automàticament el token quan caduca. | Frontend | T8 | | Backlog |
-| T10 | Mostrar l'error de credencials al formulari. | Frontend | T4, T7, T8 | | Backlog |
-| T11 | Opcions "Repartidor" i "Biblioteca" i l'enllaç "He oblidat la meva contrasenya" mostren "Funcionalitat no implementada" (component de la US0). | Frontend | T7, US0-T11 | | Backlog |
-| T12 | Actualitzar la capçalera segons l'estat de sessió (nom d'usuari i "Tancar sessió"). | Frontend | T8, US0-T10 | | Backlog |
-| T13 | Casos de prova a partir dels criteris d'acceptació. | QA | — | | Backlog |
-| T14 | Tests E2E: login correcte, credencials incorrectes, camps buits, veure/ocultar contrasenya, tancar el modal (creu i clic fora), opcions no implementades. | QA | T7–T12, T13 | | Backlog |
 | T15 | Comprovar que una petició protegida sense token retorna 401 i amb token funciona. | QA | T3, T9 | | Backlog |
 | T16 | Validació manual en local amb el Product Owner. | QA | T1–T15 | | Backlog |
 | T17 | Gestionar la clau de signatura del JWT (`SECRET_KEY`) i la configuració de CORS amb variables d'entorn al fitxer `.env`, mai al repositori. | DevOps | C3 | | Backlog |
