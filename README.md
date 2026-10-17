@@ -13,6 +13,7 @@ Projecte d'Enginyeria del Software (UB), treballat amb Scrum i tauler Kanban.
 | `.env.example` | Variables d'entorn d'exemple (Django i base de dades) |
 | `AGENTS.md` | Instruccions del projecte per als agents d'IA |
 | `docs/plantilla-especificacio.md` | Plantilla per especificar tasques als agents |
+| `docs/api-registre.md` | Contracte de l'API de registre entre backend i frontend (US1) |
 | `.github/pull_request_template.md` | Plantilla de PR amb la Definition of Done ampliada |
 | `.vscode/` | Configuració compartida de VS Code: extensions recomanades i format en desar |
 
