@@ -74,13 +74,16 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 
 # Base de dades
-# Provisional: C7 la substituirà per PostgreSQL llegint les credencials del .env.
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ.get("POSTGRES_DB", "biblioteca"),
+        "USER": os.environ.get("POSTGRES_USER", "biblioteca"),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "biblioteca"),
+        "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
+        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
     }
 }
 
