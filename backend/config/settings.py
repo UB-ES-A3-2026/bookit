@@ -10,6 +10,29 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+def load_environment_file() -> None:
+    """Carrega les variables del fitxer .env sense sobreescriure l'entorn."""
+    env_path = BASE_DIR.parent / ".env"
+    if not env_path.is_file():
+        return
+
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+
+        key, value = stripped.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+
+        os.environ.setdefault(key, value)
+
+
+load_environment_file()
+
+
 # Seguretat: valors per a desenvolupament, configurables amb variables d'entorn.
 # Vegeu https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
