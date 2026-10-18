@@ -12,9 +12,8 @@ def test_carrega_la_configuracio_de_django():
 
 @pytest.mark.django_db
 def test_es_connecta_a_postgresql():
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT 1")
-        assert cursor.fetchone() == (1,)
+    connection.ensure_connection()
+    assert connection.is_usable()
     assert connection.vendor == "postgresql"
 
 
