@@ -136,9 +136,9 @@ Es fan una única vegada al Sprint 0 i no pertanyen a cap història d'usuari. C1
 | C13 | Consensuar l'`AGENTS.md`. *(Esborrany al repositori.)* | Tot l'equip | C1 | | Code Review |
 | C14 | Acordar la plantilla d'especificació de tasques per a l'agent. *(Esborrany a `docs/plantilla-especificacio.md`.)* | Tot l'equip | — | | Code Review |
 | C15 | Acordar la Definition of Done ampliada. *(Esborrany a la plantilla de PR.)* | Tot l'equip | — | | Code Review |
-| C16 | Tasca trivial de cap a cap amb un agent: `GET /api/health/` amb test. L'especificació és a `docs/plantilla-especificacio.md`. | Backend | C3, C7, C12, C13, C14 | | Backlog |
+| C16 | Tasca trivial de cap a cap amb un agent: `GET /api/health/` amb test. L'especificació és a `docs/plantilla-especificacio.md`. | Backend | C3, C7, C12, C13, C14 | | Code Review |
 | C17 | Lliurar l'entregable del Sprint 0: eines per rol, AGENTS.md, plantilla d'especificació, DoD ampliada i enllaç a la PR de C16. | Scrum Master | C12–C16 | | Backlog |
-| C19 | Configurar els tests del backend amb pytest-django (`requirements-dev.txt` amb `pytest` i `pytest-django`, `pytest.ini` i un test de configuració). | Backend | C7 | | Code Review |
+| C19 | Configurar els tests del backend amb pytest-django (`requirements-dev.txt` amb `pytest` i `pytest-django`, `pytest.ini` i un test de configuració). | Backend | C7 | | Done |
 
 ### US0 — Navegació com a convidat
 
