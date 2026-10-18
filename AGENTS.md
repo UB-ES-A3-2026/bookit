@@ -2,7 +2,7 @@
 
 Plataforma de lliurament a domicili de llibres de les biblioteques públiques de Catalunya.
 Monòlit modular: API REST amb Django a `backend/` i SPA amb Vue 3 a `frontend/`.
-Ara mateix només hi ha l'estructura del repositori; la base de dades i els projectes encara s'han de crear.
+Ja hi ha els projectes de backend i frontend i la base de dades PostgreSQL; Django encara no s'hi connecta (C7).
 
 ## Llenguatge i estil
 - Backend: Python 3.12, Django 5.2 + Django REST Framework.
@@ -39,7 +39,9 @@ Ara mateix només hi ha l'estructura del repositori; la base de dades i els proj
 - Apps del backend (una per mòdul): `usuaris`, `cataleg`, `prestecs`. Cada app té el seu `urls.py`
   inclòs a `config/urls.py` sota `/api/<app>/`.
 - No executeu `migrate` fins que existeixi el model d'usuari (US1-T1).
-- Frontend i base de dades: s'afegirà quan es creïn.
+- Base de dades (des de l'arrel): `cp .env.example .env` (canvieu la contrasenya) i `docker compose up -d --wait db`.
+  `docker compose ps` ha de mostrar `healthy`. Connexió a `localhost:5432` (o el `POSTGRES_PORT` del `.env`).
+- Frontend: s'afegirà més endavant.
 
 ## Àrees sensibles
 Explica el pla i espera confirmació abans de tocar:
