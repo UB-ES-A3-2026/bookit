@@ -9,6 +9,8 @@ Projecte d'Enginyeria del Software (UB), treballat amb Scrum i tauler Kanban.
 |---|---|
 | `backend/` | API REST (Django + DRF). Encara buida. |
 | `frontend/` | SPA (Vue 3). Encara buida. |
+| `docker-compose.yml` | Base de dades PostgreSQL 16 (els serveis de backend i frontend arribaran amb la C5) |
+| `.env.example` | Variables d'entorn d'exemple (Django i base de dades) |
 | `AGENTS.md` | Instruccions del projecte per als agents d'IA |
 | `docs/plantilla-especificacio.md` | Plantilla per especificar tasques als agents |
 | `.github/pull_request_template.md` | Plantilla de PR amb la Definition of Done ampliada |
@@ -30,6 +32,19 @@ Projecte d'Enginyeria del Software (UB), treballat amb Scrum i tauler Kanban.
 3. El codi es formata en desar: Ruff per a Python i Prettier per a JavaScript, Vue, JSON, CSS, HTML i YAML. ESLint corregeix el que pot en desar.
 
 Les preferències personals (tema, tipus de lletra...) van a la configuració d'usuari, no a `.vscode/settings.json`.
+
+## Aixecar la base de dades
+
+Requisits: Docker Desktop en marxa.
+
+```bash
+cp .env.example .env              # canvieu la contrasenya
+docker compose up -d --wait db    # espera fins que la BD està llesta
+docker compose ps                 # ha de sortir "healthy"
+```
+
+Per entrar a la consola de PostgreSQL: `docker compose exec db psql -U biblioteca -d biblioteca` (o l'usuari i la BD del vostre `.env`).
+Per aturar-la: `docker compose down` (les dades es conserven al volum). Per esborrar-ho tot, dades incloses: `docker compose down -v`.
 
 ---
 

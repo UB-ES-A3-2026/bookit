@@ -1,0 +1,35 @@
+name: biblioteca
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: biblioteca-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: Europe/Madrid
+      PGTZ: Europe/Madrid
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Els serveis backend i frontend s'afegiran a la C5.
+  # El backend haurà de dependre de la BD i, dins de Docker, connectar-s'hi pel nom del servei
+  # i pel port intern (no pel POSTGRES_PORT de la màquina local):
+  #   environment:
+  #     POSTGRES_HOST: db
+  #     POSTGRES_PORT: 5432
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+
+volumes:
+  postgres_data:
