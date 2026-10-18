@@ -95,7 +95,7 @@ Les branques de tasca no porten barra (`config/C13` no és vàlid si ja existeix
 Ningú fa push directe a `main`, `develop` ni a les branques de bloc.
 
 **Norma de fusió** (C9): tota PR necessita l'aprovació d'una persona diferent de l'autora i, quan hi hagi CI (C8),
-els checks en verd abans de fer el merge. Ningú fusiona la seva pròpia PR. GitHub no ho bloqueja: les regles de
+els checks en verd abans de fer el merge. GitHub no ho bloqueja: les regles de
 protecció de branques no estan disponibles en repositoris privats amb el pla gratuït, així que és una norma de l'equip.
 
 Abans de començar una US, porta-hi el que hi hagi de nou a `develop` (p. ex. la configuració): `git switch US1`, `git merge develop`.
