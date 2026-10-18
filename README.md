@@ -127,7 +127,7 @@ Es fan una única vegada al Sprint 0 i no pertanyen a cap història d'usuari. C1
 | C4 | Crear el projecte Vue 3 amb Vite, Vue Router, Pinia i axios. | Frontend | C1 | Sergi Garcia | Backlog |
 | C5 | Crear el `docker-compose.yml` amb els serveis backend, frontend i PostgreSQL 16. | DevOps | C3, C4 | | Backlog |
 | C6 | Crear la base de dades PostgreSQL (usuari, contrasenya i nom de la base de dades) amb volum persistent per no perdre les dades. | DevOps | C1 | | Backlog |
-| C7 | Connectar Django amb PostgreSQL (`psycopg`) llegint les credencials del fitxer `.env`, i afegir un `.env.example` al repositori. | Backend | C3, C6 | | Backlog |
+| C7 | Connectar Django amb PostgreSQL (`psycopg`) llegint les credencials del fitxer `.env`, i afegir un `.env.example` al repositori. Instal·lar la dependència `django-environ` per llegir el fitxer `.env`. | Backend | C3, C6 | | Backlog |
 | C8 | Configurar la CI amb GitHub Actions: instal·lar dependències i executar els tests de backend i frontend a cada pull request. | DevOps | C3, C4 | | Backlog |
 | C9 | Norma d'equip per a `main`, `develop` i les branques de bloc: pull request obligatòria, 1 aprovació d'una altra persona i CI en verd (vegeu "Norma de fusió"). GitHub no permet protegir branques en repositoris privats amb el pla gratuït. | DevOps | — | | Code Review |
 | C10 | Afegir tots els membres de l'equip com a col·laboradors del repositori. | DevOps | C1 | | Backlog |
