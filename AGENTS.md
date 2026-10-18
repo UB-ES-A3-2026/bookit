@@ -32,7 +32,10 @@ Ja hi ha els projectes de backend i frontend i la base de dades PostgreSQL; Djan
 
 ## Tests i qualitat
 - Backend: pytest-django. Frontend: Vitest. Cada funcionalitat nova té tests del cas correcte i dels casos d'error.
-- Les ordres de test i lint s'afegiran aquí quan es creïn els projectes.
+- Tests del backend (des de `backend/`, amb la base de dades aixecada i el `.env` a l'arrel):
+  `pip install -r requirements-dev.txt` i `pytest`. pytest-django crea i esborra una base de dades `test_<nom>`.
+  Tests de projecte a `backend/tests/`; els de cada app, al `tests.py` de l'app o en fitxers `test_*.py`.
+- Les ordres de lint i les de test del frontend s'afegiran quan es configurin.
 
 ## Build i execució
 - Backend (des de `backend/`): `python -m venv .venv`, activar-lo i `pip install -r requirements.txt`.
@@ -41,7 +44,7 @@ Ja hi ha els projectes de backend i frontend i la base de dades PostgreSQL; Djan
   inclòs a `config/urls.py` sota `/api/<app>/`.
 - No executeu `migrate` fins que existeixi el model d'usuari (US1-T1).
 - Base de dades (des de l'arrel): `cp .env.example .env` (canvieu la contrasenya) i `docker compose up -d --wait db`.
-  `docker compose ps` ha de mostrar `healthy`. Connexió a `localhost:5432` (o el `POSTGRES_PORT` del `.env`).
+  `docker compose ps` ha de mostrar `healthy`. Connexió a `127.0.0.1:5432` (o el `POSTGRES_PORT` del `.env`).
 - Frontend: s'afegirà més endavant.
 
 ## Àrees sensibles

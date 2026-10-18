@@ -1,0 +1,4 @@
+# Dependències de desenvolupament i tests (no calen en producció).
+-r requirements.txt
+pytest>=8,<9
+pytest-django>=4.9,<5
