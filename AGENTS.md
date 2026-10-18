@@ -20,6 +20,7 @@ Ja hi ha els projectes de backend i frontend i la base de dades PostgreSQL; Djan
 - Pull requests: tasca → branca del seu bloc; `config` → `develop` quan s'hi tanca una tasca que necessita una US;
   US acabada → `develop`; `develop` → `main` al final de cada sprint. Mai es fa push directe a `main`, `develop`
   ni a les branques de bloc.
+- Tota PR necessita l'aprovació d'una persona diferent de l'autora abans del merge; ningú fusiona la seva pròpia PR.
 - Commits `<tipus>(<àmbit>): <descripció en imperatiu>`, p. ex. `feat(usuaris): afegeix l'endpoint de registre`.
 - Tot el codi del backend va a `backend/` i tot el del frontend a `frontend/`. Totes les rutes de l'API van sota `/api/`.
 
