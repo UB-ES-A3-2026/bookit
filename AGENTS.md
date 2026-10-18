@@ -2,7 +2,7 @@
 
 Plataforma de lliurament a domicili de llibres de les biblioteques públiques de Catalunya.
 Monòlit modular: API REST amb Django a `backend/` i SPA amb Vue 3 a `frontend/`.
-Ja hi ha els projectes de backend i frontend i la base de dades PostgreSQL; Django encara no s'hi connecta (C7).
+Ja hi ha els projectes de backend i frontend i la base de dades PostgreSQL; Django es connecta a PostgreSQL amb les credencials del fitxer `.env` carregades amb `django-environ` (C7).
 
 ## Llenguatge i estil
 - Backend: Python 3.12, Django 5.2 + Django REST Framework.

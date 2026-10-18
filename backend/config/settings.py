@@ -3,27 +3,29 @@
 Referència: https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-import os
 from pathlib import Path
+
+import environ
 
 # Rutes dins del projecte: BASE_DIR / 'subdirectori'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+env = environ.Env()
+environ.Env.read_env(BASE_DIR.parent / ".env")
 
 
 # Seguretat: valors per a desenvolupament, configurables amb variables d'entorn.
 # Vegeu https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # La clau es llegeix de l'entorn; el valor per defecte només serveix en local.
-SECRET_KEY = os.environ.get(
-    "DJANGO_SECRET_KEY", "django-insecure-nomes-per-desenvolupament"
+SECRET_KEY = env(
+    "DJANGO_SECRET_KEY", default="django-insecure-nomes-per-desenvolupament"
 )
 
 # Mai DEBUG activat en producció.
-DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
+DEBUG = env.bool("DJANGO_DEBUG", default=True)
 
-ALLOWED_HOSTS = os.environ.get(
-    "DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1"
-).split(",")
+ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
 
 # Aplicacions
@@ -74,13 +76,16 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 
 # Base de dades
-# Provisional: C7 la substituirà per PostgreSQL llegint les credencials del .env.
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": env("POSTGRES_DB", default="biblioteca"),
+        "USER": env("POSTGRES_USER", default="biblioteca"),
+        "PASSWORD": env("POSTGRES_PASSWORD"),
+        "HOST": env("POSTGRES_HOST", default="localhost"),
+        "PORT": env("POSTGRES_PORT", default="5432"),
     }
 }
 
