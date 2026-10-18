@@ -3,50 +3,31 @@
 Referència: https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-import os
 from pathlib import Path
+
+import environ
 
 # Rutes dins del projecte: BASE_DIR / 'subdirectori'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-def load_environment_file() -> None:
-    """Carrega les variables del fitxer .env sense sobreescriure l'entorn."""
-    env_path = BASE_DIR.parent / ".env"
-    if not env_path.is_file():
-        return
-
-    for line in env_path.read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#") or "=" not in stripped:
-            continue
-
-        key, value = stripped.split("=", 1)
-        key = key.strip()
-        value = value.strip()
-        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-            value = value[1:-1]
-
-        os.environ.setdefault(key, value)
-
-
-load_environment_file()
+env = environ.Env()
+environ.Env.read_env(BASE_DIR.parent / ".env")
 
 
 # Seguretat: valors per a desenvolupament, configurables amb variables d'entorn.
 # Vegeu https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # La clau es llegeix de l'entorn; el valor per defecte només serveix en local.
-SECRET_KEY = os.environ.get(
-    "DJANGO_SECRET_KEY", "django-insecure-nomes-per-desenvolupament"
+SECRET_KEY = env(
+    "DJANGO_SECRET_KEY", default="django-insecure-nomes-per-desenvolupament"
 )
 
 # Mai DEBUG activat en producció.
-DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
+DEBUG = env.bool("DJANGO_DEBUG", default=True)
 
-ALLOWED_HOSTS = os.environ.get(
-    "DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1"
-).split(",")
+ALLOWED_HOSTS = env.list(
+    "DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"]
+)
 
 
 # Aplicacions
@@ -102,11 +83,11 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ.get("POSTGRES_DB", "biblioteca"),
-        "USER": os.environ.get("POSTGRES_USER", "biblioteca"),
-        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "biblioteca"),
-        "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
-        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+        "NAME": env("POSTGRES_DB", default="biblioteca"),
+        "USER": env("POSTGRES_USER", default="biblioteca"),
+        "PASSWORD": env("POSTGRES_PASSWORD", default="biblioteca"),
+        "HOST": env("POSTGRES_HOST", default="localhost"),
+        "PORT": env("POSTGRES_PORT", default="5432"),
     }
 }
 
