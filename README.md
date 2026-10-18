@@ -94,6 +94,10 @@ main  ←  develop  ←  config  ←  C13-agents-readme
 Les branques de tasca no porten barra (`config/C13` no és vàlid si ja existeix la branca `config`: git no permet una branca i una "carpeta" amb el mateix nom).
 Ningú fa push directe a `main`, `develop` ni a les branques de bloc.
 
+**Norma de fusió** (C9): tota PR necessita l'aprovació d'una persona diferent de l'autora i, quan hi hagi CI (C8),
+els checks en verd abans de fer el merge. GitHub no ho bloqueja: les regles de
+protecció de branques no estan disponibles en repositoris privats amb el pla gratuït, així que és una norma de l'equip.
+
 Abans de començar una US, porta-hi el que hi hagi de nou a `develop` (p. ex. la configuració): `git switch US1`, `git merge develop`.
 
 ### Etiquetes
@@ -125,7 +129,7 @@ Es fan una única vegada al Sprint 0 i no pertanyen a cap història d'usuari. C1
 | C6 | Crear la base de dades PostgreSQL (usuari, contrasenya i nom de la base de dades) amb volum persistent per no perdre les dades. | DevOps | C1 | | Backlog |
 | C7 | Connectar Django amb PostgreSQL (`psycopg`) llegint les credencials del fitxer `.env`, i afegir un `.env.example` al repositori. | Backend | C3, C6 | | Backlog |
 | C8 | Configurar la CI amb GitHub Actions: instal·lar dependències i executar els tests de backend i frontend a cada pull request. | DevOps | C3, C4 | | Backlog |
-| C9 | Protegir les branques `main` i `develop` a GitHub: pull request obligatòria, 1 aprovació i CI en verd. | DevOps | C8 | | Backlog |
+| C9 | Norma d'equip per a `main`, `develop` i les branques de bloc: pull request obligatòria, 1 aprovació d'una altra persona i CI en verd (vegeu "Norma de fusió"). GitHub no permet protegir branques en repositoris privats amb el pla gratuït. | DevOps | — | | Code Review |
 | C10 | Afegir tots els membres de l'equip com a col·laboradors del repositori. | DevOps | C1 | | Backlog |
 | C11 | Crear el tauler Kanban (Trello) amb les columnes, els límits de WIP i les etiquetes d'aquest document. | Scrum Master | — | | Backlog |
 | C12 | Triar l'eina d'agent de cada rol (Backend, Frontend, QA, DevOps) i instal·lar-la a VS Code. | Tot l'equip | — | | Backlog |
