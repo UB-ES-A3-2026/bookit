@@ -47,7 +47,10 @@ Ja hi ha els projectes de backend i frontend i la base de dades PostgreSQL; Djan
 - No executeu `migrate` fins que existeixi el model d'usuari (US1-T1).
 - Base de dades (des de l'arrel): `cp .env.example .env` (canvieu la contrasenya) i `docker compose up -d --wait db`.
   `docker compose ps` ha de mostrar `healthy`. Connexió a `127.0.0.1:5432` (o el `POSTGRES_PORT` del `.env`).
-- Frontend: s'afegirà més endavant.
+- Frontend (des de `frontend/`): `npm ci` i `npm run dev` (http://localhost:5173).
+- Entorn complet amb Docker (des de l'arrel): `docker compose up -d --build --wait` aixeca `db`, `backend`
+  (http://localhost:8000) i `frontend` (http://localhost:5173). Dins de Docker el backend usa `POSTGRES_HOST=db`.
+  Tests del backend al contenidor: `docker compose exec backend pytest`.
 
 ## Àrees sensibles
 Explica el pla i espera confirmació abans de tocar:

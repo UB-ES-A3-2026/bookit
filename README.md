@@ -9,7 +9,7 @@ Projecte d'Enginyeria del Software (UB), treballat amb Scrum i tauler Kanban.
 |---|---|
 | `backend/` | API REST (Django + DRF). Encara buida. |
 | `frontend/` | SPA (Vue 3). Encara buida. |
-| `docker-compose.yml` | Base de dades PostgreSQL 16 (els serveis de backend i frontend arribaran amb la C5) |
+| `docker-compose.yml` | Entorn de desenvolupament: PostgreSQL 16, backend (Django) i frontend (Vite) |
 | `.env.example` | Variables d'entorn d'exemple (Django i base de dades) |
 | `AGENTS.md` | Instruccions del projecte per als agents d'IA |
 | `docs/plantilla-especificacio.md` | Plantilla per especificar tasques als agents |
@@ -47,6 +47,28 @@ docker compose ps                 # ha de sortir "healthy"
 
 Per entrar a la consola de PostgreSQL: `docker compose exec db psql -U biblioteca -d biblioteca` (o l'usuari i la BD del vostre `.env`).
 Per aturar-la: `docker compose down` (les dades es conserven al volum). Per esborrar-ho tot, dades incloses: `docker compose down -v`.
+
+## Aixecar tot l'entorn amb Docker
+
+Aixeca la base de dades, el backend i el frontend alhora, sense instal·lar Python ni Node a la màquina local.
+
+```bash
+cp .env.example .env               # si encara no el teniu
+docker compose up -d --build --wait
+docker compose ps                  # els tres serveis han de sortir "healthy"
+```
+
+| Servei | URL |
+|---|---|
+| Backend | http://localhost:8000/api/health/ (o el `BACKEND_PORT` del `.env`) |
+| Frontend | http://localhost:5173 (o el `FRONTEND_PORT` del `.env`) |
+
+- El codi de `backend/` i `frontend/` es munta als contenidors: en desar, Django i Vite es recarreguen sols.
+- Dins de Docker el backend es connecta a la BD pel servei `db`; el `POSTGRES_HOST` del `.env` només s'aplica quan Django corre fora de Docker.
+- Tests del backend dins del contenidor: `docker compose exec backend pytest`.
+- Logs: `docker compose logs -f backend` (o `frontend`).
+- Si canvieu `requirements*.txt` o `package.json`, reconstruïu la imatge: `docker compose up -d --build -V`.
+- El contenidor no executa `migrate`: no s'ha de fer fins que existeixi el model d'usuari (US1-T1).
 
 ---
 
