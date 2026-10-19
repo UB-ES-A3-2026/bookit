@@ -15,6 +15,7 @@ Projecte d'Enginyeria del Software (UB), treballat amb Scrum i tauler Kanban.
 | `docs/plantilla-especificacio.md` | Plantilla per especificar tasques als agents |
 | `docs/api-registre.md` | Contracte de l'API de registre entre backend i frontend (US1) |
 | `.github/pull_request_template.md` | Plantilla de PR amb la Definition of Done ampliada |
+| `.github/workflows/ci.yml` | CI amb GitHub Actions: tests del backend i build i tests del frontend a cada PR |
 | `.vscode/` | Configuració compartida de VS Code: extensions recomanades i format en desar |
 
 ## Stack tecnològic
@@ -94,8 +95,8 @@ main  ←  develop  ←  config  ←  C13-agents-readme
 Les branques de tasca no porten barra (`config/C13` no és vàlid si ja existeix la branca `config`: git no permet una branca i una "carpeta" amb el mateix nom).
 Ningú fa push directe a `main`, `develop` ni a les branques de bloc.
 
-**Norma de fusió** (C9): tota PR necessita l'aprovació d'una persona diferent de l'autora i, quan hi hagi CI (C8),
-els checks en verd abans de fer el merge. GitHub no ho bloqueja: les regles de
+**Norma de fusió** (C9): tota PR necessita l'aprovació d'una persona diferent de l'autora i els checks de la CI (C8)
+en verd abans de fer el merge. GitHub no ho bloqueja: les regles de
 protecció de branques no estan disponibles en repositoris privats amb el pla gratuït, així que és una norma de l'equip.
 
 Abans de començar una US, porta-hi el que hi hagi de nou a `develop` (p. ex. la configuració): `git switch US1`, `git merge develop`.
