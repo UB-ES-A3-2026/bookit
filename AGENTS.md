@@ -20,7 +20,7 @@ Ja hi ha els projectes de backend i frontend i la base de dades PostgreSQL; Djan
 - Pull requests: tasca → branca del seu bloc; `config` → `develop` quan s'hi tanca una tasca que necessita una US;
   US acabada → `develop`; `develop` → `main` al final de cada sprint. Mai es fa push directe a `main`, `develop`
   ni a les branques de bloc.
-- Tota PR necessita l'aprovació d'una persona diferent de l'autora abans del merge (norma de l'equip, C9).
+- Tota PR necessita l'aprovació d'una persona diferent de l'autora i la CI en verd abans del merge (norma de l'equip, C9).
 - Commits `<tipus>(<àmbit>): <descripció en imperatiu>`, p. ex. `feat(usuaris): afegeix l'endpoint de registre`.
 - Tot el codi del backend va a `backend/` i tot el del frontend a `frontend/`. Totes les rutes de l'API van sota `/api/`.
 
@@ -36,6 +36,8 @@ Ja hi ha els projectes de backend i frontend i la base de dades PostgreSQL; Djan
   `pip install -r requirements-dev.txt` i `pytest`. pytest-django crea i esborra una base de dades `test_<nom>`.
   Tests de projecte a `backend/tests/`; els de cada app, al `tests.py` de l'app o en fitxers `test_*.py`.
 - Les ordres de lint i les de test del frontend s'afegiran quan es configurin.
+- CI (`.github/workflows/ci.yml`): a cada PR executa `manage.py check` i `pytest` amb un PostgreSQL 16 temporal,
+  i `npm ci`, `npm run build` i `npm run test` (quan existeixi l'script) al frontend. Ha d'acabar en verd abans del merge.
 
 ## Build i execució
 - Backend (des de `backend/`): `python -m venv .venv`, activar-lo i `pip install -r requirements.txt`.
