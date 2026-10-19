@@ -131,7 +131,7 @@ Abans de començar una US, porta-hi el que hi hagi de nou a `develop` (p. ex. la
 
 ### Camí crític
 
-C1 → C3 → **US1-T1** (model d'usuari) → C7 → US1-T2 (primera migració) → US2-T1 (JWT).
+C1 → C3 → **US1-T1** (model d'usuari) → C7 → US1-T2 (primera migració) → US1-T4 (endpoint de registre).
 El model d'usuari ha d'existir abans de la primera migració: no executeu `migrate` abans de US1-T1.
 
 ---
@@ -168,38 +168,39 @@ Es fan una única vegada al Sprint 0 i no pertanyen a cap història d'usuari. C1
 Comença a T9 per mantenir la numeració del document de tasques; T1–T8 són ara C1–C8.
 
 **Abast al Sprint 0**: la pàgina principal només té el botó "Registra't". El cercador, els filtres, "Buscar llibres" i "Veure tot el catàleg" queden fora i tornaran a la US de cerca del catàleg; per això s'ha eliminat la T12.
+Amb aquest abast, la T11 (component d'avís) passa a la US1 com a US1-T18, la T15 (permisos de DRF) passa a la US1 com a US1-T19 i la T14 (guard de rutes de comanda) queda fora de la planificació fins que hi hagi comandes i inici de sessió.
 
 | ID | Tasca | Rol | Depèn de | Delegació | Estat |
 |---|---|---|---|---|---|
-| T9 | Configurar el router amb rutes públiques: `/` (inici), `/login`, `/registre`. | Frontend | C4 | Pau Albert| Backlog |
-| T10 | Maquetar la pantalla d'inici (responsive) amb la capçalera i el botó "Registra't". | Frontend | T9 | Pau Albert| Backlog |
-| T11 | Crear un component reutilitzable de missatge/avís (toast o modal) per a "Funcionalitat no implementada". | Frontend | C4 | Pau Albert | Backlog |
-| T13 | Connectar el botó "Registra't" a la pantalla de registre (US1). Si encara no existeix, crear una pàgina buida (placeholder). | Frontend | T9, T10 | Pau Albert| Backlog |
-| T14 | Guard de rutes: les accions de comanda redirigeixen a login/registre si no hi ha sessió (preparat per a quan existeixin). | Frontend | T9 | Pau Albert | Backlog |
-| T15 | Configurar els permisos per defecte de DRF: endpoints de consulta públics (`AllowAny`) i endpoints de comanda autenticats. | Backend | C3 | | Backlog |
+| T9 | Configurar el router amb rutes públiques: `/` (inici) i `/registre`. | Frontend | C4 | Pau Albert | Backlog |
+| T10 | Maquetar la pantalla d'inici (responsive) amb la capçalera i el botó "Registra't". | Frontend | T9 | Pau Albert | Backlog |
+| T13 | Connectar el botó "Registra't" a la pantalla de registre (US1). Si encara no existeix, crear una pàgina buida (placeholder). | Frontend | T9, T10 | Pau Albert | Backlog |
 | T16 | Escriure els casos de prova a partir dels criteris d'acceptació. | QA | — | | Backlog |
-| T17 | Tests E2E de navegació (Playwright): cada botó porta a la pantalla correcta o mostra l'avís correcte. | QA | T10, T13, T16 | | Backlog |
-| T18 | Prova manual en local i validació amb el Product Owner. | QA | T9–T17 | | Backlog |
+| T17 | Tests E2E de navegació (Playwright): el botó "Registra't" porta a la pantalla de registre. | QA | T10, T13, T16, T20 | | Backlog |
+| T18 | Prova manual en local i validació amb el Product Owner. | QA | T9–T20 | | Backlog |
+| T19 | Configurar Vitest al frontend (script `npm run test`, que ja executa la CI) amb un test d'exemple. | Frontend | C4 | | Backlog |
+| T20 | Configurar Playwright per als tests E2E amb un test d'exemple. | QA | C4 | | Backlog |
 
 ### US1 — Registre d'usuari
 
+El contracte de l'endpoint de registre és a `docs/api-registre.md`. La T5 (tokens JWT al registre) s'ha eliminat: el criteri només demana redirigir a la pàgina principal, i el JWT arribarà amb la US d'inici de sessió.
+
 | ID | Tasca | Rol | Depèn de | Delegació | Estat |
 |---|---|---|---|---|---|
-| T1 | Model d'usuari personalitzat (`AbstractUser`) amb correu únic com a identificador, nom, adreça, número de carnet únic i rol. S'ha de fer abans de la primera migració del projecte. | Backend | C3 | | Backlog |
-| T2 | Crear i aplicar la migració inicial a la base de dades PostgreSQL (taula d'usuaris). | Backend | T1, C7 | | Backlog |
-| T3 | Serializer de registre amb validacions: camps obligatoris, format del correu, format del carnet, unicitat del correu i del carnet, i contrasenya. | Backend | T1 | | Backlog |
-| T4 | Endpoint `POST /api/auth/register/` amb els missatges d'error exactes dels criteris ("Aquest correu electrònic ja està registrat", "Aquest usuari ja està registrat"). | Backend | T2, T3 | | Backlog |
-| T5 | Retornar els tokens JWT en el registre correcte (si decidiu login automàtic). | Backend | T4, US2-T1 | | Backlog |
-| T6 | Tests unitaris del backend: registre correcte, correu duplicat, carnet duplicat, camps buits, format invàlid. | Backend | T4 | | Backlog |
+| T1 | Model d'usuari personalitzat (`AbstractUser`) amb correu únic com a identificador, nom, adreça, número de carnet únic i rol (Usuari / Repartidor / Biblioteca). S'ha de fer abans de la primera migració del projecte. | Backend | C3 | Roger | Backlog |
+| T2 | Crear i aplicar la migració inicial a la base de dades PostgreSQL (taula d'usuaris). | Backend | T1, C7 | Roger | Backlog |
+| T3 | Serializer de registre amb validacions segons `docs/api-registre.md`: camps obligatoris, format del correu, format del carnet, unicitat del correu i del carnet, i contrasenya. | Backend | T1 | Alejandro | Backlog |
+| T4 | Endpoint `POST /api/auth/register/` segons `docs/api-registre.md`, amb els missatges d'error exactes dels criteris ("Aquest correu electrònic ja està registrat", "Aquest usuari ja està registrat", "El format d'aquest carnet no es vàlid"). | Backend | T2, T3 | Alejandro | Backlog |
+| T6 | Tests unitaris del backend: registre correcte, correu duplicat, carnet duplicat, camps buits, format invàlid. | Backend | T4 | Alejandro | Backlog |
 | T7 | Maquetar el formulari de registre (responsive) amb el selector de tipus de compte (Usuari / Repartidor / Biblioteca). | Frontend | US0-T9 | Sergi Garcia | Backlog |
 | T8 | Validació al client: camps obligatoris, format del correu, coincidència de contrasenyes. | Frontend | T7 | Sergi Garcia | Backlog |
-| T9 | Connectar el formulari amb l'endpoint i mostrar els errors del backend al camp corresponent. | Frontend | T4, T8 | Sergi Garcia | Backlog |
-| T10 | Desar els tokens i redirigir a la pàgina principal si el registre és correcte. | Frontend | T5, T9 | Sergi Garcia | Backlog |
-| T11 | Opcions "Repartidor" i "Biblioteca" mostren "Funcionalitat no implementada" (component de la US0). | Frontend | T7, US0-T11 | Sergi Garcia | Backlog |
+| T9 | Connectar el formulari amb l'endpoint i mostrar els errors del backend al camp corresponent. | Frontend | T4, T8, T17 | Sergi Garcia | Backlog |
+| T10 | Redirigir a la pàgina principal si el registre és correcte. | Frontend | T9 | Sergi Garcia | Backlog |
+| T11 | Opcions "Repartidor" i "Biblioteca" mostren "Funcionalitat no implementada" (component de la T18). | Frontend | T7, T18 | Sergi Garcia | Backlog |
 | T12 | Casos de prova a partir dels criteris d'acceptació. | QA | — | | Backlog |
-| T13 | Tests E2E (Playwright): registre correcte amb redirecció, correu duplicat, carnet duplicat, Repartidor/Biblioteca. | QA | T10, T11, T12 | | Backlog |
-| T14 | Validació manual en local amb el Product Owner. | QA | T1–T13 | | Backlog |
-| T15 | Afegir l'execució automàtica de migracions en arrencar el contenidor del backend i una base de dades PostgreSQL temporal a la CI per als tests. | DevOps | C5, C8, T2 | | Backlog |
-| T15 | Comprovar que una petició protegida sense token retorna 401 i amb token funciona. | QA | T3, T9 | | Backlog |
-| T16 | Validació manual en local amb el Product Owner. | QA | T1–T15 | | Backlog |
-| T17 | Gestionar la clau de signatura del JWT (`SECRET_KEY`) i la configuració de CORS amb variables d'entorn al fitxer `.env`, mai al repositori. | DevOps | C3 | | Backlog |
+| T13 | Tests E2E (Playwright): registre correcte amb redirecció, correu duplicat, carnet duplicat, Repartidor/Biblioteca. | QA | T10, T11, T12, US0-T20 | | Backlog |
+| T14 | Validació manual en local amb el Product Owner. | QA | T1–T19 | | Backlog |
+| T15 | Executar `migrate` automàticament en arrencar el contenidor del backend. | DevOps | C5, T2 | | Backlog |
+| T17 | Configurar CORS amb `django-cors-headers` i els orígens permesos al fitxer `.env` (mai al repositori). | DevOps | C3 | | Backlog |
+| T18 | Crear un component reutilitzable de missatge/avís (toast o modal) per a "Funcionalitat no implementada". *(Abans US0-T11.)* | Frontend | C4 | Pau Albert | Backlog |
+| T19 | Configurar els permisos per defecte de DRF: `IsAuthenticated` per defecte i `AllowAny` explícit als endpoints públics (registre i salut). *(Abans US0-T15.)* | Backend | C3 | Alejandro | Backlog |
