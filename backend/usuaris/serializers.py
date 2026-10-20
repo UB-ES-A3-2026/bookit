@@ -25,9 +25,11 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
     correu = serializers.EmailField(
         source="email",
         validators=[
+            # "iexact": ANNA@example.com i anna@example.com són el mateix correu.
             UniqueValidator(
                 queryset=Usuari.objects.all(),
                 message="Aquest correu electrònic ja està registrat",
+                lookup="iexact",
             )
         ],
         error_messages={
@@ -82,6 +84,10 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
             "rol",
             "contrasenya",
         )
+
+    def validate_correu(self, value):
+        """Desa el correu en minúscules perquè no hi hagi duplicats per majúscules."""
+        return value.lower()
 
     def validate_contrasenya(self, value):
         try:

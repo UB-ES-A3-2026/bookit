@@ -70,6 +70,31 @@ def test_correu_ja_registrat_retorna_400(client):
 
 
 @pytest.mark.django_db
+def test_correu_ja_registrat_amb_majuscules_retorna_400(client):
+    client.post(URL, dades_valides(), content_type="application/json")
+
+    resposta = client.post(
+        URL,
+        dades_valides(correu="ANNA@Example.com", num_carnet="0000000001"),
+        content_type="application/json",
+    )
+
+    assert resposta.status_code == 400
+    assert resposta.json() == {
+        "correu": ["Aquest correu electrònic ja està registrat"]
+    }
+
+
+@pytest.mark.django_db
+def test_el_correu_es_desa_en_minuscules(client):
+    client.post(
+        URL, dades_valides(correu="Anna@Example.com"), content_type="application/json"
+    )
+
+    assert Usuari.objects.filter(email="anna@example.com").exists()
+
+
+@pytest.mark.django_db
 def test_carnet_ja_registrat_retorna_400(client):
     client.post(URL, dades_valides(), content_type="application/json")
 
