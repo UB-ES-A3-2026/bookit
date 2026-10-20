@@ -190,7 +190,7 @@ El contracte de l'endpoint de registre és a `docs/api-registre.md`. La T5 (toke
 | T1 | Model d'usuari personalitzat (`AbstractUser`) amb correu únic com a identificador, nom, adreça, número de carnet únic i rol (Usuari / Repartidor / Biblioteca). S'ha de fer abans de la primera migració del projecte. | Backend | C3 | Roger | Backlog |
 | T2 | Crear i aplicar la migració inicial a la base de dades PostgreSQL (taula d'usuaris). | Backend | T1, C7 | Roger | Backlog |
 | T3 | Serializer de registre amb validacions segons `docs/api-registre.md`: camps obligatoris, format del correu, format del carnet, unicitat del correu i del carnet, i contrasenya. | Backend | T1 | Alejandro | Backlog |
-| T4 | Endpoint `POST /api/auth/register/` segons `docs/api-registre.md`, amb els missatges d'error exactes dels criteris ("Aquest correu electrònic ja està registrat", "Aquest usuari ja està registrat", "El format d'aquest carnet no es vàlid"). | Backend | T2, T3 | Alejandro | Backlog |
+| T4 | Endpoint `POST /api/auth/register/` segons `docs/api-registre.md`, amb els missatges d'error exactes dels criteris ("Aquest correu electrònic ja està registrat", "Aquest usuari ja està registrat", "El format d'aquest carnet no és vàlid"). | Backend | T2, T3 | Alejandro | Backlog |
 | T6 | Tests unitaris del backend: registre correcte, correu duplicat, carnet duplicat, camps buits, format invàlid. | Backend | T4 | Alejandro | Backlog |
 | T7 | Maquetar el formulari de registre (responsive) amb el selector de tipus de compte (Usuari / Repartidor / Biblioteca). | Frontend | US0-T9 | Sergi Garcia | Backlog |
 | T8 | Validació al client: camps obligatoris, format del correu, coincidència de contrasenyes. | Frontend | T7 | Sergi Garcia | Backlog |
