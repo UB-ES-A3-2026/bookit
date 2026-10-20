@@ -8,6 +8,7 @@ from config.views import salut
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/health/", salut, name="salut"),
+    path("api/auth/", include("usuaris.urls_auth")),
     path("api/usuaris/", include("usuaris.urls")),
     path("api/cataleg/", include("cataleg.urls")),
     path("api/prestecs/", include("prestecs.urls")),
