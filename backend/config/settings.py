@@ -45,6 +45,8 @@ INSTALLED_APPS = [
     "prestecs",
 ]
 
+AUTH_USER_MODEL = "usuaris.Usuari"
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
