@@ -35,7 +35,9 @@ Ja hi ha els projectes de backend i frontend i la base de dades PostgreSQL; Djan
 - Tests del backend (des de `backend/`, amb la base de dades aixecada i el `.env` a l'arrel):
   `pip install -r requirements-dev.txt` i `pytest`. pytest-django crea i esborra una base de dades `test_<nom>`.
   Tests de projecte a `backend/tests/`; els de cada app, al `tests.py` de l'app o en fitxers `test_*.py`.
-- Les ordres de lint i les de test del frontend s'afegiran quan es configurin.
+- Tests E2E amb Playwright (des de `frontend/`): `npx playwright install chromium` la primera vegada i
+  `npm run test:e2e`. Els tests són a `frontend/e2e/` (`*.spec.js`) i aixequen Vite si no n'hi ha cap al port 5173.
+- Les ordres de lint i les dels tests unitaris del frontend (Vitest) s'afegiran quan es configurin.
 - CI (`.github/workflows/ci.yml`): a cada PR executa `manage.py check` i `pytest` amb un PostgreSQL 16 temporal,
   i `npm ci`, `npm run build` i `npm run test` (quan existeixi l'script) al frontend. Ha d'acabar en verd abans del merge.
 
