@@ -90,25 +90,19 @@ function validaCamp(camp) {
     return false;
   }
 
+  // Qualsevol correu amb el format text@domini.extensió (no només Gmail).
+  // La validació completa la fa el backend.
   if (
     camp === "correu" &&
-    !/^[^\s@]+@gmail\.[a-z]{2,}$/i.test(formulari.correu)
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formulari.correu.trim())
   ) {
     errors.correu =
-      "El correu ha de ser una adreça vàlida, (ex. usuari@gmail.com).";
+      "El correu ha de ser una adreça vàlida (ex. usuari@exemple.cat).";
     return false;
   }
 
   if (camp === "numCarnet" && !/^\d{10}$/.test(formulari.numCarnet)) {
     errors.numCarnet = "El número de carnet ha de tenir exactament 10 dígits.";
-    return false;
-  }
-
-  if (
-    camp === "adreca" &&
-    !/^[\p{L}][\p{L}\s.'-]*,\s*\d+$/u.test(formulari.adreca)
-  ) {
-    errors.adreca = "L'adreça ha de tenir el format: nom del carrer, número.";
     return false;
   }
 
