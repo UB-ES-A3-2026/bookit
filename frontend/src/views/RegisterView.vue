@@ -162,23 +162,6 @@ function tornaInici() {
           ></p>
         </div>
 
-        <div class="register-form__field">
-          <label for="confirmar-contrasenya">Confirmar contrasenya</label>
-          <input
-            id="confirmar-contrasenya"
-            name="confirmar_contrasenya"
-            type="password"
-            autocomplete="new-password"
-            placeholder="Repeteix la contrasenya"
-            aria-describedby="confirmar-contrasenya-error"
-          />
-          <p
-            id="confirmar-contrasenya-error"
-            class="register-form__error"
-            aria-live="polite"
-          ></p>
-        </div>
-
         <label class="register-form__terms" for="accepta-termes">
           <input id="accepta-termes" name="accepta_termes" type="checkbox" />
           <span>
@@ -209,7 +192,7 @@ function tornaInici() {
   box-sizing: border-box;
   background-position: center;
   background-size: cover;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .register-page__overlay {
@@ -226,8 +209,8 @@ function tornaInici() {
   width: min(100%, 360px);
   max-height: calc(100svh - 2rem);
   box-sizing: border-box;
-  overflow-y: auto;
-  padding: 1.45rem;
+  overflow: hidden;
+  padding: 0.8rem 1.25rem;
   border-radius: 0.7rem;
   color: #4d4541;
   background: #fffdf8;
@@ -239,7 +222,7 @@ function tornaInici() {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 .register-modal__welcome {
@@ -286,7 +269,7 @@ function tornaInici() {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.2rem;
-  margin-bottom: 1.1rem;
+  margin-bottom: 0.55rem;
   padding: 0.2rem;
   border-radius: 0.45rem;
   background: #f3ecdf;
@@ -314,17 +297,17 @@ function tornaInici() {
 .register-form {
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
+  gap: 0.3rem;
 }
 
 .account-type {
-  margin: 0 0 0.45rem;
+  margin: 0 0 0.15rem;
   padding: 0;
   border: 0;
 }
 
 .account-type legend {
-  margin-bottom: 0.65rem;
+  margin-bottom: 0.4rem;
   color: #4d4541;
   font-size: 0.62rem;
   font-weight: 700;
@@ -338,11 +321,11 @@ function tornaInici() {
 
 .account-type__option {
   display: flex;
-  min-height: 2.2rem;
+  min-height: 1.65rem;
   align-items: center;
   justify-content: center;
   gap: 0.25rem;
-  padding: 0.35rem 0.2rem;
+  padding: 0.25rem 0.2rem;
   border: 1px solid #e4d9cd;
   border-radius: 0.4rem;
   color: #6f6862;
@@ -367,7 +350,7 @@ function tornaInici() {
 .register-form__field {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.15rem;
 }
 
 .register-form__field label {
@@ -379,8 +362,8 @@ function tornaInici() {
 .register-form__field input {
   box-sizing: border-box;
   width: 100%;
-  min-height: 2rem;
-  padding: 0.5rem 0.65rem;
+  min-height: 1.6rem;
+  padding: 0.35rem 0.55rem;
   border: 1px solid #e1d8cd;
   border-radius: 0.35rem;
   color: #4d4541;
@@ -436,12 +419,12 @@ function tornaInici() {
 
 .register-form__submit {
   display: flex;
-  min-height: 2.1rem;
+  min-height: 1.8rem;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   margin-top: 0.05rem;
-  padding: 0.5rem 1rem;
+  padding: 0.3rem 1rem;
   border: 0;
   border-radius: 0.35rem;
   color: #fff;
@@ -478,7 +461,7 @@ function tornaInici() {
 
   .register-modal {
     max-height: calc(100svh - 1.2rem);
-    padding: 1.1rem;
+    padding: 0.8rem 1.1rem;
   }
 
   .account-type__option {
