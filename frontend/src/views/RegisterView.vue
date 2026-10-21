@@ -77,16 +77,8 @@ function validaCamp(camp) {
   errors[camp] = "";
 
   if (!formulari[camp].trim()) {
-    const missatges = {
-      correu: "El correu electrònic és obligatori.",
-      nom: "El nom complet és obligatori.",
-      adreca: "L'adreça física és obligatòria.",
-      numCarnet: "El número de carnet és obligatori.",
-      contrasenya: "La contrasenya és obligatòria.",
-      confirmarContrasenya: "La confirmació de la contrasenya és obligatòria.",
-    };
-
-    errors[camp] = missatges[camp];
+    // Mateix text que el backend (docs/api-registre.md).
+    errors[camp] = "Aquest camp és obligatori.";
     return false;
   }
 
@@ -98,11 +90,6 @@ function validaCamp(camp) {
   ) {
     errors.correu =
       "El correu ha de ser una adreça vàlida (ex. usuari@exemple.cat).";
-    return false;
-  }
-
-  if (camp === "numCarnet" && !/^\d{10}$/.test(formulari.numCarnet)) {
-    errors.numCarnet = "El número de carnet ha de tenir exactament 10 dígits.";
     return false;
   }
 
@@ -229,7 +216,11 @@ async function enviaFormulari() {
         </button>
       </nav>
 
-      <form class="register-form" @submit.prevent="enviaFormulari">
+      <form
+        class="register-form"
+        novalidate
+        @submit.prevent="enviaFormulari"
+      >
         <fieldset class="account-type">
           <legend>Com et vols registrar?</legend>
 
