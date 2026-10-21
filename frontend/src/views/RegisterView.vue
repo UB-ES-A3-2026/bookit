@@ -19,16 +19,13 @@ const tipusComptes = [
 const tipusCompte = ref("lector");
 const avisTipus = ref("");
 
-// Només "Lector" està implementat. Amb els altres tipus es mostra l'avís
-// i el selector es queda a "Lector", així mai s'envia un compte no suportat.
-function seleccionaTipus(valor) {
-  if (valor !== "lector") {
-    avisTipus.value = "Funcionalitat no implementada.";
-    return;
-  }
+const AVIS_NO_IMPLEMENTAT = "Funcionalitat no implementada.";
 
-  avisTipus.value = "";
+// Només "Lector" està implementat. Amb els altres tipus es marca l'opció triada
+// i es mostra l'avís; el formulari no s'envia fins que es torna a "Lector".
+function seleccionaTipus(valor) {
   tipusCompte.value = valor;
+  avisTipus.value = valor === "lector" ? "" : AVIS_NO_IMPLEMENTAT;
 }
 
 const formulari = reactive({
@@ -151,6 +148,12 @@ function assignaErrorsBackend(errorsBackend) {
 
 async function enviaFormulari() {
   netejaErrors();
+
+  // Amb un tipus de compte no implementat no es crea cap compte (US1-T11).
+  if (tipusCompte.value !== "lector") {
+    avisTipus.value = AVIS_NO_IMPLEMENTAT;
+    return;
+  }
 
   if (!validaFormulari()) {
     return;
