@@ -19,8 +19,8 @@ Qualsevol canvi d'aquest document passa per pull request.
   (o el `FRONTEND_PORT` del `.env`).
 - Navegador sense cap sessió iniciada: finestra privada o perfil net.
 - Mida d'escriptori: 1280 × 720. Mida de mòbil: 375 × 812.
-- Fins que no es faci US1-T7, la pantalla de registre és la pàgina provisional de US0-T13, amb el títol "Registre".
-  Els casos comproven la ruta `/registre` i aquest títol; si US1-T7 el canvia, cal actualitzar aquest document.
+- Des de US1-T7, la pantalla de registre és la caixa amb el títol "Crear un compte" (abans era la pàgina
+  provisional de US0-T13, amb el títol "Registre"). Els casos comproven la ruta `/registre` i aquest títol.
 
 ## Resum
 
@@ -55,7 +55,7 @@ Qualsevol canvi d'aquest document passa per pull request.
   2. Fer clic al botó "Registra't" de la capçalera.
 - **Resultat esperat**:
   - La URL passa a ser `/registre`.
-  - Es mostra la pantalla de registre, amb el títol "Registre".
+  - Es mostra la pantalla de registre, amb el títol "Crear un compte".
 
 ### CP-US0-03 · "Registra't" en mòbil
 
@@ -67,7 +67,7 @@ Qualsevol canvi d'aquest document passa per pull request.
   3. Tocar el botó "Registra't".
 - **Resultat esperat**:
   - Al pas 2, el botó es veu sencer, sense quedar tapat ni tallat, i la pàgina no té desplaçament horitzontal.
-  - Al pas 3, la URL passa a ser `/registre` i es mostra el títol "Registre".
+  - Al pas 3, la URL passa a ser `/registre` i es mostra el títol "Crear un compte".
 
 ### CP-US0-04 · Tornar enrere des del registre
 
@@ -88,7 +88,8 @@ Qualsevol canvi d'aquest document passa per pull request.
   1. Escriure `/registre` a la barra d'adreces i prémer Retorn.
   2. Recarregar la pàgina (F5).
 - **Resultat esperat**:
-  - En tots dos passos es mostra la pantalla de registre amb el títol "Registre", sense pàgina en blanc ni error 404.
+  - En tots dos passos es mostra la pantalla de registre amb el títol "Crear un compte", sense pàgina en blanc ni
+    error 404.
 - **Nota**: en local, Vite serveix l'aplicació per a qualsevol ruta. Quan hi hagi desplegament, cal repetir aquest cas
   a l'entorn desplegat.
 
@@ -102,7 +103,7 @@ Qualsevol canvi d'aquest document passa per pull request.
   3. Prémer Retorn.
 - **Resultat esperat**:
   - Al pas 2, es veu clarament que el botó "Registra't" té el focus.
-  - Al pas 3, la URL passa a ser `/registre` i es mostra el títol "Registre".
+  - Al pas 3, la URL passa a ser `/registre` i es mostra el títol "Crear un compte".
 
 ## Fora d'abast
 
