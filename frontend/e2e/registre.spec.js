@@ -256,12 +256,15 @@ test.describe("registre amb el backend (US1-T9 i US1-T10)", () => {
     }
   });
 
-    test("CP-US1-15 · contrasenya rebutjada pel backend", async ({ page }) => {
+  test("CP-US1-15 · contrasenya rebutjada pel backend", async ({ page }) => {
     await obrirCaixa(page);
+    // Correu únic a cada execució; la contrasenya és la part d'abans de l'@, perquè sigui
+    // semblant al correu i el validador de semblança la rebutgi.
+    const correuJordi = `jordi.vila.${Date.now()}@example.com`;
     const intents = [
       dadesNoves({ contrasenya: "curta1" }),
       dadesNoves({ contrasenya: "12345678" }),
-      dadesNoves({ correu: `jordi.vila.${Date.now()}@example.com`, contrasenya: "jordi.vila.example" }),
+      dadesNoves({ correu: correuJordi, contrasenya: correuJordi.split("@")[0] }),
     ];
 
     for (const dades of intents) {
