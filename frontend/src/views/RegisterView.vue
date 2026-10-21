@@ -1,9 +1,12 @@
 <script setup>
+import axios from "axios";
+
 import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import bibliotecaImage from "../assets/biblioteca.jpg";
 
 const router = useRouter();
+const apiUrl = import.meta.env.VITE_API_URL;
 
 const tipusComptes = [
   { valor: "lector", etiqueta: "Lector", icona: "♙" },
@@ -44,13 +47,28 @@ const errors = reactive({
   confirmarContrasenya: "",
 });
 
+const errorGeneral = ref("");
+const enviant = ref(false);
+
 function tornaInici() {
   router.push({ name: "home" });
 }
 
-// Registre Correcte: sense tokens ni inici de sessió automàtic.
+// Registre correcte: sense tokens ni inici de sessió automàtic.
 function registreCorrecte() {
   router.push({ name: "home" });
+}
+
+function netejaError(camp) {
+  errors[camp] = "";
+  errorGeneral.value = "";
+}
+
+function netejaErrors() {
+  Object.keys(errors).forEach((camp) => {
+    errors[camp] = "";
+  });
+  errorGeneral.value = "";
 }
 
 function validaCamp(camp) {
@@ -120,6 +138,75 @@ function validaFormulari() {
   if (totCorrecte) {
     registreCorrecte();
   }
+  return camps.map((camp) => validaCamp(camp)).every(Boolean);
+}
+
+function assignaErrorsBackend(errorsBackend) {
+  const mapatgeCamps = {
+    correu: "correu",
+    nom: "nom",
+    adreca: "adreca",
+    num_carnet: "numCarnet",
+    contrasenya: "contrasenya",
+  };
+
+  let errorAssignat = false;
+
+  Object.entries(errorsBackend).forEach(([camp, missatges]) => {
+    const campFormulari = mapatgeCamps[camp];
+
+    if (!campFormulari || !Array.isArray(missatges)) {
+      return;
+    }
+
+    errors[campFormulari] = missatges.join(" ");
+    errorAssignat = true;
+  });
+
+  if (!errorAssignat) {
+    errorGeneral.value =
+      "No s'ha pogut completar el registre. Revisa les dades i torna-ho a provar.";
+  }
+}
+
+async function enviaFormulari() {
+  netejaErrors();
+
+  if (!validaFormulari()) {
+    return;
+  }
+
+  if (!apiUrl) {
+    errorGeneral.value =
+      "No s'ha pogut completar el registre. Revisa la configuració de l'aplicació.";
+    return;
+  }
+
+  enviant.value = true;
+
+  const dadesRegistre = {
+    nom: formulari.nom,
+    correu: formulari.correu,
+    adreca: formulari.adreca,
+    num_carnet: formulari.numCarnet,
+    contrasenya: formulari.contrasenya,
+  };
+
+  try {
+    await axios.post(`${apiUrl}/api/auth/register/`, dadesRegistre);
+    registreCorrecte();
+
+    // US1-T10: desar els tokens i redirigir després del registre.
+  } catch (error) {
+    if (error.response?.status === 400 && error.response.data) {
+      assignaErrorsBackend(error.response.data);
+    } else {
+      errorGeneral.value =
+        "No s'ha pogut completar el registre. Torna-ho a provar més tard.";
+    }
+  } finally {
+    enviant.value = false;
+  }
 }
 </script>
 
@@ -157,7 +244,7 @@ function validaFormulari() {
         </button>
       </nav>
 
-      <form class="register-form" @submit.prevent="validaFormulari">
+      <form class="register-form" @submit.prevent="enviaFormulari">
         <fieldset class="account-type">
           <legend>Com et vols registrar?</legend>
 
@@ -195,6 +282,7 @@ function validaFormulari() {
             placeholder="nom@exemple.cat"
             :aria-invalid="Boolean(errors.correu)"
             aria-describedby="correu-error"
+            @input="netejaError('correu')"
           />
           <p id="correu-error" class="register-form__error" aria-live="polite">
             {{ errors.correu }}
@@ -212,6 +300,7 @@ function validaFormulari() {
             placeholder="p. ex. Laia Vidal Serra"
             :aria-invalid="Boolean(errors.nom)"
             aria-describedby="nom-error"
+            @input="netejaError('nom')"
           />
           <p id="nom-error" class="register-form__error" aria-live="polite">
             {{ errors.nom }}
@@ -229,6 +318,7 @@ function validaFormulari() {
             placeholder="Carrer, número, pis i porta"
             :aria-invalid="Boolean(errors.adreca)"
             aria-describedby="adreca-error"
+            @input="netejaError('adreca')"
           />
           <p id="adreca-error" class="register-form__error" aria-live="polite">
             {{ errors.adreca }}
@@ -247,6 +337,7 @@ function validaFormulari() {
             placeholder="0000000000"
             :aria-invalid="Boolean(errors.numCarnet)"
             aria-describedby="num-carnet-help num-carnet-error"
+            @input="netejaError('numCarnet')"
           />
           <p
             id="num-carnet-error"
@@ -268,6 +359,7 @@ function validaFormulari() {
             placeholder="Mínim 8 caràcters"
             :aria-invalid="Boolean(errors.contrasenya)"
             aria-describedby="contrasenya-error"
+            @input="netejaError('contrasenya')"
           />
           <p
             id="contrasenya-error"
@@ -289,6 +381,7 @@ function validaFormulari() {
             placeholder="Repeteix la contrasenya"
             :aria-invalid="Boolean(errors.confirmarContrasenya)"
             aria-describedby="confirmar-contrasenya-error"
+            @input="netejaError('confirmarContrasenya')"
           />
           <p
             id="confirmar-contrasenya-error"
@@ -309,8 +402,21 @@ function validaFormulari() {
           </span>
         </label>
 
-        <button class="register-form__submit" type="submit">
-          Completar Registre
+        <p
+          v-if="errorGeneral"
+          class="register-form__general-error"
+          role="alert"
+        >
+          {{ errorGeneral }}
+        </p>
+
+        <button
+          class="register-form__submit"
+          type="submit"
+          :disabled="enviant"
+          :aria-busy="enviant"
+        >
+          {{ enviant ? "Registrant..." : "Completar Registre" }}
           <span aria-hidden="true">→</span>
         </button>
       </form>
@@ -588,6 +694,19 @@ function validaFormulari() {
 .register-form__submit span {
   font-size: 1rem;
   font-weight: 400;
+}
+
+.register-form__general-error {
+  margin: 0;
+  color: #a00000;
+  font-size: 0.55rem;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.register-form__submit:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }
 
 @media (max-width: 420px) {
