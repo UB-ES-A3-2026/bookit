@@ -14,6 +14,10 @@ Projecte d'Enginyeria del Software (UB), treballat amb Scrum i tauler Kanban.
 | `AGENTS.md` | Instruccions del projecte per als agents d'IA |
 | `docs/plantilla-especificacio.md` | Plantilla per especificar tasques als agents |
 | `docs/api-registre.md` | Contracte de l'API de registre entre backend i frontend (US1) |
+| `docs/casos-prova-us0.md` | Casos de prova de la navegació com a convidat (US0) |
+| `docs/prova-manual-us0.md` | Resultats de la prova manual i validació amb el Product Owner (US0) |
+| `docs/casos-prova-us1.md` | Casos de prova del registre d'usuari (US1) |
+| `docs/prova-manual-us1.md` | Resultats de la prova manual i validació amb el Product Owner (US1) |
 | `.github/pull_request_template.md` | Plantilla de PR amb la Definition of Done ampliada |
 | `.github/workflows/ci.yml` | CI amb GitHub Actions: tests del backend i build i tests del frontend a cada PR |
 | `.vscode/` | Configuració compartida de VS Code: extensions recomanades i format en desar |
