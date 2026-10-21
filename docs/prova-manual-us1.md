@@ -73,8 +73,6 @@ aquestes tasques estiguin fusionades, i la validació amb el Product Owner es fa
 
 ## Observacions per a l'equip
 
-- **Ordre de les PR de configuració**: US1-T15 i US1-T17 modifiquen la mateixa llista de la secció de Docker del
-  `README.md`. Quan es fusioni la segona, cal resoldre el conflicte mantenint totes dues línies.
 - **`.env` existents**: cal afegir `CORS_ALLOWED_ORIGINS` als `.env` creats abans de US1-T17. Sense la variable,
   el navegador bloqueja totes les peticions del frontend.
 - **Dades de prova a la base de dades local**: la prova ha creat els comptes `anna.puig@example.com`,
