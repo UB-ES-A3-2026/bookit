@@ -1,9 +1,30 @@
 <script setup>
-import { reactive } from "vue";
+import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import bibliotecaImage from "../assets/biblioteca.jpg";
 
 const router = useRouter();
+
+const tipusComptes = [
+  { valor: "lector", etiqueta: "Lector", icona: "♙" },
+  { valor: "repartidor", etiqueta: "Repartidor", icona: "→" },
+  { valor: "biblioteca", etiqueta: "Biblioteca", icona: "▣" },
+];
+
+const tipusCompte = ref("lector");
+const avisTipus = ref("");
+
+// Només "Lector" està implementat. Amb els altres tipus es mostra l'avís
+// i el selector es queda a "Lector", així mai s'envia un compte no suportat.
+function seleccionaTipus(valor) {
+  if (valor !== "lector") {
+    avisTipus.value = "Funcionalitat no implementada.";
+    return;
+  }
+
+  avisTipus.value = "";
+  tipusCompte.value = valor;
+}
 
 const formulari = reactive({
   correu: "",
@@ -24,6 +45,11 @@ const errors = reactive({
 });
 
 function tornaInici() {
+  router.push({ name: "home" });
+}
+
+// Registre correcte: sense tokens ni inici de sessió automàtic.
+function registreCorrecte() {
   router.push({ name: "home" });
 }
 
@@ -87,7 +113,13 @@ function validaFormulari() {
     "confirmarContrasenya",
   ];
 
+  // Validar tots els camps
   camps.forEach((camp) => validaCamp(camp));
+  const totCorrecte = camps.map((camp) => validaCamp(camp)).every(Boolean);
+
+  if (totCorrecte) {
+    registreCorrecte();
+  }
 }
 </script>
 
@@ -130,33 +162,26 @@ function validaFormulari() {
           <legend>Com et vols registrar?</legend>
 
           <div class="account-type__options">
+            <!-- 4. Botons del selector (substitueixen els 3 botons fixos) -->
             <button
-              class="account-type__option account-type__option--active"
-              type="button"
-              aria-pressed="true"
-            >
-              <span aria-hidden="true">♙</span>
-              Lector
-            </button>
-
-            <button
+              v-for="tipus in tipusComptes"
+              :key="tipus.valor"
               class="account-type__option"
+              :class="{
+                'account-type__option--active': tipusCompte === tipus.valor,
+              }"
               type="button"
-              aria-pressed="false"
+              :aria-pressed="tipusCompte === tipus.valor"
+              @click="seleccionaTipus(tipus.valor)"
             >
-              <span aria-hidden="true">→</span>
-              Repartidor
-            </button>
-
-            <button
-              class="account-type__option"
-              type="button"
-              aria-pressed="false"
-            >
-              <span aria-hidden="true">▣</span>
-              Biblioteca
+              <span aria-hidden="true">{{ tipus.icona }}</span>
+              {{ tipus.etiqueta }}
             </button>
           </div>
+
+          <p v-if="avisTipus" class="register-form__error" role="alert">
+            {{ avisTipus }}
+          </p>
         </fieldset>
 
         <div class="register-form__field">
