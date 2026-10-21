@@ -6,7 +6,9 @@ import { useRouter } from "vue-router";
 import bibliotecaImage from "../assets/biblioteca.jpg";
 
 const router = useRouter();
-const apiUrl = import.meta.env.VITE_API_URL;
+// Adreça del backend. Amb Docker la defineix el docker-compose.yml; amb
+// `npm run dev` es pot canviar en un fitxer frontend/.env.local.
+const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 const tipusComptes = [
   { valor: "lector", etiqueta: "Lector", icona: "♙" },
@@ -173,12 +175,6 @@ async function enviaFormulari() {
     return;
   }
 
-  if (!apiUrl) {
-    errorGeneral.value =
-      "No s'ha pogut completar el registre. Revisa la configuració de l'aplicació.";
-    return;
-  }
-
   enviant.value = true;
 
   const dadesRegistre = {
@@ -192,8 +188,6 @@ async function enviaFormulari() {
   try {
     await axios.post(`${apiUrl}/api/auth/register/`, dadesRegistre);
     registreCorrecte();
-
-    // US1-T10: desar els tokens i redirigir després del registre.
   } catch (error) {
     if (error.response?.status === 400 && error.response.data) {
       assignaErrorsBackend(error.response.data);
