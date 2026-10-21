@@ -20,8 +20,13 @@ Qualsevol canvi d'aquest document passa per pull request i s'avisa les dues part
 | `nom` | text | Sí | No pot ser buit. |
 | `correu` | text | Sí | Format de correu electrònic vàlid. Únic. |
 | `adreca` | text | Sí | No pot ser buit. |
-| `num_carnet` | text | Sí | Format del carnet de biblioteca *(pendent, vegeu P1)*. Únic. |
+| `num_carnet` | text | Sí | Exactament 10 dígits. Únic. |
 | `contrasenya` | text | Sí | Validadors de contrasenya de Django. No es retorna mai. |
+
+Els noms dels camps d'aquest contracte són els de l'API i es mantenen en català. El model intern `Usuari`
+fa servir `email`, `name`, `address`, `library_card_number`, `role` i `password`; el serializer tradueix
+els noms públics `correu`, `nom`, `adreca`, `num_carnet` i `contrasenya` quan crea l'usuari. La contrasenya
+es desa amb el mecanisme de hash de Django i no s'inclou mai a la resposta.
 
 El tipus de compte no s'envia: el registre sempre crea un compte amb rol `usuari`. Les opcions "Repartidor" i
 "Biblioteca" del formulari mostren "Funcionalitat no implementada" al frontend (US1-T11) i no criden l'endpoint.
@@ -31,7 +36,7 @@ El tipus de compte no s'envia: el registre sempre crea un compte amb rol `usuari
   "nom": "Anna Puig",
   "correu": "anna@example.com",
   "adreca": "C/ Major 1, 08001 Barcelona",
-  "num_carnet": "12345678",
+  "num_carnet": "1234567890",
   "contrasenya": "una-contrasenya-segura"
 }
 ```
@@ -76,23 +81,15 @@ defecte de Django REST Framework). El frontend mostra cada missatge sota el camp
 |---|---|---|
 | Correu ja registrat | `correu` | `Aquest correu electrònic ja està registrat` |
 | Carnet ja registrat | `num_carnet` | `Aquest usuari ja està registrat` |
-| Format de carnet incorrecte | `num_carnet` | `El format d'aquest carnet no es vàlid` *(vegeu P5)* |
-| Camp obligatori buit o absent | el camp | `Aquest camp és obligatori.` *(pendent de confirmar)* |
-| Correu amb format incorrecte | `correu` | `Introduïu una adreça de correu electrònic vàlida.` *(pendent de confirmar)* |
-| Contrasenya no vàlida | `contrasenya` | Missatges dels validadors de Django *(pendent de confirmar)* |
+| Format de carnet incorrecte | `num_carnet` | `El format d'aquest carnet no és vàlid` |
+| Camp obligatori buit o absent | el camp | `Aquest camp és obligatori.` |
+| Correu amb format incorrecte | `correu` | `Introduïu una adreça de correu electrònic vàlida.` |
+| Contrasenya no vàlida | `contrasenya` | Missatges dels validadors de Django |
 
 Els tres primers missatges són literals dels criteris d'acceptació de la US1 i els tests els comproven
 exactament.
 
 ## Decisions pendents
 
-- **P1. Format del número de carnet.** Els criteris diuen que es valida, però no quin format té (nombre de
-  dígits, lletres...). Cal preguntar-ho al Product Owner.
-- **P2. Noms dels camps.** Aquest document fa servir noms en català sense accents (`nom`, `correu`, `adreca`,
-  `num_carnet`, `contrasenya`). Cal confirmar-los amb qui faci el model d'usuari (US1-T1), sobretot si el model
-  manté els camps `email` i `password` d'`AbstractUser`.
 - **P3. Inici de sessió automàtic.** Cal decidir si el registre retorna els tokens JWT (US1-T5). Si és així,
   falta una tasca per configurar `djangorestframework-simplejwt`.
-- **P4. Missatges genèrics.** Confirmar els textos dels camps buits, del correu mal format i de la contrasenya.
-- **P5. Text del criteri.** "no es vàlid" probablement hauria de ser "no és vàlid". Cal confirmar-ho amb el
-  Product Owner, perquè els tests comparen el text exacte.

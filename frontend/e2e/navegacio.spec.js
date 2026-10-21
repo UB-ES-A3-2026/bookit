@@ -5,8 +5,8 @@ import { test, expect } from "@playwright/test";
 
 const botoRegistre = (page) => page.getByRole("link", { name: "Registra't" });
 
-// Fins a US1-T7, la pantalla de registre és la pàgina provisional de US0-T13 amb el títol "Registre".
-const titolRegistre = (page) => page.getByRole("heading", { name: "Registre" });
+// Des de US1-T7, la pantalla de registre és la caixa "Crear un compte".
+const titolRegistre = (page) => page.getByRole("heading", { name: "Crear un compte" });
 
 test("CP-US0-01 · un convidat obre la pàgina d'inici", async ({ page }) => {
   const errors = [];
