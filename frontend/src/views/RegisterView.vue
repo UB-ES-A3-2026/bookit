@@ -131,14 +131,11 @@ function validaFormulari() {
     "confirmarContrasenya",
   ];
 
-  // Validar tots els camps
-  camps.forEach((camp) => validaCamp(camp));
-  const totCorrecte = camps.map((camp) => validaCamp(camp)).every(Boolean);
-
-  if (totCorrecte) {
-    registreCorrecte();
-  }
-  return camps.map((camp) => validaCamp(camp)).every(Boolean);
+  // Es validen tots els camps (no només fins al primer error) perquè es vegin
+  // tots els errors alhora. La redirecció es fa a enviaFormulari, quan el
+  // backend confirma el registre.
+  const resultats = camps.map((camp) => validaCamp(camp));
+  return resultats.every(Boolean);
 }
 
 function assignaErrorsBackend(errorsBackend) {
