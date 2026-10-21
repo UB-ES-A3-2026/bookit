@@ -6,7 +6,9 @@ import { useRouter } from "vue-router";
 import bibliotecaImage from "../assets/biblioteca.jpg";
 
 const router = useRouter();
-const apiUrl = import.meta.env.VITE_API_URL;
+// Adreça del backend. Amb Docker la defineix el docker-compose.yml; amb
+// `npm run dev` es pot canviar en un fitxer frontend/.env.local.
+const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 const tipusComptes = [
   { valor: "lector", etiqueta: "Lector", icona: "♙" },
@@ -88,25 +90,19 @@ function validaCamp(camp) {
     return false;
   }
 
+  // Qualsevol correu amb el format text@domini.extensió (no només Gmail).
+  // La validació completa la fa el backend.
   if (
     camp === "correu" &&
-    !/^[^\s@]+@gmail\.[a-z]{2,}$/i.test(formulari.correu)
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formulari.correu.trim())
   ) {
     errors.correu =
-      "El correu ha de ser una adreça vàlida, (ex. usuari@gmail.com).";
+      "El correu ha de ser una adreça vàlida (ex. usuari@exemple.cat).";
     return false;
   }
 
   if (camp === "numCarnet" && !/^\d{10}$/.test(formulari.numCarnet)) {
     errors.numCarnet = "El número de carnet ha de tenir exactament 10 dígits.";
-    return false;
-  }
-
-  if (
-    camp === "adreca" &&
-    !/^[\p{L}][\p{L}\s.'-]*,\s*\d+$/u.test(formulari.adreca)
-  ) {
-    errors.adreca = "L'adreça ha de tenir el format: nom del carrer, número.";
     return false;
   }
 
@@ -131,14 +127,11 @@ function validaFormulari() {
     "confirmarContrasenya",
   ];
 
-  // Validar tots els camps
-  camps.forEach((camp) => validaCamp(camp));
-  const totCorrecte = camps.map((camp) => validaCamp(camp)).every(Boolean);
-
-  if (totCorrecte) {
-    registreCorrecte();
-  }
-  return camps.map((camp) => validaCamp(camp)).every(Boolean);
+  // Es validen tots els camps (no només fins al primer error) perquè es vegin
+  // tots els errors alhora. La redirecció es fa a enviaFormulari, quan el
+  // backend confirma el registre.
+  const resultats = camps.map((camp) => validaCamp(camp));
+  return resultats.every(Boolean);
 }
 
 function assignaErrorsBackend(errorsBackend) {
@@ -176,12 +169,6 @@ async function enviaFormulari() {
     return;
   }
 
-  if (!apiUrl) {
-    errorGeneral.value =
-      "No s'ha pogut completar el registre. Revisa la configuració de l'aplicació.";
-    return;
-  }
-
   enviant.value = true;
 
   const dadesRegistre = {
@@ -195,8 +182,6 @@ async function enviaFormulari() {
   try {
     await axios.post(`${apiUrl}/api/auth/register/`, dadesRegistre);
     registreCorrecte();
-
-    // US1-T10: desar els tokens i redirigir després del registre.
   } catch (error) {
     if (error.response?.status === 400 && error.response.data) {
       assignaErrorsBackend(error.response.data);
