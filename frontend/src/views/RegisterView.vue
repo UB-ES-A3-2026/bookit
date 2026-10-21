@@ -1,11 +1,93 @@
 <script setup>
+import { reactive } from "vue";
 import { useRouter } from "vue-router";
 import bibliotecaImage from "../assets/biblioteca.jpg";
 
 const router = useRouter();
 
+const formulari = reactive({
+  correu: "",
+  nom: "",
+  adreca: "",
+  numCarnet: "",
+  contrasenya: "",
+  confirmarContrasenya: "",
+});
+
+const errors = reactive({
+  correu: "",
+  nom: "",
+  adreca: "",
+  numCarnet: "",
+  contrasenya: "",
+  confirmarContrasenya: "",
+});
+
 function tornaInici() {
   router.push({ name: "home" });
+}
+
+function validaCamp(camp) {
+  errors[camp] = "";
+
+  if (!formulari[camp].trim()) {
+    const missatges = {
+      correu: "El correu electrònic és obligatori.",
+      nom: "El nom complet és obligatori.",
+      adreca: "L'adreça física és obligatòria.",
+      numCarnet: "El número de carnet és obligatori.",
+      contrasenya: "La contrasenya és obligatòria.",
+      confirmarContrasenya: "La confirmació de la contrasenya és obligatòria.",
+    };
+
+    errors[camp] = missatges[camp];
+    return false;
+  }
+
+  if (
+    camp === "correu" &&
+    !/^[^\s@]+@gmail\.[a-z]{2,}$/i.test(formulari.correu)
+  ) {
+    errors.correu =
+      "El correu ha de ser una adreça vàlida, (ex. usuari@gmail.com).";
+    return false;
+  }
+
+  if (camp === "numCarnet" && !/^\d{10}$/.test(formulari.numCarnet)) {
+    errors.numCarnet = "El número de carnet ha de tenir exactament 10 dígits.";
+    return false;
+  }
+
+  if (
+    camp === "adreca" &&
+    !/^[\p{L}][\p{L}\s.'-]*,\s*\d+$/u.test(formulari.adreca)
+  ) {
+    errors.adreca = "L'adreça ha de tenir el format: nom del carrer, número.";
+    return false;
+  }
+
+  if (
+    camp === "confirmarContrasenya" &&
+    formulari.contrasenya !== formulari.confirmarContrasenya
+  ) {
+    errors.confirmarContrasenya = "Les contrasenyes no coincideixen.";
+    return false;
+  }
+
+  return true;
+}
+
+function validaFormulari() {
+  const camps = [
+    "correu",
+    "nom",
+    "adreca",
+    "numCarnet",
+    "contrasenya",
+    "confirmarContrasenya",
+  ];
+
+  camps.forEach((camp) => validaCamp(camp));
 }
 </script>
 
@@ -43,7 +125,7 @@ function tornaInici() {
         </button>
       </nav>
 
-      <form class="register-form">
+      <form class="register-form" @submit.prevent="validaFormulari">
         <fieldset class="account-type">
           <legend>Com et vols registrar?</legend>
 
@@ -81,85 +163,115 @@ function tornaInici() {
           <label for="correu">Correu electrònic</label>
           <input
             id="correu"
+            v-model="formulari.correu"
             name="correu"
             type="email"
             autocomplete="email"
             placeholder="nom@exemple.cat"
+            :aria-invalid="Boolean(errors.correu)"
             aria-describedby="correu-error"
           />
-          <p
-            id="correu-error"
-            class="register-form__error"
-            aria-live="polite"
-          ></p>
+          <p id="correu-error" class="register-form__error" aria-live="polite">
+            {{ errors.correu }}
+          </p>
         </div>
 
         <div class="register-form__field">
           <label for="nom">Nom complet</label>
           <input
             id="nom"
+            v-model="formulari.nom"
             name="nom"
             type="text"
             autocomplete="name"
             placeholder="p. ex. Laia Vidal Serra"
+            :aria-invalid="Boolean(errors.nom)"
             aria-describedby="nom-error"
           />
-          <p id="nom-error" class="register-form__error" aria-live="polite"></p>
+          <p id="nom-error" class="register-form__error" aria-live="polite">
+            {{ errors.nom }}
+          </p>
         </div>
 
         <div class="register-form__field">
           <label for="adreca">Adreça física</label>
           <input
             id="adreca"
+            v-model="formulari.adreca"
             name="adreca"
             type="text"
             autocomplete="street-address"
             placeholder="Carrer, número, pis i porta"
+            :aria-invalid="Boolean(errors.adreca)"
             aria-describedby="adreca-error"
           />
-          <p
-            id="adreca-error"
-            class="register-form__error"
-            aria-live="polite"
-          ></p>
+          <p id="adreca-error" class="register-form__error" aria-live="polite">
+            {{ errors.adreca }}
+          </p>
         </div>
 
         <div class="register-form__field">
           <label for="num-carnet">Número de carnet de biblioteca</label>
           <input
             id="num-carnet"
+            v-model="formulari.numCarnet"
             name="num_carnet"
             type="text"
             inputmode="numeric"
             autocomplete="off"
-            placeholder="BIB-00000000"
+            placeholder="0000000000"
+            :aria-invalid="Boolean(errors.numCarnet)"
             aria-describedby="num-carnet-help num-carnet-error"
           />
-          <p id="num-carnet-help" class="register-form__help">
-            El trobaràs al revers del teu carnet.
-          </p>
           <p
             id="num-carnet-error"
             class="register-form__error"
             aria-live="polite"
-          ></p>
+          >
+            {{ errors.numCarnet }}
+          </p>
         </div>
 
         <div class="register-form__field">
           <label for="contrasenya">Contrasenya</label>
           <input
             id="contrasenya"
+            v-model="formulari.contrasenya"
             name="contrasenya"
             type="password"
             autocomplete="new-password"
             placeholder="Mínim 8 caràcters"
+            :aria-invalid="Boolean(errors.contrasenya)"
             aria-describedby="contrasenya-error"
           />
           <p
             id="contrasenya-error"
             class="register-form__error"
             aria-live="polite"
-          ></p>
+          >
+            {{ errors.contrasenya }}
+          </p>
+        </div>
+
+        <div class="register-form__field">
+          <label for="confirmar-contrasenya">Confirmar contrasenya</label>
+          <input
+            id="confirmar-contrasenya"
+            v-model="formulari.confirmarContrasenya"
+            name="confirmar_contrasenya"
+            type="password"
+            autocomplete="new-password"
+            placeholder="Repeteix la contrasenya"
+            :aria-invalid="Boolean(errors.confirmarContrasenya)"
+            aria-describedby="confirmar-contrasenya-error"
+          />
+          <p
+            id="confirmar-contrasenya-error"
+            class="register-form__error"
+            aria-live="polite"
+          >
+            {{ errors.confirmarContrasenya }}
+          </p>
         </div>
 
         <label class="register-form__terms" for="accepta-termes">
@@ -209,7 +321,7 @@ function tornaInici() {
   width: min(100%, 360px);
   max-height: calc(100svh - 2rem);
   box-sizing: border-box;
-  overflow: hidden;
+  overflow-y: auto;
   padding: 0.8rem 1.25rem;
   border-radius: 0.7rem;
   color: #4d4541;
@@ -362,8 +474,8 @@ function tornaInici() {
 .register-form__field input {
   box-sizing: border-box;
   width: 100%;
-  min-height: 1.6rem;
-  padding: 0.35rem 0.55rem;
+  min-height: 0.5 rem;
+  padding: 0.1rem 0.55rem;
   border: 1px solid #e1d8cd;
   border-radius: 0.35rem;
   color: #4d4541;
