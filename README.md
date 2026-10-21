@@ -68,6 +68,8 @@ docker compose ps                  # els tres serveis han de sortir "healthy"
 - Tests del backend dins del contenidor: `docker compose exec backend pytest`.
 - Logs: `docker compose logs -f backend` (o `frontend`).
 - Si canvieu `requirements*.txt` o `package.json`, reconstruïu la imatge: `docker compose up -d --build -V`.
+- El frontend només pot cridar l'API des dels orígens de `CORS_ALLOWED_ORIGINS` del `.env`. Si el vostre `.env`
+  és anterior a US1-T17, afegiu-hi la variable de `.env.example`.
 - El contenidor no executa `migrate`: no s'ha de fer fins que existeixi el model d'usuari (US1-T1).
 
 ---
