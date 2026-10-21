@@ -27,6 +27,10 @@ DEBUG = env.bool("DJANGO_DEBUG", default=True)
 
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
+# Orígens (el frontend) que poden cridar l'API des del navegador. Es llegeixen del .env;
+# sense la variable no se n'accepta cap.
+CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
+
 
 # Aplicacions
 
@@ -39,6 +43,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Tercers
     "rest_framework",
+    "corsheaders",
     # Mòduls del projecte
     "usuaris",
     "cataleg",
@@ -55,6 +60,8 @@ REST_FRAMEWORK = {
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # Abans del CommonMiddleware, perquè les respostes que genera també portin les capçaleres CORS.
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
