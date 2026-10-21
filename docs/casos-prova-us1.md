@@ -51,8 +51,8 @@ Aquest document fa servir aquests textos. Si US1-T7 en fa servir uns altres, cal
 - CORS configurat (US1-T17). Sense CORS, el navegador bloqueja les peticions del frontend al backend.
 - Navegador sense cap sessió iniciada: finestra privada o perfil net.
 - Mida d'escriptori: 1280 × 720. Mida de mòbil: 375 × 812.
-- **Obrir la caixa de registre** vol dir obrir `/` i fer clic al botó "Registra't" de la capçalera. US1-T7 decideix
-  si la caixa té ruta pròpia (`/registre`) o s'obre sobre `/`. Els casos no en depenen.
+- **Obrir la caixa de registre** vol dir obrir `/` i fer clic al botó "Registra't" de la capçalera. Segons US1-T7
+  (PR #86), la caixa és a la ruta `/registre`, sobre una imatge de fons enfosquida, i tancar-la torna a `/`.
 - Per comprovar les peticions a mà, cal obrir la pestanya Xarxa de les eines de desenvolupador abans d'enviar el
   formulari.
 
@@ -223,11 +223,11 @@ mostra el resultat a l'usuari.
   3. Escriure alguna cosa al camp "Nom complet", seleccionar el text arrossegant el ratolí i deixar anar el botó a
      fora de la caixa.
   4. Fer clic al fons enfosquit, fora de la caixa.
-  5. Tornar a obrir la caixa i fer clic al botó de tancar (X).
+  5. Tornar a obrir la caixa i fer clic al botó de tancar (X), que els lectors de pantalla anomenen "Tancar".
 - **Resultat esperat**:
   - Als passos 2 i 3, la caixa continua oberta.
-  - Al pas 4, la caixa es tanca, es veu la pàgina d'inici i no es crea cap compte.
-  - Al pas 5, la caixa també es tanca.
+  - Al pas 4, la caixa es tanca, la URL torna a ser `/` i no es crea cap compte.
+  - Al pas 5, la caixa també es tanca i la URL torna a ser `/`.
 - **Nota**: el pas 3 evita un defecte habitual de les caixes modals, que es tanquen quan el clic comença a dins i
   acaba a fora.
 
@@ -414,9 +414,10 @@ mostra el resultat a l'usuari.
   criteris ni al contracte. Cal decidir si és obligatòria; si ho és, cal afegir-ne el cas.
 - **Tipus de compte**: el disseny anomena "Lector" l'opció que les tasques anomenen "Usuari". Per a l'API, el rol
   continua sent `usuari`.
-- **Pàgina provisional de registre**: els casos de la US0 i `frontend/e2e/navegacio.spec.js` comproven la ruta
-  `/registre` i el títol "Registre". Si US1-T7 obre la caixa sobre `/` o canvia el títol per "Crear un compte",
-  cal actualitzar-los.
+- **Clicar fora de la caixa (CA6)**: cap tasca de frontend no ho inclou. US1-T7 només hi ha posat el botó de
+  tancar (X). Cal assignar CA6 a una tasca, perquè sense això la US1 no compleix els criteris.
+- **Títol del registre**: US1-T7 ha substituït la pàgina provisional per la caixa "Crear un compte". Els casos de
+  la US0 i `frontend/e2e/navegacio.spec.js` comprovaven el títol "Registre"; s'actualitzen a US1-T13.
 - **Backend no disponible**: cap tasca diu què ha de passar si el backend no respon. Proposta: un missatge genèric
   (p. ex. "No s'ha pogut completar el registre. Torna-ho a provar.") a la caixa, sense tancar-la. Si s'accepta, cal
   afegir-ne el cas.
