@@ -107,7 +107,7 @@ Qualsevol canvi d'aquest document passa per pull request.
 ## Fora d'abast
 
 - Cercador, filtres, "Buscar llibres" i "Veure tot el catàleg": tornaran amb la US de cerca del catàleg.
-- El formulari de registre i les seves validacions: casos de prova de US1-T12.
+- El formulari de registre i les seves validacions: casos de prova de US1-T12 (`docs/casos-prova-us1.md`).
 - L'avís "Funcionalitat no implementada": ara és US1-T18.
 - El guard de rutes de comanda (antiga US0-T14): fora de la planificació fins que hi hagi comandes i inici de sessió.
 
