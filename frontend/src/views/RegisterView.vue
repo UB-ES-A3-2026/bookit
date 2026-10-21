@@ -19,16 +19,13 @@ const tipusComptes = [
 const tipusCompte = ref("lector");
 const avisTipus = ref("");
 
-// Només "Lector" està implementat. Amb els altres tipus es mostra l'avís
-// i el selector es queda a "Lector", així mai s'envia un compte no suportat.
-function seleccionaTipus(valor) {
-  if (valor !== "lector") {
-    avisTipus.value = "Funcionalitat no implementada.";
-    return;
-  }
+const AVIS_NO_IMPLEMENTAT = "Funcionalitat no implementada.";
 
-  avisTipus.value = "";
+// Només "Lector" està implementat. Amb els altres tipus es marca l'opció triada
+// i es mostra l'avís; el formulari no s'envia fins que es torna a "Lector".
+function seleccionaTipus(valor) {
   tipusCompte.value = valor;
+  avisTipus.value = valor === "lector" ? "" : AVIS_NO_IMPLEMENTAT;
 }
 
 const formulari = reactive({
@@ -77,16 +74,8 @@ function validaCamp(camp) {
   errors[camp] = "";
 
   if (!formulari[camp].trim()) {
-    const missatges = {
-      correu: "El correu electrònic és obligatori.",
-      nom: "El nom complet és obligatori.",
-      adreca: "L'adreça física és obligatòria.",
-      numCarnet: "El número de carnet és obligatori.",
-      contrasenya: "La contrasenya és obligatòria.",
-      confirmarContrasenya: "La confirmació de la contrasenya és obligatòria.",
-    };
-
-    errors[camp] = missatges[camp];
+    // Mateix text que el backend (docs/api-registre.md).
+    errors[camp] = "Aquest camp és obligatori.";
     return false;
   }
 
@@ -98,11 +87,6 @@ function validaCamp(camp) {
   ) {
     errors.correu =
       "El correu ha de ser una adreça vàlida (ex. usuari@exemple.cat).";
-    return false;
-  }
-
-  if (camp === "numCarnet" && !/^\d{10}$/.test(formulari.numCarnet)) {
-    errors.numCarnet = "El número de carnet ha de tenir exactament 10 dígits.";
     return false;
   }
 
@@ -164,6 +148,12 @@ function assignaErrorsBackend(errorsBackend) {
 
 async function enviaFormulari() {
   netejaErrors();
+
+  // Amb un tipus de compte no implementat no es crea cap compte (US1-T11).
+  if (tipusCompte.value !== "lector") {
+    avisTipus.value = AVIS_NO_IMPLEMENTAT;
+    return;
+  }
 
   if (!validaFormulari()) {
     return;
@@ -229,7 +219,11 @@ async function enviaFormulari() {
         </button>
       </nav>
 
-      <form class="register-form" @submit.prevent="enviaFormulari">
+      <form
+        class="register-form"
+        novalidate
+        @submit.prevent="enviaFormulari"
+      >
         <fieldset class="account-type">
           <legend>Com et vols registrar?</legend>
 

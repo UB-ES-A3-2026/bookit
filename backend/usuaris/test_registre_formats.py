@@ -89,3 +89,33 @@ def test_amb_diversos_errors_es_retornen_tots(client):
 
     assert resposta.status_code == 400
     assert set(resposta.json()) == {"nom", "correu", "num_carnet"}
+
+
+@pytest.mark.django_db
+def test_contrasenya_massa_curta_dona_el_missatge_en_catala(client):
+    resposta = client.post(
+        URL, dades_valides(contrasenya="curta1"), content_type="application/json"
+    )
+
+    assert resposta.status_code == 400
+    missatges = resposta.json()["contrasenya"]
+    assert (
+        "Aquesta contrasenya és massa curta. Ha de tenir com a mínim 8 caràcters."
+        in missatges
+    )
+    assert not any("password" in missatge.lower() for missatge in missatges)
+
+
+@pytest.mark.django_db
+def test_contrasenya_semblant_al_correu_retorna_400(client):
+    resposta = client.post(
+        URL,
+        dades_valides(
+            correu="jordi.vila@example.com", contrasenya="jordi.vila.example"
+        ),
+        content_type="application/json",
+    )
+
+    assert resposta.status_code == 400
+    assert list(resposta.json()) == ["contrasenya"]
+    assert not Usuari.objects.exists()

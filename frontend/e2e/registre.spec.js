@@ -6,8 +6,8 @@ import { test, expect } from "@playwright/test";
 // El CP-US1-16 no hi és perquè el disseny no té el camp per repetir la contrasenya.
 //
 // Els tests que envien el formulari necessiten el backend aixecat amb Docker (`docker compose up -d --build --wait`)
-// i CORS configurat (US1-T17). Els grups marcats amb test.fixme depenen de tasques de frontend que encara no són a
-// aquesta branca: cal treure el fixme del grup quan hi arribin.
+// i CORS configurat (US1-T17). El grup de CA6 (clicar fora de la caixa) està marcat amb test.fixme perquè cap tasca
+// de frontend no l'implementa encara.
 
 const API_URL = process.env.E2E_API_URL ?? "http://localhost:8000";
 const URL_REGISTRE_API = "/api/auth/register/";
@@ -62,6 +62,8 @@ async function omplir(page, dades) {
   for (const nom of Object.keys(CAMPS)) {
     await camp(page, nom).fill(dades[nom]);
   }
+  // El formulari (US1-T8) demana repetir la contrasenya; es repeteix la mateixa.
+  await page.getByLabel("Confirmar contrasenya", { exact: true }).fill(dades.contrasenya);
   await termes(page).check();
 }
 
@@ -135,8 +137,6 @@ test.describe("caixa de registre (US1-T7)", () => {
 });
 
 test.describe("registre amb el backend (US1-T9 i US1-T10)", () => {
-  test.fixme(true, "Falta connectar el formulari amb l'API (US1-T9) i redirigir a l'inici (US1-T10).");
-
   test("CP-US1-01 · registre correcte com a Lector", async ({ page }) => {
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
@@ -256,14 +256,15 @@ test.describe("registre amb el backend (US1-T9 i US1-T10)", () => {
     }
   });
 
-  // Els intents 1 i 3 fallen amb el backend actual: el missatge de contrasenya curta arriba en anglès i el validador
-  // de semblança amb el correu no s'aplica (vegeu les observacions de docs/casos-prova-us1.md).
   test("CP-US1-15 · contrasenya rebutjada pel backend", async ({ page }) => {
     await obrirCaixa(page);
+    // Correu únic a cada execució; la contrasenya és la part d'abans de l'@, perquè sigui
+    // semblant al correu i el validador de semblança la rebutgi.
+    const correuJordi = `jordi.vila.${Date.now()}@example.com`;
     const intents = [
       dadesNoves({ contrasenya: "curta1" }),
       dadesNoves({ contrasenya: "12345678" }),
-      dadesNoves({ correu: `jordi.vila.${Date.now()}@example.com`, contrasenya: "jordi.vila.example" }),
+      dadesNoves({ correu: correuJordi, contrasenya: correuJordi.split("@")[0] }),
     ];
 
     for (const dades of intents) {
@@ -280,8 +281,6 @@ test.describe("registre amb el backend (US1-T9 i US1-T10)", () => {
 });
 
 test.describe("camps obligatoris (US1-T8 o US1-T9)", () => {
-  test.fixme(true, "Falta la validació al client (US1-T8) o la connexió amb l'API (US1-T9).");
-
   test("CP-US1-08 · enviar el formulari amb camps buits", async ({ page }) => {
     await obrirCaixa(page);
 
@@ -304,8 +303,6 @@ test.describe("camps obligatoris (US1-T8 o US1-T9)", () => {
 });
 
 test.describe("tipus de compte no disponibles (US1-T11)", () => {
-  test.fixme(true, "Falta l'avís \"Funcionalitat no implementada\" (US1-T11 i US1-T18).");
-
   for (const [cas, tipus] of [
     ["CP-US1-10", "Repartidor"],
     ["CP-US1-11", "Biblioteca"],
@@ -329,7 +326,6 @@ test.describe("tipus de compte no disponibles (US1-T11)", () => {
   }
 
   test("CP-US1-12 · tornar a Lector després de l'avís", async ({ page }) => {
-    test.fixme(true, "També necessita la connexió amb l'API (US1-T9) i la redirecció (US1-T10).");
     await obrirCaixa(page);
     await tipusCompte(page, "Repartidor").click();
     await expect(page.getByText("Funcionalitat no implementada")).toBeVisible();
