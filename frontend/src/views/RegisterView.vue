@@ -48,7 +48,7 @@ function tornaInici() {
   router.push({ name: "home" });
 }
 
-// Registre correcte: sense tokens ni inici de sessió automàtic.
+// Registre Correcte: sense tokens ni inici de sessió automàtic.
 function registreCorrecte() {
   router.push({ name: "home" });
 }
