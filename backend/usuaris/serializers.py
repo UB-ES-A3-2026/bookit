@@ -7,6 +7,25 @@ from rest_framework.validators import UniqueValidator
 from usuaris.models import Usuari
 
 
+def missatges_contrasenya(error):
+    """Missatges d'una contrasenya rebutjada, tots en català.
+
+    Django 5.2 no té la traducció catalana del missatge de contrasenya massa
+    curta, així que aquest es reescriu; la resta ja arriben en català.
+    """
+    missatges = []
+    for detall in error.error_list:
+        if detall.code == "password_too_short":
+            minim = detall.params["min_length"]
+            missatges.append(
+                "Aquesta contrasenya és massa curta. "
+                f"Ha de tenir com a mínim {minim} caràcters."
+            )
+        else:
+            missatges.extend(detall.messages)
+    return missatges
+
+
 class UsuariRegistreSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(read_only=True)
     rol = serializers.ChoiceField(
@@ -89,12 +108,22 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
         """Desa el correu en minúscules perquè no hi hagi duplicats per majúscules."""
         return value.lower()
 
-    def validate_contrasenya(self, value):
+    def validate(self, attrs):
+        """Valida la contrasenya amb les dades de l'usuari que es vol crear.
+
+        Es fa aquí i no al camp perquè el validador de semblança necessita el
+        correu i el nom (p. ex. rebutja una contrasenya igual al correu).
+        """
+        dades_usuari = {
+            camp: valor for camp, valor in attrs.items() if camp != "password"
+        }
         try:
-            validate_password(value)
+            validate_password(attrs["password"], user=Usuari(**dades_usuari))
         except DjangoValidationError as error:
-            raise serializers.ValidationError(error.messages) from error
-        return value
+            raise serializers.ValidationError(
+                {"contrasenya": missatges_contrasenya(error)}
+            ) from error
+        return attrs
 
     def create(self, validated_data):
         password = validated_data.pop("password")
