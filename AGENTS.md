@@ -14,12 +14,13 @@ Ja hi ha els projectes de backend i frontend i la base de dades PostgreSQL; Djan
 - Noms de domini (models, apps, rutes) en català sense accents: `Usuari`, `Llibre`, `Prestec`, `cataleg`.
   Comentaris, docstrings i textos per a l'usuari en català, amb accents.
 - Branques: `main` (versió estable) ← `develop` (integració) ← una branca per bloc ← una branca per tasca.
-  - Branques de bloc, creades des de `develop`: `config` (tasques C) i una per història d'usuari (`US0`, `US1`, `US2`...).
-  - Branques de tasca, creades des de la branca del seu bloc: `C<n>-<descripcio>` o `US<n>-T<m>-<descripcio>`.
-    P. ex. `C13-agents-readme` (des de `config`) o `US1-T4-endpoint-registre` (des de `US1`).
+  - El flux és per història d'usuari: les branques de bloc, creades des de `develop`, són `config` (tasques C), una per història (`US0`, `US1`, `US2`...) i `deploy` (tasques D).
+  - Branques de tasca creades des de la branca del seu bloc: `C<n>-<descripcio>`, `US<n>-T<m>-<descripcio>` o `D<n>-<descripcio>`.
+    P. ex. `C13-agents-readme` (des de `config`), `US1-T4-endpoint-registre` (des de `US1`) o `D1-tria-allotjament` (des de `deploy`).
 - Pull requests: tasca → branca del seu bloc; `config` → `develop` quan s'hi tanca una tasca que necessita una US;
   US acabada → `develop`; `develop` → `main` al final de cada sprint. Mai es fa push directe a `main`, `develop`
   ni a les branques de bloc.
+- La branca `deploy` es fusiona a `develop` quan s'acaben les tasques de desplegament del bloc.
 - Tota PR necessita l'aprovació d'una persona diferent de l'autora i la CI en verd abans del merge (norma de l'equip, C9).
 - Commits `<tipus>(<àmbit>): <descripció en imperatiu>`, p. ex. `feat(usuaris): afegeix l'endpoint de registre`.
 - Tot el codi del backend va a `backend/` i tot el del frontend a `frontend/`. Totes les rutes de l'API van sota `/api/`.
@@ -35,7 +36,9 @@ Ja hi ha els projectes de backend i frontend i la base de dades PostgreSQL; Djan
 - Tests del backend (des de `backend/`, amb la base de dades aixecada i el `.env` a l'arrel):
   `pip install -r requirements-dev.txt` i `pytest`. pytest-django crea i esborra una base de dades `test_<nom>`.
   Tests de projecte a `backend/tests/`; els de cada app, al `tests.py` de l'app o en fitxers `test_*.py`.
-- Les ordres de lint i les de test del frontend s'afegiran quan es configurin.
+- Tests E2E amb Playwright (des de `frontend/`): `npx playwright install chromium` la primera vegada i
+  `npm run test:e2e`. Els tests són a `frontend/e2e/` (`*.spec.js`) i aixequen Vite si no n'hi ha cap al port 5173.
+- Tests unitaris del frontend amb Vitest: des de `frontend/`, executeu `npm run test` un cop s'hagi completat US0-T21 i el script estigui configurat.
 - CI (`.github/workflows/ci.yml`): a cada PR executa `manage.py check` i `pytest` amb un PostgreSQL 16 temporal,
   i `npm ci`, `npm run build` i `npm run test` (quan existeixi l'script) al frontend. Ha d'acabar en verd abans del merge.
 
