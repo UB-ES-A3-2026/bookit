@@ -70,6 +70,16 @@ docker compose ps                  # els tres serveis han de sortir "healthy"
 - Si canvieu `requirements*.txt` o `package.json`, reconstruïu la imatge: `docker compose up -d --build -V`.
 - El contenidor no executa `migrate`: no s'ha de fer fins que existeixi el model d'usuari (US1-T1).
 
+## Tests del frontend
+
+Quan US0-T21 hagi configurat Vitest i l'script, executeu els tests unitaris des de `frontend/`:
+
+```bash
+npm run test
+```
+
+Els tests E2E amb Playwright s'executen des de `frontend/` amb `npm run test:e2e`.
+
 ---
 
 ## Tauler Kanban
@@ -89,7 +99,7 @@ Format de referència del tauler (Trello). L'estat viu es porta al tauler; aques
 
 ### Regles
 
-- **Branques**: una per bloc (`config`, `US0`, `US1`...) i una per tasca, creada des de la branca del seu bloc. Vegeu "Flux de branques".
+- **Branques**: una per bloc (`config`, cada `US`, `deploy`) i una per tasca, creada des de la branca del seu bloc. Vegeu "Flux de branques".
 - **Pull, no push**: només s'agafa una tasca de To Do si no superes el teu límit d'In Progress.
 - **Columna plena = ajudar a buidar-la**: si Code Review o Testing estan al límit, abans d'agafar feina nova cal revisar o provar.
 - **Dependències**: una tasca no passa a To Do fins que totes les de "Depèn de" són a Done.
@@ -104,14 +114,17 @@ main  ←  develop  ←  config  ←  C13-agents-readme
                   ←  US0     ←  US0-T10-pagina-inici
                   ←  US1     ←  US1-T3-serializer-registre
                              ←  US1-T4-endpoint-registre
+                  ←  deploy  ←  D1-tria-allotjament
 ```
 
 | Branca | Es crea des de | La PR va cap a | Quan |
 |---|---|---|---|
 | `config` | `develop` | `develop` | Cada cop que s'hi tanca una tasca que necessita alguna US (p. ex. C3, C6, C7) |
 | `US<n>` | `develop` | `develop` | Quan totes les tasques de la US són a Done |
+| `deploy` | `develop` | `develop` | Quan totes les tasques de desplegament són a Done |
 | `C<n>-<descripcio>` | `config` | `config` | Quan la tasca està acabada |
 | `US<n>-T<m>-<descripcio>` | `US<n>` | `US<n>` | Quan la tasca està acabada |
+| `D<n>-<descripcio>` | `deploy` | `deploy` | Quan la tasca està acabada |
 | `develop` | — | `main` | Al final de cada sprint |
 
 Les branques de tasca no porten barra (`config/C13` no és vàlid si ja existeix la branca `config`: git no permet una branca i una "carpeta" amb el mateix nom).
@@ -127,7 +140,7 @@ Abans de començar una US, porta-hi el que hi hagi de nou a `develop` (p. ex. la
 
 - **Rol**: Backend, Frontend, QA, DevOps (columna "Rol").
 - **Delegació** (es posa al Sprint Planning amb la matriu de decisió): **Delegable** (l'agent la fa de cap a cap, revisió lleugera), **Mixta** (l'agent en fa una part), **Humana** (no es delega).
-- **Referències**: `US1-T2` vol dir la tasca T2 de la US1. Les `C` són tasques de configuració inicial.
+- **Referències**: `US1-T2` vol dir la tasca T2 de la US1; `C` són tasques de configuració inicial i `D` de desplegament.
 
 ### Camí crític
 
@@ -162,6 +175,7 @@ Es fan una única vegada al Sprint 0 i no pertanyen a cap història d'usuari. C1
 | C16 | Tasca trivial de cap a cap amb un agent: `GET /api/health/` amb test. L'especificació és a `docs/plantilla-especificacio.md`. | Backend | C3, C7, C12, C13, C14 | | Code Review |
 | C17 | Lliurar l'entregable del Sprint 0: eines per rol, AGENTS.md, plantilla d'especificació, DoD ampliada i enllaç a la PR de C16. | Scrum Master | C12–C16 | | Backlog |
 | C19 | Configurar els tests del backend amb pytest-django (`requirements-dev.txt` amb `pytest` i `pytest-django`, `pytest.ini` i un test de configuració). | Backend | C7 | | Done |
+| C22 | Actualitzar l'AGENTS.md i el README per al sprint 2 | Tot l'equip | — | | Backlog |
 
 ### US0 — Navegació com a convidat
 
@@ -180,6 +194,10 @@ Amb aquest abast, la T11 (component d'avís) passa a la US1 com a US1-T18, la T1
 | T18 | Prova manual en local i validació amb el Product Owner. | QA | T9–T20 | | Backlog |
 | T19 | Configurar Vitest al frontend (script `npm run test`, que ja executa la CI) amb un test d'exemple. | Frontend | C4 | | Backlog |
 | T20 | Configurar Playwright per als tests E2E amb un test d'exemple. | QA | C4 | | Backlog |
+| T21 | Configurar Vitest al frontend | Frontend | C4 | | Backlog |
+| T22 | Tests unitaris (Vitest) de la pàgina d'inici i del router | Frontend | T21 | | Backlog |
+| T23 | Revisió d'accessibilitat i de mòbil de la pàgina d'inici | Frontend | — | | Backlog |
+| T24 | Actualitzar els tests de navegació amb la capçalera nova | QA | US2-T7, US4-T7 | | Backlog |
 
 ### US1 — Registre d'usuari
 
@@ -204,3 +222,126 @@ El contracte de l'endpoint de registre és a `docs/api-registre.md`. La T5 (toke
 | T17 | Configurar CORS amb `django-cors-headers` i els orígens permesos al fitxer `.env` (mai al repositori). | DevOps | C3 | | Backlog |
 | T18 | Crear un component reutilitzable de missatge/avís (toast o modal) per a "Funcionalitat no implementada". *(Abans US0-T11.)* | Frontend | C4 | Pau Albert | Backlog |
 | T19 | Configurar els permisos per defecte de DRF: `IsAuthenticated` per defecte i `AllowAny` explícit als endpoints públics (registre i salut). *(Abans US0-T15.)* | Backend | C3 | Alejandro | Backlog |
+| T20 | Tancar la caixa de registre clicant fora (CA6) | Frontend | — | | Backlog |
+| T21 | Passar els camps del model d'usuari a català | Backend | — | | Backlog |
+| T22 | Registres simultanis no han de donar error 500 | Backend | — | | Backlog |
+| T23 | Actualitzar el contracte del registre | Backend | T21 | | Backlog |
+| T24 | Missatge quan el backend no respon | Frontend | — | | Backlog |
+| T25 | Tests unitaris (Vitest) del formulari de registre | Frontend | US0-T21 | | Backlog |
+| T26 | Activar el test de CA6 i afegir casos nous | QA | T20, T24 | | Backlog |
+
+### US1.1 — Registre de repartidor
+
+| ID | Tasca | Rol | Depèn de | Delegació | Estat |
+|---|---|---|---|---|---|
+| T1 | Model del perfil de repartidor i migració | Backend | US1-T21 | | Backlog |
+| T2 | Validadors de DNI/NIE, telèfon, matrícula i número de la Seguretat Social | Backend | — | | Backlog |
+| T3 | Serializer de registre de repartidor | Backend | T1, T2 | | Backlog |
+| T4 | Endpoint POST /api/auth/register/repartidor/ | Backend | T3 | | Backlog |
+| T5 | Validar o rebutjar repartidors des de l'admin | Backend | T1 | | Backlog |
+| T6 | Tests del backend del registre de repartidor | Backend | T4, T5 | | Backlog |
+| T7 | Contracte de l'API de registre de repartidor | Backend | — | | Backlog |
+| T8 | Formulari de registre de repartidor | Frontend | US1-T20 | | Backlog |
+| T9 | Validació al client del registre de repartidor | Frontend | T8 | | Backlog |
+| T10 | Connectar el registre de repartidor amb l'API | Frontend | T4, T9 | | Backlog |
+| T11 | Pantalla de confirmació de la sol·licitud | Frontend | T10 | | Backlog |
+| T12 | Vista de repartidor i missatge de validació incompleta | Frontend | US2-T11 | | Backlog |
+| T13 | Tests unitaris (Vitest) del registre de repartidor | Frontend | T11, US0-T21 | | Backlog |
+| T14 | Casos de prova del registre de repartidor | QA | — | | Backlog |
+| T15 | Tests E2E del registre de repartidor | QA | T11, T12, T14 | | Backlog |
+| T16 | Prova manual i validació amb el Product Owner | QA | T1–T15 | | Backlog |
+
+### US1.2 — Registre de biblioteca
+
+| ID | Tasca | Rol | Depèn de | Delegació | Estat |
+|---|---|---|---|---|---|
+| T1 | Model de biblioteca i compte inactiu fins a la verificació | Backend | US1-T21 | | Backlog |
+| T2 | Serializer de registre de biblioteca | Backend | T1 | | Backlog |
+| T3 | Endpoint POST /api/auth/register/biblioteca/ | Backend | T2 | | Backlog |
+| T4 | Enviar el correu de verificació | Backend | T3, T12 | | Backlog |
+| T5 | Endpoint de verificació del correu | Backend | T4 | | Backlog |
+| T6 | Tests del backend del registre de biblioteca | Backend | T5 | | Backlog |
+| T7 | Contracte de l'API de registre de biblioteca | Backend | — | | Backlog |
+| T8 | Botó "Registrar-se com a biblioteca" i formulari | Frontend | US1-T20 | | Backlog |
+| T9 | Validació al client del registre de biblioteca | Frontend | T8 | | Backlog |
+| T10 | Connectar el registre de biblioteca amb l'API | Frontend | T3, T9 | | Backlog |
+| T11 | Pàgina de verificació del correu | Frontend | T5 | | Backlog |
+| T12 | Configurar l'enviament de correus | DevOps | — | | Backlog |
+| T13 | Tests unitaris (Vitest) del registre de biblioteca | Frontend | T11, US0-T21 | | Backlog |
+| T14 | Casos de prova del registre de biblioteca | QA | — | | Backlog |
+| T15 | Tests E2E del registre de biblioteca | QA | T10, T11, T14 | | Backlog |
+| T16 | Prova manual i validació amb el Product Owner | QA | T1–T15 | | Backlog |
+
+### US2 — Inici de sessió
+
+| ID | Tasca | Rol | Depèn de | Delegació | Estat |
+|---|---|---|---|---|---|
+| T1 | Configurar l'autenticació amb JWT | Backend | US1-T21 | | Backlog |
+| T2 | Endpoints d'inici de sessió i renovació del token | Backend | T1 | | Backlog |
+| T3 | Inici de sessió segons l'estat del compte | Backend | T2, US1.1-T1, US1.2-T1 | | Backlog |
+| T4 | Endpoint GET /api/auth/me/ | Backend | T1 | | Backlog |
+| T5 | Tests del backend de l'inici de sessió | Backend | T2, T3, T4 | | Backlog |
+| T6 | Contracte de l'API d'autenticació | Backend | — | | Backlog |
+| T7 | Caixa d'inici de sessió | Frontend | — | | Backlog |
+| T8 | Formulari d'inici de sessió | Frontend | T7 | | Backlog |
+| T9 | Estat de la sessió (Pinia) | Frontend | — | | Backlog |
+| T10 | Enviar el token a cada petició | Frontend | T9 | | Backlog |
+| T11 | Connectar l'inici de sessió amb l'API | Frontend | T2, T8, T9 | | Backlog |
+| T12 | Capçalera segons la sessió | Frontend | T9 | | Backlog |
+| T13 | Tests unitaris (Vitest) de l'inici de sessió | Frontend | T11, US0-T21 | | Backlog |
+| T14 | Casos de prova de l'inici de sessió | QA | — | | Backlog |
+| T15 | Tests E2E de l'inici de sessió | QA | T11, T12, T14 | | Backlog |
+| T16 | Prova manual i validació amb el Product Owner | QA | T1–T15 | | Backlog |
+
+### US4 — Cerca de llibres
+
+| ID | Tasca | Rol | Depèn de | Delegació | Estat |
+|---|---|---|---|---|---|
+| T1 | Models del catàleg: llibre i exemplars per biblioteca | Backend | US1.2-T1 | | Backlog |
+| T2 | Model de valoracions | Backend | T1 | | Backlog |
+| T3 | Endpoint de cerca GET /api/cataleg/llibres/?q= | Backend | T1, T2 | | Backlog |
+| T4 | Dades d'exemple del catàleg | Backend | T1, T2 | | Backlog |
+| T5 | Tests del backend de la cerca | Backend | T3 | | Backlog |
+| T6 | Contracte de l'API de cerca | Backend | — | | Backlog |
+| T7 | Cercador a la pàgina d'inici | Frontend | — | | Backlog |
+| T8 | Pàgina de resultats de la cerca | Frontend | T3, T7 | | Backlog |
+| T9 | Missatge quan no hi ha resultats | Frontend | T8 | | Backlog |
+| T10 | Tests unitaris (Vitest) de la cerca | Frontend | T9, US0-T21 | | Backlog |
+| T11 | Casos de prova de la cerca | QA | — | | Backlog |
+| T12 | Tests E2E de la cerca | QA | T4, T9, T11 | | Backlog |
+| T13 | Prova manual i validació amb el Product Owner | QA | T1–T12 | | Backlog |
+
+### US17 — Gestió del catàleg de biblioteca
+
+| ID | Tasca | Rol | Depèn de | Delegació | Estat |
+|---|---|---|---|---|---|
+| T1 | Permisos del catàleg | Backend | US2-T1, US1.2-T1 | | Backlog |
+| T2 | Validació de l'ISBN | Backend | — | | Backlog |
+| T3 | Endpoints per llistar i afegir llibres al catàleg | Backend | T1, T2, US4-T1 | | Backlog |
+| T4 | Endpoints per editar, canviar exemplars i retirar llibres | Backend | T3 | | Backlog |
+| T5 | Desar i mostrar la portada | Backend | US4-T1 | | Backlog |
+| T6 | Tests del backend del catàleg | Backend | T4, T5 | | Backlog |
+| T7 | Contracte de l'API del catàleg | Backend | — | | Backlog |
+| T8 | Pàgina "El meu catàleg" | Frontend | US2-T11 | | Backlog |
+| T9 | Formulari per afegir un llibre | Frontend | T3, T8 | | Backlog |
+| T10 | Editar, canviar exemplars i retirar llibres | Frontend | T4, T8 | | Backlog |
+| T11 | Tests unitaris (Vitest) del catàleg | Frontend | T10, US0-T21 | | Backlog |
+| T12 | Casos de prova del catàleg | QA | — | | Backlog |
+| T13 | Tests E2E del catàleg | QA | T10, T12, US4-T9 | | Backlog |
+| T14 | Prova manual i validació amb el Product Owner | QA | T1–T13 | | Backlog |
+
+### Desplegament
+
+| ID | Tasca | Rol | Depèn de | Delegació | Estat |
+|---|---|---|---|---|---|
+| D1 | Triar on es desplega l'aplicació | DevOps | — | | Backlog |
+| D2 | Configuració de producció de Django | Backend | D1 | | Backlog |
+| D3 | Servidor de producció del backend | DevOps | D2 | | Backlog |
+| D4 | Build i publicació del frontend | DevOps | D1 | | Backlog |
+| D5 | Base de dades de producció | DevOps | D1 | | Backlog |
+| D6 | Secrets i variables de producció | DevOps | D1 | | Backlog |
+| D7 | Desplegament automàtic des de main | DevOps | D3, D4, D5, D6 | | Backlog |
+| D8 | Adreça pública amb HTTPS | DevOps | D4 | | Backlog |
+| D9 | Correu i portades en producció | DevOps | D3, US1.2-T12, US17-T5 | | Backlog |
+| D10 | Prova de l'aplicació desplegada | QA | D7, D8 | | Backlog |
+| D11 | Documentar el desplegament | DevOps | D7 | | Backlog |
