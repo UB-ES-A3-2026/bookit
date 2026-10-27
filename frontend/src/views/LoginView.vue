@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, onUnmounted } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import bibliotecaImage from "../assets/biblioteca.jpg";
 
@@ -7,6 +7,21 @@ const router = useRouter();
 
 function tancaCaixa() {
   router.push({ name: "home" });
+}
+
+// Només es tanca si el clic comença i acaba al fons. Així, si es selecciona
+// text a dins de la caixa i es deixa anar el ratolí a fora, no es tanca.
+const fons = ref(null);
+let clicComencaAlFons = false;
+
+function recordaOnComencaElClic(event) {
+  clicComencaAlFons = event.target === fons.value;
+}
+
+function tancaSiEsClicaAlFons(event) {
+  if (clicComencaAlFons && event.target === fons.value) {
+    tancaCaixa();
+  }
 }
 
 // La caixa també es tanca amb la tecla Escape.
@@ -24,16 +39,10 @@ onUnmounted(() => window.removeEventListener("keydown", tancaAmbEscape));
   <main
     class="login-page"
     :style="{ backgroundImage: `url(${bibliotecaImage})` }"
+    @mousedown="recordaOnComencaElClic"
+    @click="tancaSiEsClicaAlFons"
   >
-    <!--
-      Clicar el fons tanca la caixa. Si es comença a seleccionar text a dins i
-      es deixa anar a fora, el clic no arriba al fons i la caixa no es tanca.
-    -->
-    <div
-      class="login-page__overlay"
-      data-testid="fons-inici-sessio"
-      @click="tancaCaixa"
-    ></div>
+    <div ref="fons" class="login-page__overlay"></div>
 
     <section
       class="login-modal"
