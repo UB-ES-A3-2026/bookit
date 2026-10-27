@@ -29,6 +29,9 @@ const formulari = reactive({
   contrasenya: "",
 });
 
+// La contrasenya surt amagada i es pot mostrar amb el botó del camp.
+const mostraContrasenya = ref(false);
+
 function enviaFormulari() {
   // La connexió amb l'API i la redirecció segons el rol són la US2-T11.
 }
@@ -102,14 +105,29 @@ onUnmounted(() => window.removeEventListener("keydown", tancaAmbEscape));
 
         <div class="login-form__field">
           <label for="login-contrasenya">Contrasenya</label>
-          <input
-            id="login-contrasenya"
-            v-model="formulari.contrasenya"
-            name="contrasenya"
-            type="password"
-            autocomplete="current-password"
-            placeholder="La teva contrasenya"
-          />
+          <div class="login-form__password">
+            <input
+              id="login-contrasenya"
+              v-model="formulari.contrasenya"
+              name="contrasenya"
+              :type="mostraContrasenya ? 'text' : 'password'"
+              autocomplete="current-password"
+              placeholder="La teva contrasenya"
+            />
+            <button
+              class="login-form__toggle"
+              type="button"
+              :aria-pressed="mostraContrasenya"
+              :aria-label="
+                mostraContrasenya
+                  ? 'Amaga la contrasenya'
+                  : 'Mostra la contrasenya'
+              "
+              @click="mostraContrasenya = !mostraContrasenya"
+            >
+              {{ mostraContrasenya ? "Amaga" : "Mostra" }}
+            </button>
+          </div>
         </div>
 
         <button class="login-form__submit" type="submit">
@@ -279,6 +297,40 @@ onUnmounted(() => window.removeEventListener("keydown", tancaAmbEscape));
 }
 
 .login-form__field input:focus {
+  outline: 2px solid #a00000;
+  outline-offset: 1px;
+}
+
+.login-form__password {
+  position: relative;
+}
+
+.login-form__password input {
+  padding-right: 3.6rem;
+}
+
+.login-form__toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.35rem;
+  padding: 0.15rem 0.4rem;
+  border: 0;
+  border-radius: 0.3rem;
+  color: #870000;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.55rem;
+  font-weight: 700;
+  transform: translateY(-50%);
+}
+
+.login-form__toggle:hover,
+.login-form__toggle:focus-visible {
+  background: #f3ecdf;
+}
+
+.login-form__toggle:focus-visible {
   outline: 2px solid #a00000;
   outline-offset: 1px;
 }
