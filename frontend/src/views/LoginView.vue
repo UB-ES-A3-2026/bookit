@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import bibliotecaImage from "../assets/biblioteca.jpg";
 
@@ -22,6 +22,26 @@ function tancaSiEsClicaAlFons(event) {
   if (clicComencaAlFons && event.target === fons.value) {
     tancaCaixa();
   }
+}
+
+const formulari = reactive({
+  correu: "",
+  contrasenya: "",
+});
+
+// La contrasenya surt amagada i es pot mostrar amb el botó del camp.
+const mostraContrasenya = ref(false);
+
+// Els dos camps són obligatoris: el botó no s'activa fins que estan plens.
+const formulariComplet = computed(
+  () => formulari.correu.trim() !== "" && formulari.contrasenya !== "",
+);
+
+function enviaFormulari() {
+  if (!formulariComplet.value) {
+    return;
+  }
+  // La connexió amb l'API i la redirecció segons el rol són la US2-T11.
 }
 
 // La caixa també es tanca amb la tecla Escape.
@@ -77,6 +97,61 @@ onUnmounted(() => window.removeEventListener("keydown", tancaAmbEscape));
           Registrar-se
         </RouterLink>
       </nav>
+
+      <form class="login-form" novalidate @submit.prevent="enviaFormulari">
+        <div class="login-form__field">
+          <label for="login-correu">Correu electrònic / Nom d'usuari</label>
+          <input
+            id="login-correu"
+            v-model="formulari.correu"
+            name="correu"
+            type="text"
+            autocomplete="username"
+            placeholder="nom@exemple.cat"
+          />
+        </div>
+
+        <div class="login-form__field">
+          <label for="login-contrasenya">Contrasenya</label>
+          <div class="login-form__password">
+            <input
+              id="login-contrasenya"
+              v-model="formulari.contrasenya"
+              name="contrasenya"
+              :type="mostraContrasenya ? 'text' : 'password'"
+              autocomplete="current-password"
+              placeholder="La teva contrasenya"
+            />
+            <button
+              class="login-form__toggle"
+              type="button"
+              :aria-pressed="mostraContrasenya"
+              :aria-label="
+                mostraContrasenya
+                  ? 'Amaga la contrasenya'
+                  : 'Mostra la contrasenya'
+              "
+              @click="mostraContrasenya = !mostraContrasenya"
+            >
+              {{ mostraContrasenya ? "Amaga" : "Mostra" }}
+            </button>
+          </div>
+        </div>
+
+        <button
+          class="login-form__submit"
+          type="submit"
+          :disabled="!formulariComplet"
+        >
+          Iniciar Sessió
+          <span aria-hidden="true">→</span>
+        </button>
+
+        <p class="login-form__note">
+          <span aria-hidden="true">✓</span>
+          Accediràs automàticament a l'espai corresponent al teu perfil.
+        </p>
+      </form>
     </section>
   </main>
 </template>
@@ -196,6 +271,135 @@ onUnmounted(() => window.removeEventListener("keydown", tancaAmbEscape));
 .login-tabs__tab:focus-visible {
   outline: 2px solid #a00000;
   outline-offset: 2px;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.login-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.login-form__field label {
+  color: #4d4541;
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.login-form__field input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 1.9rem;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid #e1d8cd;
+  border-radius: 0.35rem;
+  color: #4d4541;
+  background: #fff;
+  font: inherit;
+  font-size: 0.63rem;
+}
+
+.login-form__field input::placeholder {
+  color: #aea7a0;
+}
+
+.login-form__field input:focus {
+  outline: 2px solid #a00000;
+  outline-offset: 1px;
+}
+
+.login-form__password {
+  position: relative;
+}
+
+.login-form__password input {
+  padding-right: 3.6rem;
+}
+
+.login-form__toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.35rem;
+  padding: 0.15rem 0.4rem;
+  border: 0;
+  border-radius: 0.3rem;
+  color: #870000;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.55rem;
+  font-weight: 700;
+  transform: translateY(-50%);
+}
+
+.login-form__toggle:hover,
+.login-form__toggle:focus-visible {
+  background: #f3ecdf;
+}
+
+.login-form__toggle:focus-visible {
+  outline: 2px solid #a00000;
+  outline-offset: 1px;
+}
+
+.login-form__submit {
+  display: flex;
+  min-height: 1.9rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+  padding: 0.3rem 1rem;
+  border: 0;
+  border-radius: 0.35rem;
+  color: #fff;
+  background: #a00000;
+  box-shadow: 0 0.2rem 0.35rem rgb(91 0 0 / 20%);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.login-form__submit:hover:enabled,
+.login-form__submit:focus-visible {
+  background: #850000;
+}
+
+.login-form__submit:disabled {
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.login-form__submit:focus-visible {
+  outline: 2px solid #a00000;
+  outline-offset: 2px;
+}
+
+.login-form__submit span {
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.login-form__note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  margin: 0.1rem 0 0.2rem;
+  color: #827a73;
+  font-size: 0.52rem;
+}
+
+.login-form__note span {
+  color: #2f7d4a;
+  font-weight: 700;
 }
 
 @media (max-width: 420px) {
