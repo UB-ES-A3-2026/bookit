@@ -128,6 +128,7 @@ import logoImage from "../assets/bookit-logo.jpg";
   color: #241914;
   font-weight: 700;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .login-link:hover,
@@ -137,6 +138,7 @@ import logoImage from "../assets/bookit-logo.jpg";
 
 .register-button {
   padding: 0.65rem 1.2rem;
+  white-space: nowrap;
   border-radius: 0.55rem;
   color: #fff;
   background: #980000;
