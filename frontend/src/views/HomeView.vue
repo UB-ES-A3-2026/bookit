@@ -20,7 +20,12 @@ import logoImage from "../assets/bookit-logo.jpg";
         Addison
       </p>
 
-      <RouterLink class="register-button" to="/registre">Registra't</RouterLink>
+      <nav class="header-actions" aria-label="Compte">
+        <RouterLink class="login-link" to="/inicia-sessio">
+          Inicia sessió
+        </RouterLink>
+        <RouterLink class="register-button" to="/registre">Registra't</RouterLink>
+      </nav>
     </header>
 
     <section
@@ -112,9 +117,28 @@ import logoImage from "../assets/bookit-logo.jpg";
   text-align: center;
 }
 
-.register-button {
+.header-actions {
+  display: flex;
+  align-items: center;
   justify-self: end;
+  gap: 1.1rem;
+}
+
+.login-link {
+  color: #241914;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.login-link:hover,
+.login-link:focus-visible {
+  color: #980000;
+}
+
+.register-button {
   padding: 0.65rem 1.2rem;
+  white-space: nowrap;
   border-radius: 0.55rem;
   color: #fff;
   background: #980000;
@@ -269,6 +293,11 @@ import logoImage from "../assets/bookit-logo.jpg";
 
   .header-quote {
     display: none;
+  }
+
+  .header-actions {
+    gap: 0.75rem;
+    font-size: 0.85rem;
   }
 
   .hero-section {

@@ -210,7 +210,9 @@ async function enviaFormulari() {
       </header>
 
       <nav class="register-tabs" aria-label="Autenticació">
-        <button class="register-tabs__tab" type="button">Inicia Sessió</button>
+        <RouterLink class="register-tabs__tab" to="/inicia-sessio">
+          Inicia Sessió
+        </RouterLink>
         <button
           class="register-tabs__tab register-tabs__tab--active"
           type="button"
@@ -498,6 +500,8 @@ async function enviaFormulari() {
 }
 
 .register-tabs__tab {
+  display: grid;
+  place-items: center;
   min-height: 2.1rem;
   padding: 0.45rem 0.35rem;
   border: 0;
@@ -508,6 +512,7 @@ async function enviaFormulari() {
   font: inherit;
   font-size: 0.7rem;
   font-weight: 700;
+  text-decoration: none;
 }
 
 .register-tabs__tab--active {
