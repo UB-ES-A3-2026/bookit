@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, onUnmounted, reactive, ref } from "vue";
+import { computed, onMounted, onUnmounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import bibliotecaImage from "../assets/biblioteca.jpg";
 
@@ -32,7 +32,15 @@ const formulari = reactive({
 // La contrasenya surt amagada i es pot mostrar amb el botó del camp.
 const mostraContrasenya = ref(false);
 
+// Els dos camps són obligatoris: el botó no s'activa fins que estan plens.
+const formulariComplet = computed(
+  () => formulari.correu.trim() !== "" && formulari.contrasenya !== "",
+);
+
 function enviaFormulari() {
+  if (!formulariComplet.value) {
+    return;
+  }
   // La connexió amb l'API i la redirecció segons el rol són la US2-T11.
 }
 
@@ -130,7 +138,11 @@ onUnmounted(() => window.removeEventListener("keydown", tancaAmbEscape));
           </div>
         </div>
 
-        <button class="login-form__submit" type="submit">
+        <button
+          class="login-form__submit"
+          type="submit"
+          :disabled="!formulariComplet"
+        >
           Iniciar Sessió
           <span aria-hidden="true">→</span>
         </button>
@@ -354,9 +366,15 @@ onUnmounted(() => window.removeEventListener("keydown", tancaAmbEscape));
   font-weight: 700;
 }
 
-.login-form__submit:hover,
+.login-form__submit:hover:enabled,
 .login-form__submit:focus-visible {
   background: #850000;
+}
+
+.login-form__submit:disabled {
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .login-form__submit:focus-visible {
