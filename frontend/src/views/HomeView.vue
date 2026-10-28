@@ -1,6 +1,14 @@
 <script setup>
+import { computed } from "vue";
+import { useSessioStore } from "../stores/sessio.js";
 import bibliotecaImage from "../assets/biblioteca.jpg";
 import logoImage from "../assets/bookit-logo.jpg";
+
+const sessio = useSessioStore();
+
+const nomUsuari = computed(() => {
+  return sessio.usuari?.nom ?? sessio.usuari?.correu ?? "Usuari";
+});
 </script>
 
 <template>
@@ -21,10 +29,20 @@ import logoImage from "../assets/bookit-logo.jpg";
       </p>
 
       <nav class="header-actions" aria-label="Compte">
-        <RouterLink class="login-link" to="/inicia-sessio">
-          Inicia sessió
-        </RouterLink>
-        <RouterLink class="register-button" to="/registre">Registra't</RouterLink>
+        <template v-if="sessio.autenticat">
+          <span class="user-name">{{ nomUsuari }}</span>
+          <button class="logout-button" type="button" @click="sessio.tancarSessio">
+            Tancar sessió
+          </button>
+        </template>
+        <template v-else>
+          <RouterLink class="login-link" to="/inicia-sessio">
+            Inicia sessió
+          </RouterLink>
+          <RouterLink class="register-button" to="/registre">
+            Registra't
+          </RouterLink>
+        </template>
       </nav>
     </header>
 
@@ -134,6 +152,30 @@ import logoImage from "../assets/bookit-logo.jpg";
 .login-link:hover,
 .login-link:focus-visible {
   color: #980000;
+}
+
+.user-name {
+  color: #241914;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.logout-button {
+  padding: 0.65rem 1.2rem;
+  border: 0;
+  border-radius: 0.55rem;
+  color: #fff;
+  background: #980000;
+  box-shadow: 0 0.2rem 0.35rem rgb(72 0 0 / 20%);
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.logout-button:hover,
+.logout-button:focus-visible {
+  background: #740000;
 }
 
 .register-button {
