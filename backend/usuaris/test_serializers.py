@@ -1,4 +1,4 @@
-﻿"""Tests unitaris del serializer de registre, sense passar per l'endpoint (US1-T6)."""
+"""Tests unitaris del serializer de registre, sense passar per l'endpoint (US1-T6)."""
 
 import pytest
 

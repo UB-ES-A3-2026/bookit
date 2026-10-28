@@ -1,4 +1,4 @@
-﻿from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import RegexValidator
 from rest_framework import serializers
@@ -25,6 +25,7 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
     correu = serializers.EmailField(
         source="email",
         validators=[
+            # "iexact": ANNA@example.com i anna@example.com són el mateix correu.
             UniqueValidator(
                 queryset=Usuari.objects.all(),
                 message="Aquest correu electrònic ja està registrat",
@@ -50,7 +51,7 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
         validators=[
             RegexValidator(
                 regex=r"\A[0-9]{10}\Z",
-                message="El format d’aquest carnet no és vàlid",
+                message="El format d'aquest carnet no és vàlid",
             ),
             UniqueValidator(
                 queryset=Usuari.objects.all(),
@@ -97,6 +98,4 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         password = validated_data.pop("password")
-        email = validated_data.pop("email")
-        user_data = dict(validated_data)
-        return Usuari.objects.create_user(email, password, user_data)
+        return Usuari.objects.create_user(password=password, **validated_data)
