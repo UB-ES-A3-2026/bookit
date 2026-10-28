@@ -64,6 +64,22 @@ export const useSessioStore = defineStore("sessio", {
       });
     },
 
+    actualitzarToken(accessToken, refreshToken = this.refreshToken) {
+      if (!accessToken) {
+        throw new Error("Cal proporcionar un token d'accés per actualitzar la sessió.");
+      }
+
+      this.accessToken = accessToken;
+      this.refreshToken = refreshToken;
+
+      desarSessio({
+        accessToken: this.accessToken,
+        refreshToken: this.refreshToken,
+        usuari: this.usuari,
+        rol: this.rol,
+      });
+    },
+
     tancarSessio() {
       this.accessToken = null;
       this.refreshToken = null;
