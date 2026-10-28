@@ -1,6 +1,24 @@
 <script setup>
+import { ref } from "vue";
+import { useRouter } from "vue-router";
 import bibliotecaImage from "../assets/biblioteca.jpg";
 import logoImage from "../assets/bookit-logo.jpg";
+
+const router = useRouter();
+
+const textCerca = ref("");
+const campCerca = ref(null);
+
+// Porta a la pàgina de resultats amb el text cercat a l'adreça (/cerca?q=...).
+// Si el camp és buit, no es cerca res i el cursor torna al camp.
+function cercaLlibres() {
+  const text = textCerca.value.trim();
+  if (text === "") {
+    campCerca.value.focus();
+    return;
+  }
+  router.push({ name: "cerca", query: { q: text } });
+}
 </script>
 
 <template>
@@ -34,6 +52,33 @@ import logoImage from "../assets/bookit-logo.jpg";
           Descobreix els llibres de les biblioteques de la teva ciutat i rep-los
           a casa de manera fàcil, ràpida i sostenible.
         </p>
+
+        <form class="search-box" role="search" @submit.prevent="cercaLlibres">
+          <label class="search-box__label" for="cerca-llibres">
+            Cerca llibres per títol, autor o ISBN
+          </label>
+          <svg
+            class="search-box__icon"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <line x1="16.5" y1="16.5" x2="21" y2="21" />
+          </svg>
+          <input
+            id="cerca-llibres"
+            ref="campCerca"
+            v-model="textCerca"
+            type="search"
+            name="q"
+            autocomplete="off"
+            placeholder="Quin llibre busques?"
+          />
+          <button type="submit">
+            Buscar llibres
+            <span aria-hidden="true">→</span>
+          </button>
+        </form>
       </div>
     </section>
 
@@ -210,6 +255,84 @@ import logoImage from "../assets/bookit-logo.jpg";
   text-shadow: 0 0 0.9rem rgb(255 253 249 / 100%);
 }
 
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 46rem;
+  margin: 2.5rem auto 0;
+  padding: 0.45rem 0.45rem 0.45rem 1.25rem;
+  border-radius: 0.6rem;
+  background: #fffdf8;
+  box-shadow: 0 0.8rem 2rem rgb(36 25 20 / 22%);
+  text-shadow: none;
+}
+
+/* L'etiqueta no es veu, però els lectors de pantalla la llegeixen. */
+.search-box__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.search-box__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: 0 0 1.25rem;
+  fill: none;
+  stroke: #8e8176;
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+
+.search-box input {
+  min-width: 0;
+  flex: 1;
+  padding: 0.6rem 0;
+  border: 0;
+  color: #241914;
+  background: transparent;
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.search-box input::placeholder {
+  color: #aea7a0;
+}
+
+.search-box input:focus {
+  outline: none;
+}
+
+.search-box:focus-within {
+  outline: 2px solid #a00000;
+  outline-offset: 2px;
+}
+
+.search-box button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.8rem 1.4rem;
+  border: 0;
+  border-radius: 0.45rem;
+  color: #fff;
+  background: #980000;
+  box-shadow: 0 0.2rem 0.35rem rgb(72 0 0 / 20%);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.search-box button:hover,
+.search-box button:focus-visible {
+  background: #720000;
+}
+
 .benefits {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -282,6 +405,22 @@ import logoImage from "../assets/bookit-logo.jpg";
 
   .hero-description {
     font-size: 0.9rem;
+  }
+
+  /* En mòbil, el botó passa a sota del camp i ocupa tot l'ample. */
+  .search-box {
+    flex-wrap: wrap;
+    margin-top: 2rem;
+    padding: 0.45rem;
+  }
+
+  .search-box__icon {
+    margin-left: 0.6rem;
+  }
+
+  .search-box button {
+    flex: 1 0 100%;
+    justify-content: center;
   }
 
   .benefits {
