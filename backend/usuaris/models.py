@@ -4,11 +4,13 @@ from django.db import models
 
 
 class GestorUsuari(BaseUserManager):
-    def create_user(self, email, password=None, field_values=None):
+    # Els camps extra poden arribar en un diccionari (field_values) o com a
+    # paràmetres amb nom, que és com els passa l'ordre createsuperuser de Django.
+    def create_user(self, email, password=None, field_values=None, **extra_fields):
         if not email:
             raise ValueError("El correu electrònic és obligatori.")
         email = self.normalize_email(email)
-        field_values = {} if field_values is None else dict(field_values)
+        field_values = {**(field_values or {}), **extra_fields}
         usuari = self.model()
         usuari.email = email
         for key, value in field_values.items():
@@ -18,8 +20,8 @@ class GestorUsuari(BaseUserManager):
         usuari.save(using=self._db)
         return usuari
 
-    def create_superuser(self, email, password=None, field_values=None):
-        field_values = {} if field_values is None else dict(field_values)
+    def create_superuser(self, email, password=None, field_values=None, **extra_fields):
+        field_values = {**(field_values or {}), **extra_fields}
         field_values.setdefault("is_staff", True)
         field_values.setdefault("is_superuser", True)
         field_values.setdefault("is_active", True)
