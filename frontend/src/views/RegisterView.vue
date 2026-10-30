@@ -4,6 +4,13 @@ import axios from "axios";
 import { computed, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import bibliotecaImage from "../assets/biblioteca.jpg";
+import {
+  esCorreuValid,
+  esDniNieValid,
+  esMatriculaValida,
+  esNumSeguretatSocialValid,
+  esTelefonValid,
+} from "../utils/validacions";
 
 const router = useRouter();
 // Adreça del backend. Amb Docker la defineix el docker-compose.yml; amb
@@ -56,8 +63,79 @@ const demanaMatricula = computed(() =>
 watch(demanaMatricula, (calMatricula) => {
   if (!calMatricula) {
     formulariRepartidor.matricula = "";
+    errorsRepartidor.matricula = "";
   }
 });
+
+const errorsRepartidor = reactive({
+  correu: "",
+  nom: "",
+  cognoms: "",
+  dni: "",
+  telefon: "",
+  vehicle: "",
+  matricula: "",
+  numSeguretatSocial: "",
+  contrasenya: "",
+  confirmarContrasenya: "",
+});
+
+// Comprovacions de format dels camps que en tenen. Cada una retorna el
+// missatge d'error, o un text buit si el valor és correcte.
+const formatsRepartidor = {
+  correu: (valor) =>
+    esCorreuValid(valor)
+      ? ""
+      : "El correu ha de ser una adreça vàlida (ex. usuari@exemple.cat).",
+  dni: (valor) =>
+    esDniNieValid(valor)
+      ? ""
+      : "El DNI/NIE no és vàlid. Revisa el número i la lletra (ex. 12345678Z).",
+  telefon: (valor) =>
+    esTelefonValid(valor)
+      ? ""
+      : "El telèfon ha de tenir 9 xifres (ex. 600 000 000).",
+  matricula: (valor) =>
+    esMatriculaValida(valor)
+      ? ""
+      : "La matrícula ha de tenir 4 xifres i 3 lletres (ex. 1234 BCD).",
+  numSeguretatSocial: (valor) =>
+    esNumSeguretatSocialValid(valor)
+      ? ""
+      : "El número de la Seguretat Social ha de tenir 12 xifres.",
+  confirmarContrasenya: (valor) =>
+    valor === formulariRepartidor.contrasenya
+      ? ""
+      : "Les contrasenyes no coincideixen.",
+};
+
+function netejaErrorRepartidor(camp) {
+  errorsRepartidor[camp] = "";
+  errorGeneral.value = "";
+}
+
+function validaCampRepartidor(camp) {
+  const valor = formulariRepartidor[camp];
+
+  if (!valor.trim()) {
+    errorsRepartidor[camp] = "Aquest camp és obligatori.";
+    return false;
+  }
+
+  const comprovaFormat = formatsRepartidor[camp];
+  errorsRepartidor[camp] = comprovaFormat ? comprovaFormat(valor) : "";
+  return errorsRepartidor[camp] === "";
+}
+
+// Es validen tots els camps perquè es vegin tots els errors alhora. La
+// matrícula només es valida quan es demana (moto i cotxe).
+function validaFormulariRepartidor() {
+  const camps = Object.keys(formulariRepartidor).filter(
+    (camp) => camp !== "matricula" || demanaMatricula.value,
+  );
+  const resultats = camps.map((camp) => validaCampRepartidor(camp));
+  return resultats.every(Boolean);
+}
 
 const formulari = reactive({
   correu: "",
@@ -186,9 +264,9 @@ async function enviaFormulari() {
     return;
   }
 
-  // La validació del formulari de repartidor és la US1.1-T9 i l'enviament a
-  // l'API, la US1.1-T10.
+  // De moment només es valida: l'enviament a l'API és la US1.1-T10.
   if (tipusCompte.value === "repartidor") {
+    validaFormulariRepartidor();
     return;
   }
 
@@ -297,7 +375,17 @@ async function enviaFormulari() {
               type="email"
               autocomplete="email"
               placeholder="nom@exemple.cat"
+              :aria-invalid="Boolean(errorsRepartidor.correu)"
+              aria-describedby="repartidor-correu-error"
+              @input="netejaErrorRepartidor('correu')"
             />
+            <p
+              id="repartidor-correu-error"
+              class="register-form__error"
+              aria-live="polite"
+            >
+              {{ errorsRepartidor.correu }}
+            </p>
           </div>
 
           <div class="register-form__row">
@@ -310,7 +398,17 @@ async function enviaFormulari() {
                 type="text"
                 autocomplete="given-name"
                 placeholder="p. ex. Laia"
+                :aria-invalid="Boolean(errorsRepartidor.nom)"
+                aria-describedby="repartidor-nom-error"
+                @input="netejaErrorRepartidor('nom')"
               />
+              <p
+                id="repartidor-nom-error"
+                class="register-form__error"
+                aria-live="polite"
+              >
+                {{ errorsRepartidor.nom }}
+              </p>
             </div>
 
             <div class="register-form__field">
@@ -322,7 +420,17 @@ async function enviaFormulari() {
                 type="text"
                 autocomplete="family-name"
                 placeholder="p. ex. Vidal Serra"
+                :aria-invalid="Boolean(errorsRepartidor.cognoms)"
+                aria-describedby="repartidor-cognoms-error"
+                @input="netejaErrorRepartidor('cognoms')"
               />
+              <p
+                id="repartidor-cognoms-error"
+                class="register-form__error"
+                aria-live="polite"
+              >
+                {{ errorsRepartidor.cognoms }}
+              </p>
             </div>
           </div>
 
@@ -336,7 +444,17 @@ async function enviaFormulari() {
                 type="text"
                 autocomplete="off"
                 placeholder="00000000X"
+                :aria-invalid="Boolean(errorsRepartidor.dni)"
+                aria-describedby="repartidor-dni-error"
+                @input="netejaErrorRepartidor('dni')"
               />
+              <p
+                id="repartidor-dni-error"
+                class="register-form__error"
+                aria-live="polite"
+              >
+                {{ errorsRepartidor.dni }}
+              </p>
             </div>
 
             <div class="register-form__field">
@@ -348,7 +466,17 @@ async function enviaFormulari() {
                 type="tel"
                 autocomplete="tel"
                 placeholder="+34 600 000 000"
+                :aria-invalid="Boolean(errorsRepartidor.telefon)"
+                aria-describedby="repartidor-telefon-error"
+                @input="netejaErrorRepartidor('telefon')"
               />
+              <p
+                id="repartidor-telefon-error"
+                class="register-form__error"
+                aria-live="polite"
+              >
+                {{ errorsRepartidor.telefon }}
+              </p>
             </div>
           </div>
 
@@ -358,6 +486,9 @@ async function enviaFormulari() {
               id="repartidor-vehicle"
               v-model="formulariRepartidor.vehicle"
               name="vehicle"
+              :aria-invalid="Boolean(errorsRepartidor.vehicle)"
+              aria-describedby="repartidor-vehicle-error"
+              @change="netejaErrorRepartidor('vehicle')"
             >
               <option value="" disabled>Selecciona una opció</option>
               <option
@@ -368,6 +499,13 @@ async function enviaFormulari() {
                 {{ vehicle.etiqueta }}
               </option>
             </select>
+            <p
+              id="repartidor-vehicle-error"
+              class="register-form__error"
+              aria-live="polite"
+            >
+              {{ errorsRepartidor.vehicle }}
+            </p>
           </div>
 
           <div class="register-form__row">
@@ -380,7 +518,17 @@ async function enviaFormulari() {
                 type="text"
                 autocomplete="off"
                 placeholder="0000 XXX"
+                :aria-invalid="Boolean(errorsRepartidor.matricula)"
+                aria-describedby="repartidor-matricula-error"
+                @input="netejaErrorRepartidor('matricula')"
               />
+              <p
+                id="repartidor-matricula-error"
+                class="register-form__error"
+                aria-live="polite"
+              >
+                {{ errorsRepartidor.matricula }}
+              </p>
             </div>
 
             <div
@@ -398,7 +546,17 @@ async function enviaFormulari() {
                 inputmode="numeric"
                 autocomplete="off"
                 placeholder="00/00000000/00"
+                :aria-invalid="Boolean(errorsRepartidor.numSeguretatSocial)"
+                aria-describedby="repartidor-seguretat-social-error"
+                @input="netejaErrorRepartidor('numSeguretatSocial')"
               />
+              <p
+                id="repartidor-seguretat-social-error"
+                class="register-form__error"
+                aria-live="polite"
+              >
+                {{ errorsRepartidor.numSeguretatSocial }}
+              </p>
             </div>
           </div>
 
@@ -411,7 +569,17 @@ async function enviaFormulari() {
               type="password"
               autocomplete="new-password"
               placeholder="Mínim 8 caràcters"
+              :aria-invalid="Boolean(errorsRepartidor.contrasenya)"
+              aria-describedby="repartidor-contrasenya-error"
+              @input="netejaErrorRepartidor('contrasenya')"
             />
+            <p
+              id="repartidor-contrasenya-error"
+              class="register-form__error"
+              aria-live="polite"
+            >
+              {{ errorsRepartidor.contrasenya }}
+            </p>
           </div>
 
           <div class="register-form__field">
@@ -425,7 +593,17 @@ async function enviaFormulari() {
               type="password"
               autocomplete="new-password"
               placeholder="Repeteix la contrasenya"
+              :aria-invalid="Boolean(errorsRepartidor.confirmarContrasenya)"
+              aria-describedby="repartidor-confirmar-contrasenya-error"
+              @input="netejaErrorRepartidor('confirmarContrasenya')"
             />
+            <p
+              id="repartidor-confirmar-contrasenya-error"
+              class="register-form__error"
+              aria-live="polite"
+            >
+              {{ errorsRepartidor.confirmarContrasenya }}
+            </p>
           </div>
         </template>
 
