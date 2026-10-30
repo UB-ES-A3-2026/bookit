@@ -302,32 +302,29 @@ test.describe("camps obligatoris (US1-T8 o US1-T9)", () => {
   });
 });
 
+// Des de la US1.1-T8, "Repartidor" té el seu formulari (vegeu e2e/registre-repartidor.spec.js) i el CP-US1-10 ja
+// no s'aplica. Només queda "Biblioteca" com a tipus no disponible.
 test.describe("tipus de compte no disponibles (US1-T11)", () => {
-  for (const [cas, tipus] of [
-    ["CP-US1-10", "Repartidor"],
-    ["CP-US1-11", "Biblioteca"],
-  ]) {
-    test(`${cas} · tipus de compte "${tipus}"`, async ({ page }) => {
-      const peticions = peticionsDeRegistre(page);
-      await obrirCaixa(page);
+  test('CP-US1-11 · tipus de compte "Biblioteca"', async ({ page }) => {
+    const peticions = peticionsDeRegistre(page);
+    await obrirCaixa(page);
 
-      await tipusCompte(page, tipus).click();
+    await tipusCompte(page, "Biblioteca").click();
 
-      await expect(page.getByText("Funcionalitat no implementada")).toBeVisible();
+    await expect(page.getByText("Funcionalitat no implementada")).toBeVisible();
 
-      await omplir(page, dadesNoves());
-      if (await botoEnviar(page).isEnabled()) {
-        await botoEnviar(page).click();
-      }
+    await omplir(page, dadesNoves());
+    if (await botoEnviar(page).isEnabled()) {
+      await botoEnviar(page).click();
+    }
 
-      await expect(page).toHaveURL("/registre");
-      expect(peticions).toEqual([]);
-    });
-  }
+    await expect(page).toHaveURL("/registre");
+    expect(peticions).toEqual([]);
+  });
 
   test("CP-US1-12 · tornar a Lector després de l'avís", async ({ page }) => {
     await obrirCaixa(page);
-    await tipusCompte(page, "Repartidor").click();
+    await tipusCompte(page, "Biblioteca").click();
     await expect(page.getByText("Funcionalitat no implementada")).toBeVisible();
 
     await tipusCompte(page, "Lector").click();
