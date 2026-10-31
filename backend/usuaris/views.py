@@ -1,6 +1,5 @@
 """Vistes de l'API del mòdul usuaris."""
 
-from django.db import transaction
 from rest_framework import generics
 from rest_framework.permissions import AllowAny
 
@@ -35,6 +34,4 @@ class RegistreBibliotecaView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         biblioteca = serializer.save()
-        transaction.on_commit(
-            lambda: enviar_correu_verificacio(biblioteca.usuari)
-        )
+        enviar_correu_verificacio(biblioteca.usuari)
