@@ -1,6 +1,9 @@
 """Tests de l'endpoint de registre POST /api/auth/register/ (US1-T4)."""
 
 import pytest
+from unittest.mock import patch
+
+from django.db import IntegrityError
 
 from usuaris.models import Usuari
 
@@ -113,6 +116,22 @@ def test_no_cal_autenticacio(client):
     resposta = client.post(URL, dades_valides(), content_type="application/json")
 
     assert resposta.status_code not in (401, 403)
+
+
+@pytest.mark.django_db
+def test_registres_simultanis_amb_duplicat_retorna_400(client):
+    client.post(URL, dades_valides(), content_type="application/json")
+
+    with patch(
+        "usuaris.serializers.Usuari.objects.create_user",
+        side_effect=IntegrityError("duplicate key"),
+    ):
+        resposta = client.post(URL, dades_valides(), content_type="application/json")
+
+    assert resposta.status_code == 400
+    assert resposta.json() == {
+        "correu": ["Aquest correu electr?nic ja est? registrat"]
+    }
 
 
 def test_get_no_esta_permes(client):
