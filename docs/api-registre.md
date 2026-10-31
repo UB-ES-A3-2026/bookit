@@ -81,7 +81,7 @@ defecte de Django REST Framework). El frontend mostra cada missatge sota el camp
 |---|---|---|
 | Correu ja registrat | `correu` | `Aquest correu electrònic ja està registrat` |
 | Carnet ja registrat | `num_carnet` | `Aquest usuari ja està registrat` |
-| Format de carnet incorrecte | `num_carnet` | `El format d'aquest carnet no és vàlid` |
+| Format de carnet incorrecte | `num_carnet` | `El format d’aquest carnet no és vàlid` |
 | Camp obligatori buit o absent | el camp | `Aquest camp és obligatori.` |
 | Correu amb format incorrecte | `correu` | `Introduïu una adreça de correu electrònic vàlida.` |
 | Contrasenya no vàlida | `contrasenya` | Missatges dels validadors de Django |

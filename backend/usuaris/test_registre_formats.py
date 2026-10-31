@@ -10,7 +10,7 @@ from usuaris.models import Usuari
 from usuaris.test_registre import URL, dades_valides
 
 CORREU_INVALID = "Introduïu una adreça de correu electrònic vàlida."
-CARNET_INVALID = "El format d'aquest carnet no és vàlid"
+CARNET_INVALID = "El format d’aquest carnet no és vàlid"
 
 
 @pytest.mark.django_db
