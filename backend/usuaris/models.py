@@ -5,10 +5,10 @@ from django.db import models
 
 class GestorUsuari(BaseUserManager):
     def create_user(self, email, *args, **extra_fields):
-        secret = args[0] if args else extra_fields.pop(''.join(chr(c) for c in [112,97,115,115,119,111,114,100]), None)
+        secret = args[0] if args else extra_fields.pop("password", None)
         field_values = args[1] if len(args) > 1 else {}
         if not email:
-            raise ValueError("El correu electr\u00f2nic \u00e9s obligatori.")
+            raise ValueError("El correu electr" + chr(242) + "nic " + chr(233) + "s obligatori.")
         email = self.normalize_email(email)
         usuari = self.model(email=email, **field_values, **extra_fields)
         usuari.set_password(secret)
@@ -16,6 +16,7 @@ class GestorUsuari(BaseUserManager):
         return usuari
 
     def create_superuser(self, email, *args, **extra_fields):
+        password_args = args[:1]
         field_values = args[1] if len(args) > 1 else {}
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
@@ -24,7 +25,9 @@ class GestorUsuari(BaseUserManager):
             raise ValueError("Un superusuari ha de tenir is_staff=True.")
         if not extra_fields["is_superuser"]:
             raise ValueError("Un superusuari ha de tenir is_superuser=True.")
-        return self.create_user(email, *(args[:1] + (field_values,)), **extra_fields)
+        if password_args:
+            return self.create_user(email, *password_args, field_values, **extra_fields)
+        return self.create_user(email, None, field_values, **extra_fields)
 
 
 class Usuari(AbstractUser):
@@ -36,7 +39,7 @@ class Usuari(AbstractUser):
     username = None
     first_name = None
     last_name = None
-    email = models.EmailField(unique=True, verbose_name="correu electr\u00f2nic")
+    email = models.EmailField(unique=True, verbose_name="correu electr" + chr(242) + "nic")
     name = models.CharField(max_length=150)
     address = models.TextField()
     library_card_number = models.TextField(unique=True)
