@@ -46,6 +46,6 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
         except IntegrityError as exc:
             if Usuari.objects.filter(email__iexact=email).exists():
                 raise serializers.ValidationError({"correu": [EMAIL_DUPLICATE]}) from exc
-            if Usuari.objects.filter(library_card_number=validated_data["library_card_number"]).exists():
+            elif Usuari.objects.filter(library_card_number=validated_data["library_card_number"]).exists():
                 raise serializers.ValidationError({"num_carnet": [CARD_DUPLICATE]}) from exc
             raise
