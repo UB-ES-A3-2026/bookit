@@ -3,7 +3,7 @@
 from rest_framework import generics
 from rest_framework.permissions import AllowAny
 
-from usuaris.serializers import UsuariRegistreSerializer
+from usuaris.serializers import BibliotecaRegistreSerializer, UsuariRegistreSerializer
 
 
 class RegistreView(generics.CreateAPIView):
@@ -18,4 +18,12 @@ class RegistreView(generics.CreateAPIView):
     permission_classes = [AllowAny]
     # Sense autenticació: així una sessió oberta (p. ex. de l'admin)
     # no obliga a enviar el token CSRF.
+    authentication_classes = []
+
+
+class RegistreBibliotecaView(generics.CreateAPIView):
+    """Registra una biblioteca amb el compte inactiu fins a verificar-lo."""
+
+    serializer_class = BibliotecaRegistreSerializer
+    permission_classes = [AllowAny]
     authentication_classes = []

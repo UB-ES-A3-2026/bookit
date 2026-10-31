@@ -1,10 +1,13 @@
+from uuid import uuid4
+
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import RegexValidator
+from django.db import transaction
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
-from usuaris.models import Usuari
+from usuaris.models import Biblioteca, Usuari
 
 
 CAMPS_BIBLIOTECA_INVALIDS = (
@@ -152,6 +155,25 @@ class BibliotecaRegistreSerializer(serializers.Serializer):
         return value.lower()
 
     def create(self, validated_data):
-        raise NotImplementedError(
-            "La creació de la biblioteca correspon a l'endpoint de T3."
-        )
+        with transaction.atomic():
+            usuari = Usuari.objects.create_user(
+                validated_data["correu"],
+                None,
+                {
+                    "name": validated_data["nom"],
+                    "address": "",
+                    "library_card_number": f"biblioteca-{uuid4().hex}",
+                    "role": Usuari.Role.BIBLIOTECA,
+                    "is_active": False,
+                },
+            )
+            return Biblioteca.objects.create(
+                usuari=usuari,
+                nom=validated_data["nom"],
+            )
+
+    def to_representation(self, instance):
+        return {
+            "nom": instance.nom,
+            "correu": instance.usuari.email,
+        }
