@@ -12,6 +12,7 @@ def dades_valides():
     return {"nom": "Biblioteca Central", "correu": "biblioteca@example.com"}
 
 
+@pytest.mark.django_db
 def test_serializer_biblioteca_accepta_nom_i_correu():
     serializer = BibliotecaRegistreSerializer(data=dades_valides())
 
@@ -19,6 +20,7 @@ def test_serializer_biblioteca_accepta_nom_i_correu():
     assert serializer.validated_data == dades_valides()
 
 
+@pytest.mark.django_db
 @pytest.mark.parametrize("camp", ["nom", "correu"])
 def test_serializer_biblioteca_rebutja_camp_absent(camp):
     dades = dades_valides()
