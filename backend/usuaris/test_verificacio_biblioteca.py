@@ -1,3 +1,6 @@
+from datetime import timedelta
+from unittest.mock import patch
+
 import pytest
 from django.contrib.auth.tokens import default_token_generator
 from django.test import override_settings
@@ -62,7 +65,15 @@ def test_verificacio_biblioteca_rebutja_token_invalid(client, usuari_biblioteca)
 @pytest.mark.django_db
 @override_settings(PASSWORD_RESET_TIMEOUT=0)
 def test_verificacio_biblioteca_rebutja_token_caducat(client, usuari_biblioteca):
-    resposta = client.get(url_verificacio(usuari_biblioteca))
+    uid = urlsafe_base64_encode(force_bytes(usuari_biblioteca.pk))
+    token = default_token_generator.make_token(usuari_biblioteca)
+
+    with patch.object(
+        default_token_generator,
+        "_now",
+        return_value=default_token_generator._now() + timedelta(seconds=1),
+    ):
+        resposta = client.get(URL.format(uid=uid, token=token))
 
     assert resposta.status_code == 400
     assert resposta.json() == {
