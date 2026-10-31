@@ -111,7 +111,7 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
             errors = {}
             if Usuari.objects.filter(email__iexact=email).exists():
                 errors["correu"] = ["Aquest correu electrònic ja està registrat"]
-            if "library_card_number" in field_values and Usuari.objects.filter(
+            elif "library_card_number" in field_values and Usuari.objects.filter(
                 library_card_number=field_values["library_card_number"]
             ).exists():
                 errors["num_carnet"] = ["Aquest usuari ja està registrat"]
