@@ -21,7 +21,7 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
     nom = serializers.CharField(source="name", max_length=150, error_messages={"blank": REQUIRED, "required": REQUIRED})
     correu = serializers.EmailField(source="email", validators=[UniqueValidator(queryset=Usuari.objects.all(), message=EMAIL_DUPLICATE, lookup="iexact")], error_messages={"invalid": EMAIL_INVALID, "required": REQUIRED, "blank": REQUIRED})
     adreca = serializers.CharField(source="address", error_messages={"blank": REQUIRED, "required": REQUIRED})
-    num_carnet = serializers.CharField(source="library_card_number", trim_whitespace=False, validators=[RegexValidator(regex=r"\A[0-9]{10}\Z", message=CARD_INVALID), UniqueValidator(queryset=Usuari.objects.all(), message=CARD_DUPLICATE)], error_messages={"blank": REQUIRED, "required": REQUIRED})
+    num_carnet = serializers.CharField(source="library_card_number", trim_whitespace=False, validators=[RegexValidator(regex=r"\A[0-9]{10}\Z", message=CARD_INVALID)], error_messages={"blank": REQUIRED, "required": REQUIRED})
     contrasenya = serializers.CharField(source=PASSWORD_FIELD, write_only=True, trim_whitespace=False, error_messages={"blank": REQUIRED, "required": REQUIRED})
 
     class Meta:
@@ -37,6 +37,13 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
         except DjangoValidationError as error:
             raise serializers.ValidationError(error.messages) from error
         return value
+
+    def validate(self, attrs):
+        if Usuari.objects.filter(
+            library_card_number=attrs["library_card_number"]
+        ).exists():
+            raise serializers.ValidationError({"num_carnet": [CARD_DUPLICATE]})
+        return attrs
 
     def create(self, validated_data):
         secret = validated_data.pop(PASSWORD_FIELD)
