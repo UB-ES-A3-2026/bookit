@@ -7,12 +7,16 @@ from rest_framework.validators import UniqueValidator
 from usuaris.models import Usuari
 
 
-def missatges_contrasenya(error):
-    """Missatges d'una contrasenya rebutjada, tots en català.
+CAMPS_BIBLIOTECA_INVALIDS = (
+    "Algún dels camps no és vàlid o no s'ha introduït, torna a intentar-ho"
+)
+CORREU_BIBLIOTECA_DUPLICAT = (
+    "Aquest correu correspon a un compte existent, torna a probar amb un altre correu"
+)
 
-    Django 5.2 no té la traducció catalana del missatge de contrasenya massa
-    curta, així que aquest es reescriu; la resta ja arriben en català.
-    """
+
+def missatges_contrasenya(error):
+    """Missatges d'una contrasenya rebutjada, tots en català."""
     missatges = []
     for detall in error.error_list:
         if detall.code == "password_too_short":
@@ -44,7 +48,6 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
     correu = serializers.EmailField(
         source="email",
         validators=[
-            # "iexact": ANNA@example.com i anna@example.com són el mateix correu.
             UniqueValidator(
                 queryset=Usuari.objects.all(),
                 message="Aquest correu electrònic ja està registrat",
@@ -105,15 +108,9 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
         )
 
     def validate_correu(self, value):
-        """Desa el correu en minúscules perquè no hi hagi duplicats per majúscules."""
         return value.lower()
 
     def validate(self, attrs):
-        """Valida la contrasenya amb les dades de l'usuari que es vol crear.
-
-        Es fa aquí i no al camp perquè el validador de semblança necessita el
-        correu i el nom (p. ex. rebutja una contrasenya igual al correu).
-        """
         dades_usuari = {
             camp: valor for camp, valor in attrs.items() if camp != "password"
         }
@@ -127,4 +124,34 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         password = validated_data.pop("password")
-        return Usuari.objects.create_user(password=password, **validated_data)
+        return Usuari.objects.create_user(
+            password=password,
+            **validated_data,
+        )
+
+
+class BibliotecaRegistreSerializer(serializers.Serializer):
+    nom = serializers.CharField(
+        max_length=150,
+        error_messages={
+            "blank": CAMPS_BIBLIOTECA_INVALIDS,
+            "required": CAMPS_BIBLIOTECA_INVALIDS,
+        },
+    )
+    correu = serializers.EmailField(
+        error_messages={
+            "blank": CAMPS_BIBLIOTECA_INVALIDS,
+            "required": CAMPS_BIBLIOTECA_INVALIDS,
+            "invalid": CAMPS_BIBLIOTECA_INVALIDS,
+        },
+    )
+
+    def validate_correu(self, value):
+        if Usuari.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError(CORREU_BIBLIOTECA_DUPLICAT)
+        return value.lower()
+
+    def create(self, validated_data):
+        raise NotImplementedError(
+            "La creació de la biblioteca correspon a l'endpoint de T3."
+        )
