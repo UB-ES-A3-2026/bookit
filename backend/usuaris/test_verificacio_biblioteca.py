@@ -2,6 +2,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
+from django.contrib.auth import authenticate
 from django.contrib.auth.tokens import default_token_generator
 from django.test import override_settings
 from django.utils.encoding import force_bytes
@@ -17,7 +18,7 @@ URL = "/api/auth/verify/biblioteca/{uid}/{token}/"
 def usuari_biblioteca():
     usuari = Usuari.objects.create_user(
         "biblioteca@example.com",
-        None,
+        "contrasenya-segura",
         {
             "name": "Biblioteca Central",
             "address": "",
@@ -91,3 +92,11 @@ def test_verificacio_biblioteca_rebutja_uid_invalid(client):
     assert resposta.json() == {
         "detail": "L'enllaç de verificació no és vàlid o ha caducat."
     }
+
+
+@pytest.mark.django_db
+def test_compte_biblioteca_sense_verificar_no_pot_autenticar(usuari_biblioteca):
+    assert authenticate(
+        email=usuari_biblioteca.email,
+        password="contrasenya-segura",
+    ) is None
