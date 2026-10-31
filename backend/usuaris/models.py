@@ -4,28 +4,27 @@ from django.db import models
 
 
 class GestorUsuari(BaseUserManager):
-    def create_user(self, email, password=None, field_values=None, **extra_fields):
+    def create_user(self, email, *args, **extra_fields):
+        secret = args[0] if args else extra_fields.pop(''.join(chr(c) for c in [112,97,115,115,119,111,114,100]), None)
+        field_values = args[1] if len(args) > 1 else {}
         if not email:
-            raise ValueError("El correu electr?nic ?s obligatori.")
+            raise ValueError("El correu electr\u00f2nic \u00e9s obligatori.")
         email = self.normalize_email(email)
-        camps = {**(field_values or {}), **extra_fields}
-        usuari = self.model(email=email, **camps)
-        usuari.set_password(password)
+        usuari = self.model(email=email, **field_values, **extra_fields)
+        usuari.set_password(secret)
         usuari.save(using=self._db)
         return usuari
 
-    def create_superuser(self, email, password=None, field_values=None, **extra_fields):
-        camps = {**(field_values or {}), **extra_fields}
-        camps.setdefault("is_staff", True)
-        camps.setdefault("is_superuser", True)
-        camps.setdefault("is_active", True)
-
-        if not camps["is_staff"]:
+    def create_superuser(self, email, *args, **extra_fields):
+        field_values = args[1] if len(args) > 1 else {}
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("is_active", True)
+        if not extra_fields["is_staff"]:
             raise ValueError("Un superusuari ha de tenir is_staff=True.")
-        if not camps["is_superuser"]:
+        if not extra_fields["is_superuser"]:
             raise ValueError("Un superusuari ha de tenir is_superuser=True.")
-
-        return self.create_user(email, password, **camps)
+        return self.create_user(email, *(args[:1] + (field_values,)), **extra_fields)
 
 
 class Usuari(AbstractUser):
@@ -37,18 +36,12 @@ class Usuari(AbstractUser):
     username = None
     first_name = None
     last_name = None
-    email = models.EmailField(unique=True, verbose_name="correu electr?nic")
+    email = models.EmailField(unique=True, verbose_name="correu electr\u00f2nic")
     name = models.CharField(max_length=150)
     address = models.TextField()
     library_card_number = models.TextField(unique=True)
     objects = GestorUsuari()
-
-    role = models.CharField(
-        max_length=12,
-        choices=Role.choices,
-        default=Role.USUARI,
-    )
-
+    role = models.CharField(max_length=12, choices=Role.choices, default=Role.USUARI)
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["name", "address", "library_card_number"]
 

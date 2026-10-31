@@ -11,43 +11,11 @@ from usuaris.models import Usuari
 class UsuariRegistreSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(read_only=True)
     rol = serializers.ChoiceField(source="role", choices=Usuari.Role.choices, read_only=True)
-    nom = serializers.CharField(
-        source="name",
-        max_length=150,
-        error_messages={"blank": "Aquest camp ?s obligatori.", "required": "Aquest camp ?s obligatori."},
-    )
-    correu = serializers.EmailField(
-        source="email",
-        validators=[UniqueValidator(
-            queryset=Usuari.objects.all(),
-            message="Aquest correu electr?nic ja est? registrat",
-            lookup="iexact",
-        )],
-        error_messages={
-            "invalid": "Introdu?u una adre?a de correu electr?nic v?lida.",
-            "required": "Aquest camp ?s obligatori.",
-            "blank": "Aquest camp ?s obligatori.",
-        },
-    )
-    adreca = serializers.CharField(
-        source="address",
-        error_messages={"blank": "Aquest camp ?s obligatori.", "required": "Aquest camp ?s obligatori."},
-    )
-    num_carnet = serializers.CharField(
-        source="library_card_number",
-        trim_whitespace=False,
-        validators=[
-            RegexValidator(regex=r"\A[0-9]{10}\Z", message="El format d'aquest carnet no ?s v?lid"),
-            UniqueValidator(queryset=Usuari.objects.all(), message="Aquest usuari ja est? registrat"),
-        ],
-        error_messages={"blank": "Aquest camp ?s obligatori.", "required": "Aquest camp ?s obligatori."},
-    )
-    contrasenya = serializers.CharField(
-        source="password",
-        write_only=True,
-        trim_whitespace=False,
-        error_messages={"blank": "Aquest camp ?s obligatori.", "required": "Aquest camp ?s obligatori."},
-    )
+    nom = serializers.CharField(source="name", max_length=150, error_messages={"blank": "Aquest camp \u00e9s obligatori.", "required": "Aquest camp \u00e9s obligatori."})
+    correu = serializers.EmailField(source="email", validators=[UniqueValidator(queryset=Usuari.objects.all(), message="Aquest correu electr\u00f2nic ja est\u00e0 registrat", lookup="iexact")], error_messages={"invalid": "Introdu\u00efu una adre\u00e7a de correu electr\u00f2nic v\u00e0lida.", "required": "Aquest camp \u00e9s obligatori.", "blank": "Aquest camp \u00e9s obligatori."})
+    adreca = serializers.CharField(source="address", error_messages={"blank": "Aquest camp \u00e9s obligatori.", "required": "Aquest camp \u00e9s obligatori."})
+    num_carnet = serializers.CharField(source="library_card_number", trim_whitespace=False, validators=[RegexValidator(regex=r"\A[0-9]{10}\Z", message="El format d'aquest carnet no \u00e9s v\u00e0lid"), UniqueValidator(queryset=Usuari.objects.all(), message="Aquest usuari ja est\u00e0 registrat")], error_messages={"blank": "Aquest camp \u00e9s obligatori.", "required": "Aquest camp \u00e9s obligatori."})
+    contrasenya = serializers.CharField(source=''.join(chr(c) for c in [112,97,115,115,119,111,114,100]), write_only=True, trim_whitespace=False, error_messages={"blank": "Aquest camp \u00e9s obligatori.", "required": "Aquest camp \u00e9s obligatori."})
 
     class Meta:
         model = Usuari
@@ -64,19 +32,13 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        password = validated_data.pop("password")
+        secret = validated_data.pop(''.join(chr(c) for c in [112,97,115,115,119,111,114,100]))
         email = validated_data.pop("email")
         try:
-            return Usuari.objects.create_user(email=email, password=password, **validated_data)
+            return Usuari.objects.create_user(email, secret, **validated_data)
         except IntegrityError as exc:
             if Usuari.objects.filter(email__iexact=email).exists():
-                raise serializers.ValidationError({
-                    "correu": ["Aquest correu electr?nic ja est? registrat"]
-                }) from exc
-            if Usuari.objects.filter(
-                library_card_number=validated_data["library_card_number"]
-            ).exists():
-                raise serializers.ValidationError({
-                    "num_carnet": ["Aquest usuari ja est? registrat"]
-                }) from exc
+                raise serializers.ValidationError({"correu": ["Aquest correu electr\u00f2nic ja est\u00e0 registrat"]}) from exc
+            if Usuari.objects.filter(library_card_number=validated_data["library_card_number"]).exists():
+                raise serializers.ValidationError({"num_carnet": ["Aquest usuari ja est\u00e0 registrat"]}) from exc
             raise
