@@ -19,8 +19,8 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
         source="name",
         max_length=150,
         error_messages={
-            "blank": "Aquest camp ?s obligatori.",
-            "required": "Aquest camp ?s obligatori.",
+            "blank": "Aquest camp és obligatori.",
+            "required": "Aquest camp és obligatori.",
         },
     )
     correu = serializers.EmailField(
@@ -28,21 +28,21 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
         validators=[
             UniqueValidator(
                 queryset=Usuari.objects.all(),
-                message="Aquest correu electr?nic ja est? registrat",
+                message="Aquest correu electrònic ja està registrat",
                 lookup="iexact",
             )
         ],
         error_messages={
-            "invalid": "Introdu?u una adre?a de correu electr?nic v?lida.",
-            "required": "Aquest camp ?s obligatori.",
-            "blank": "Aquest camp ?s obligatori.",
+            "invalid": "Introduïu una adreça de correu electrònic vàlida.",
+            "required": "Aquest camp és obligatori.",
+            "blank": "Aquest camp és obligatori.",
         },
     )
     adreca = serializers.CharField(
         source="address",
         error_messages={
-            "blank": "Aquest camp ?s obligatori.",
-            "required": "Aquest camp ?s obligatori.",
+            "blank": "Aquest camp és obligatori.",
+            "required": "Aquest camp és obligatori.",
         },
     )
     num_carnet = serializers.CharField(
@@ -51,26 +51,25 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
         validators=[
             RegexValidator(
                 regex=r"\A[0-9]{10}\Z",
-                message="El format d'aquest carnet no ?s v?lid",
+                message="El format d'aquest carnet no és vàlid",
             ),
             UniqueValidator(
                 queryset=Usuari.objects.all(),
-                message="Aquest usuari ja est? registrat",
+                message="Aquest usuari ja està registrat",
             ),
         ],
         error_messages={
-            "blank": "Aquest camp ?s obligatori.",
-            "required": "Aquest camp ?s obligatori.",
+            "blank": "Aquest camp és obligatori.",
+            "required": "Aquest camp és obligatori.",
         },
     )
-    password_key = ''.join(chr(c) for c in [112, 97, 115, 115, 119, 111, 114, 100])
     contrasenya = serializers.CharField(
-        source=password_key,
+        source="password",
         write_only=True,
         trim_whitespace=False,
         error_messages={
-            "blank": "Aquest camp ?s obligatori.",
-            "required": "Aquest camp ?s obligatori.",
+            "blank": "Aquest camp és obligatori.",
+            "required": "Aquest camp és obligatori.",
         },
     )
 
@@ -87,7 +86,7 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
         )
 
     def validate_correu(self, value):
-        """Desa el correu en min?scules perqu? no hi hagi duplicats per maj?scules."""
+        """Desa el correu en minúscules perquè no hi hagi duplicats per majúscules."""
         return value.lower()
 
     def validate_contrasenya(self, value):
@@ -98,23 +97,24 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        pass_key = ''.join(chr(c) for c in [112, 97, 115, 115, 119, 111, 114, 100])
-        password = validated_data.pop(pass_key)
+        password = validated_data.pop("password")
         email = validated_data.pop("email")
         field_values = dict(validated_data)
 
         try:
-            payload = {pass_key: password}
-            payload.update(field_values)
-            return Usuari.objects.create_user(email=email, **payload)
+            return Usuari.objects.create_user(
+                email=email,
+                password=password,
+                **field_values,
+            )
         except IntegrityError as exc:
             errors = {}
             if Usuari.objects.filter(email__iexact=email).exists():
-                errors["correu"] = ["Aquest correu electr?nic ja est? registrat"]
+                errors["correu"] = ["Aquest correu electrònic ja està registrat"]
             if "library_card_number" in field_values and Usuari.objects.filter(
                 library_card_number=field_values["library_card_number"]
             ).exists():
-                errors["num_carnet"] = ["Aquest usuari ja est? registrat"]
+                errors["num_carnet"] = ["Aquest usuari ja està registrat"]
             if errors:
                 raise serializers.ValidationError(errors) from exc
             raise

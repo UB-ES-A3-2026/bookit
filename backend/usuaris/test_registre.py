@@ -1,8 +1,8 @@
 """Tests de l'endpoint de registre POST /api/auth/register/ (US1-T4)."""
 
-import pytest
 from unittest.mock import patch
 
+import pytest
 from django.db import IntegrityError
 
 from usuaris.models import Usuari
@@ -112,7 +112,6 @@ def test_carnet_ja_registrat_retorna_400(client):
 
 @pytest.mark.django_db
 def test_no_cal_autenticacio(client):
-    # El client de proves no té cap sessió iniciada.
     resposta = client.post(URL, dades_valides(), content_type="application/json")
 
     assert resposta.status_code not in (401, 403)
@@ -130,7 +129,7 @@ def test_registres_simultanis_amb_duplicat_retorna_400(client):
 
     assert resposta.status_code == 400
     assert resposta.json() == {
-        "correu": ["Aquest correu electr?nic ja est? registrat"]
+        "correu": ["Aquest correu electrònic ja està registrat"]
     }
 
 
