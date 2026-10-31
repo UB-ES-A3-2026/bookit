@@ -51,7 +51,7 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
         validators=[
             RegexValidator(
                 regex=r"\A[0-9]{10}\Z",
-                message="El format d'aquest carnet no és vàlid",
+                message="El format d’aquest carnet no és vàlid",
             ),
             UniqueValidator(
                 queryset=Usuari.objects.all(),
@@ -118,3 +118,5 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
             if errors:
                 raise serializers.ValidationError(errors) from exc
             raise
+        user_data = dict(validated_data)
+        return Usuari.objects.create_user(email, password, user_data)
