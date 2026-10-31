@@ -4,34 +4,28 @@ from django.db import models
 
 
 class GestorUsuari(BaseUserManager):
-    # Els camps extra poden arribar en un diccionari (field_values) o com a
-    # paràmetres amb nom, que és com els passa l'ordre createsuperuser de Django.
     def create_user(self, email, password=None, field_values=None, **extra_fields):
         if not email:
-            raise ValueError("El correu electrònic és obligatori.")
+            raise ValueError("El correu electr?nic ?s obligatori.")
         email = self.normalize_email(email)
-        field_values = {**(field_values or {}), **extra_fields}
-        usuari = self.model()
-        usuari.email = email
-        for key, value in field_values.items():
-            setattr(usuari, key, value)
-        if password is not None:
-            usuari.set_password(password)
+        camps = {**(field_values or {}), **extra_fields}
+        usuari = self.model(email=email, **camps)
+        usuari.set_password(password)
         usuari.save(using=self._db)
         return usuari
 
     def create_superuser(self, email, password=None, field_values=None, **extra_fields):
-        field_values = {**(field_values or {}), **extra_fields}
-        field_values.setdefault("is_staff", True)
-        field_values.setdefault("is_superuser", True)
-        field_values.setdefault("is_active", True)
+        camps = {**(field_values or {}), **extra_fields}
+        camps.setdefault("is_staff", True)
+        camps.setdefault("is_superuser", True)
+        camps.setdefault("is_active", True)
 
-        if not field_values["is_staff"]:
+        if not camps["is_staff"]:
             raise ValueError("Un superusuari ha de tenir is_staff=True.")
-        if not field_values["is_superuser"]:
+        if not camps["is_superuser"]:
             raise ValueError("Un superusuari ha de tenir is_superuser=True.")
 
-        return self.create_user(email, password, field_values)
+        return self.create_user(email, password, **camps)
 
 
 class Usuari(AbstractUser):
@@ -43,7 +37,7 @@ class Usuari(AbstractUser):
     username = None
     first_name = None
     last_name = None
-    email = models.EmailField(unique=True, verbose_name="correu electrònic")
+    email = models.EmailField(unique=True, verbose_name="correu electr?nic")
     name = models.CharField(max_length=150)
     address = models.TextField()
     library_card_number = models.TextField(unique=True)
