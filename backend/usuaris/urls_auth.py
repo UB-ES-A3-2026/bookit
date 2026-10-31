@@ -5,7 +5,11 @@ El contracte de l'endpoint de registre és a `docs/api-registre.md`.
 
 from django.urls import path
 
-from usuaris.views import RegistreBibliotecaView, RegistreView
+from usuaris.views import (
+    RegistreBibliotecaView,
+    RegistreView,
+    VerificacioBibliotecaView,
+)
 
 app_name = "auth"
 
@@ -15,5 +19,10 @@ urlpatterns = [
         "register/biblioteca/",
         RegistreBibliotecaView.as_view(),
         name="registre-biblioteca",
+    ),
+    path(
+        "verify/biblioteca/<uidb64>/<token>/",
+        VerificacioBibliotecaView.as_view(),
+        name="verificacio-biblioteca",
     ),
 ]
