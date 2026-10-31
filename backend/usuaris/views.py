@@ -1,9 +1,14 @@
 """Vistes de l'API del mòdul usuaris."""
 
+from django.db import transaction
 from rest_framework import generics
 from rest_framework.permissions import AllowAny
 
-from usuaris.serializers import BibliotecaRegistreSerializer, UsuariRegistreSerializer
+from usuaris.serializers import (
+    BibliotecaRegistreSerializer,
+    UsuariRegistreSerializer,
+    enviar_correu_verificacio,
+)
 
 
 class RegistreView(generics.CreateAPIView):
@@ -27,3 +32,9 @@ class RegistreBibliotecaView(generics.CreateAPIView):
     serializer_class = BibliotecaRegistreSerializer
     permission_classes = [AllowAny]
     authentication_classes = []
+
+    def perform_create(self, serializer):
+        biblioteca = serializer.save()
+        transaction.on_commit(
+            lambda: enviar_correu_verificacio(biblioteca.usuari)
+        )

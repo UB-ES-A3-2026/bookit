@@ -1,9 +1,14 @@
 from uuid import uuid4
 
+from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import RegexValidator
+from django.core.mail import send_mail
 from django.db import transaction
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
@@ -16,6 +21,23 @@ CAMPS_BIBLIOTECA_INVALIDS = (
 CORREU_BIBLIOTECA_DUPLICAT = (
     "Aquest correu correspon a un compte existent, torna a probar amb un altre correu"
 )
+
+
+def enviar_correu_verificacio(usuari):
+    uid = urlsafe_base64_encode(force_bytes(usuari.pk))
+    token = default_token_generator.make_token(usuari)
+    enllac = f"/api/auth/verify/biblioteca/{uid}/{token}/"
+    send_mail(
+        "Verifica el teu compte de biblioteca",
+        (
+            f"Hola {usuari.name},\n\n"
+            "Verifica el teu compte de biblioteca amb aquest enllaç:\n"
+            f"{enllac}\n\n"
+            "Aquest enllaç caduca en 24 hores."
+        ),
+        settings.DEFAULT_FROM_EMAIL,
+        [usuari.email],
+    )
 
 
 def missatges_contrasenya(error):
