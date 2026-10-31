@@ -4,8 +4,6 @@ Acord entre backend i frontend sobre l'endpoint de registre. El backend l'implem
 US1-T4 (endpoint) i US1-T6 (tests); el frontend s'hi connecta a US1-T9 i QA en treu els casos de prova a US1-T12.
 Qualsevol canvi d'aquest document passa per pull request i s'avisa les dues parts.
 
-**Estat**: esborrany. Les decisions pendents són al final del document.
-
 ## Endpoint
 
 `POST /api/auth/register/`
@@ -51,17 +49,8 @@ El tipus de compte no s'envia: el registre sempre crea un compte amb rol `usuari
   "nom": "Anna Puig",
   "correu": "anna@example.com",
   "adreca": "C/ Major 1, 08001 Barcelona",
-  "num_carnet": "12345678",
+  "num_carnet": "1234567890",
   "rol": "usuari"
-}
-```
-
-Si l'equip decideix fer inici de sessió automàtic (US1-T5, vegeu P3), la resposta inclourà també:
-
-```json
-{
-  "access": "<token JWT d'accés>",
-  "refresh": "<token JWT de refresc>"
 }
 ```
 
@@ -86,10 +75,7 @@ defecte de Django REST Framework). El frontend mostra cada missatge sota el camp
 | Correu amb format incorrecte | `correu` | `Introduïu una adreça de correu electrònic vàlida.` |
 | Contrasenya no vàlida | `contrasenya` | Missatges dels validadors de Django |
 
-Els tres primers missatges són literals dels criteris d'acceptació de la US1 i els tests els comproven
-exactament.
+El correu no distingeix majúscules i minúscules per comprovar si ja està registrat. La contrasenya es valida
+amb els validadors configurats de Django i no es retorna mai.
 
-## Decisions pendents
-
-- **P3. Inici de sessió automàtic.** Cal decidir si el registre retorna els tokens JWT (US1-T5). Si és així,
-  falta una tasca per configurar `djangorestframework-simplejwt`.
+Les peticions amb un mètode diferent de `POST` reben una resposta **405 Method Not Allowed**.
