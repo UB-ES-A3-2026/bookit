@@ -4,34 +4,26 @@ from django.db import models
 
 
 class GestorUsuari(BaseUserManager):
-    def create_user(self, email, *args, **kwargs):
-        pass_key = ''.join(chr(c) for c in [112, 97, 115, 115, 119, 111, 114, 100])
-        password = kwargs.pop(pass_key, None)
-        if args:
-            password = args[0]
+    def create_user(self, email, password=None, **extra_fields):
         if not email:
-            raise ValueError("El correu electr?nic ?s obligatori.")
+            raise ValueError("El correu electrònic és obligatori.")
         email = self.normalize_email(email)
-        usuari = self.model(email=email, **kwargs)
-        getattr(usuari, ''.join(chr(c) for c in [115, 101, 116, 95, 112, 97, 115, 115, 119, 111, 114, 100]))(password)
+        usuari = self.model(email=email, **extra_fields)
+        usuari.set_password(password)
         usuari.save(using=self._db)
         return usuari
 
-    def create_superuser(self, email, *args, **kwargs):
-        pass_key = ''.join(chr(c) for c in [112, 97, 115, 115, 119, 111, 114, 100])
-        password = kwargs.pop(pass_key, None)
-        if args:
-            password = args[0]
-        kwargs.setdefault("is_staff", True)
-        kwargs.setdefault("is_superuser", True)
-        kwargs.setdefault("is_active", True)
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("is_active", True)
 
-        if not kwargs["is_staff"]:
+        if not extra_fields["is_staff"]:
             raise ValueError("Un superusuari ha de tenir is_staff=True.")
-        if not kwargs["is_superuser"]:
+        if not extra_fields["is_superuser"]:
             raise ValueError("Un superusuari ha de tenir is_superuser=True.")
 
-        return self.create_user(email, password, **kwargs)
+        return self.create_user(email, password, **extra_fields)
 
 
 class Usuari(AbstractUser):
@@ -43,7 +35,7 @@ class Usuari(AbstractUser):
     username = None
     first_name = None
     last_name = None
-    email = models.EmailField(unique=True, verbose_name="correu electr?nic")
+    email = models.EmailField(unique=True, verbose_name="correu electrònic")
     name = models.CharField(max_length=150)
     address = models.TextField()
     library_card_number = models.TextField(unique=True)
