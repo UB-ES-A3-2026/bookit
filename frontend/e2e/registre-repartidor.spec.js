@@ -1,12 +1,13 @@
 import { test, expect } from "@playwright/test";
 
-// Tests E2E del formulari de registre de repartidor (US1.1-T8), de la seva validació al client (US1.1-T9) i de
-// l'enviament a l'API (US1.1-T10).
+// Tests E2E del formulari de registre de repartidor (US1.1-T8), de la seva validació al client (US1.1-T9), de
+// l'enviament a l'API (US1.1-T10) i de la pantalla de confirmació (US1.1-T11).
 //
 // L'endpoint del backend encara no existeix (US1.1-T4), així que els tests de l'enviament simulen les respostes
 // de l'API tal com les descriu docs/api-registre-repartidor.md.
 
 const URL_REGISTRE_API = "/api/auth/register/repartidor/";
+const URL_CONFIRMACIO = "/registre/confirmacio";
 
 const CAMPS = [
   "Correu electrònic",
@@ -239,14 +240,14 @@ async function simulaApi(page, estat, cos = {}) {
 }
 
 test.describe("enviament a l'API (US1.1-T10)", () => {
-  test("envia les dades del repartidor i, si el registre és correcte, torna a l'inici", async ({ page }) => {
+  test("envia les dades del repartidor i, si el registre és correcte, mostra la confirmació", async ({ page }) => {
     const enviades = await simulaApi(page, 201, { id: 1, rol: "repartidor", estat: "pendent" });
     await obrirFormulariRepartidor(page);
     await omplir(page, dadesValides());
 
     await botoEnviar(page).click();
 
-    await expect(page).toHaveURL("/");
+    await expect(page).toHaveURL(URL_CONFIRMACIO);
     expect(enviades).toEqual([
       {
         nom: "Pol",
@@ -269,7 +270,7 @@ test.describe("enviament a l'API (US1.1-T10)", () => {
 
     await botoEnviar(page).click();
 
-    await expect(page).toHaveURL("/");
+    await expect(page).toHaveURL(URL_CONFIRMACIO);
     expect(enviades).toHaveLength(1);
     expect(enviades[0].vehicle).toBe("bici");
     expect(enviades[0]).not.toHaveProperty("matricula");
@@ -292,7 +293,7 @@ test.describe("enviament a l'API (US1.1-T10)", () => {
     const botoEnviant = page.getByRole("button", { name: "Registrant..." });
     await expect(botoEnviant).toBeDisabled();
     respon();
-    await expect(page).toHaveURL("/");
+    await expect(page).toHaveURL(URL_CONFIRMACIO);
   });
 
   test("si el correu o el DNI ja existeixen, es mostra l'error sota cada camp", async ({ page }) => {
@@ -360,5 +361,49 @@ test.describe("enviament a l'API (US1.1-T10)", () => {
     await expect(page.getByText("Torna-ho a provar més tard")).toBeVisible();
     await expect(botoEnviar(page)).toBeEnabled();
     await expect(page).toHaveURL("/registre");
+  });
+});
+
+test.describe("pantalla de confirmació (US1.1-T11)", () => {
+  const titolConfirmacio = (page) => page.getByRole("heading", { level: 1 });
+
+  test("després del registre diu que el compte queda pendent de validació", async ({ page }) => {
+    await simulaApi(page, 201, { id: 1, rol: "repartidor", estat: "pendent" });
+    await obrirFormulariRepartidor(page);
+    await omplir(page, dadesValides());
+
+    await botoEnviar(page).click();
+
+    await expect(page).toHaveURL(URL_CONFIRMACIO);
+    await expect(titolConfirmacio(page)).toHaveText("Gràcies, Pol");
+    await expect(page.getByText("Hem rebut la teva sol·licitud")).toBeVisible();
+    await expect(page.getByText("Pendent de validació")).toBeVisible();
+  });
+
+  test("si s'obre directament, es mostra sense el nom", async ({ page }) => {
+    await page.goto(URL_CONFIRMACIO);
+
+    await expect(titolConfirmacio(page)).toHaveText("Gràcies per registrar-te");
+    await expect(page.getByText("Pendent de validació")).toBeVisible();
+  });
+
+  test("el botó torna a la pàgina d'inici", async ({ page }) => {
+    await page.goto(URL_CONFIRMACIO);
+
+    await page.getByRole("link", { name: "Tornar a l'inici" }).click();
+
+    await expect(page).toHaveURL("/");
+  });
+
+  test.describe("en mòbil", () => {
+    test.use({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
+
+    test("la caixa es veu sencera sense desplaçament horitzontal", async ({ page }) => {
+      await page.goto(URL_CONFIRMACIO);
+
+      await expect(page.getByRole("link", { name: "Tornar a l'inici" })).toBeInViewport({ ratio: 1 });
+      const ampladaPagina = await page.evaluate(() => document.documentElement.scrollWidth);
+      expect(ampladaPagina).toBeLessThanOrEqual(375);
+    });
   });
 });
