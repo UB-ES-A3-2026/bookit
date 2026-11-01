@@ -137,6 +137,21 @@ test.describe("caixa de registre (US1-T7)", () => {
 });
 
 test.describe("registre amb el backend (US1-T9 i US1-T10)", () => {
+  test("US1-T24 · mostra un missatge si el backend no respon", async ({ page }) => {
+    await page.route(`**${URL_REGISTRE_API}`, (route) => route.abort("failed"));
+    await obrirCaixa(page);
+    await omplir(page, dadesNoves());
+
+    await botoEnviar(page).click();
+
+    await expect(
+      page.getByText("No s'ha pogut completar el registre. Torna-ho a provar més tard.", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await esperaQueEsMantinguiOberta(page);
+  });
+
   test("CP-US1-01 · registre correcte com a Lector", async ({ page }) => {
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
