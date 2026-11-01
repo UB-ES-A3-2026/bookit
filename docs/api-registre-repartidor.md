@@ -32,7 +32,7 @@ Cos JSON (`Content-Type: application/json`):
 
 Els noms dels camps d'aquest contracte són els de l'API i es mantenen en català:
 - El model intern `Usuari` emmagatzema `email` (correu en minúscules), `name` (nom) i `password` (hash de la contrasenya). El rol s'assigna automàticament com a `repartidor` (`role="repartidor"`).
-- El model `PerfilRepartidor` (vinculat un a un amb `Usuari`) emmagatzema `cognoms`, `dni` (DNI/NIE normalitzat en majúscules i net de caràcters separadors), `telefon`, `vehicle`, `matricula` (o buit/nul si el vehicle és bicicleta), `num_seguretat_social` (12 dígits normalitzats) i l'estat inicial `pendent` ("Pendent de validació").
+- El model `PerfilRepartidor` (vinculat un a un amb `Usuari`) emmagatzema `cognoms`, `dni` (DNI/NIE normalitzat en majúscules i net de caràcters separadors), `telefon` (normalitzat, amb el `+34` si s'ha enviat), `vehicle`, `matricula` (normalitzada, o buida si el vehicle és bicicleta), `num_seguretat_social` (12 dígits normalitzats) i l'estat inicial `pendent` ("Pendent de validació").
 - El camp de confirmació de contrasenya es comprova únicament al formulari del frontend abans de l'enviament; l'API no rep aquest camp duplicat.
 
 ### Exemples de petició
@@ -81,9 +81,9 @@ Retorna les dades del repartidor registrat amb l'estat del perfil i el rol, sens
   "cognoms": "Ferrer Soler",
   "correu": "repartidor@example.com",
   "dni": "12345678Z",
-  "telefon": "+34 612 345 678",
+  "telefon": "+34612345678",
   "vehicle": "moto",
-  "matricula": "1234 BCD",
+  "matricula": "1234BCD",
   "num_seguretat_social": "281234567890",
   "rol": "repartidor",
   "estat": "pendent"
