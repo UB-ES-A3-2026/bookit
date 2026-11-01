@@ -2,6 +2,7 @@
 import axios from "axios";
 import { onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
+import bibliotecaImage from "../assets/biblioteca.jpg";
 
 const route = useRoute();
 const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
@@ -39,37 +40,46 @@ onMounted(verificaCompte);
 </script>
 
 <template>
-  <main class="verification-page">
-    <section class="verification-card" aria-labelledby="verification-title">
-      <p class="verification-card__brand">bookit.</p>
+  <main
+    class="verification-page"
+    :style="{ backgroundImage: `url(${bibliotecaImage})` }"
+  >
+    <div class="verification-page__overlay"></div>
+
+    <section class="verification-modal" aria-labelledby="verification-title">
+      <p class="verification-modal__welcome">Verificació de compte</p>
       <h1 id="verification-title">Verificació del compte de biblioteca</h1>
 
-      <p v-if="estat === 'carregant'" role="status">
+      <p v-if="estat === 'carregant'" class="verification-modal__text" role="status">
         Verificant l'enllaç...
       </p>
 
       <template v-else-if="estat === 'correcte'">
         <p
-          class="verification-card__message verification-card__message--success"
+          class="verification-modal__message verification-modal__message--success"
           role="status"
         >
           {{ missatge }}
         </p>
-        <p>Ja pots iniciar sessió amb el teu compte de biblioteca.</p>
+        <p class="verification-modal__text">
+          Ja pots iniciar sessió amb el teu compte de biblioteca.
+        </p>
       </template>
 
       <template v-else>
         <p
-          class="verification-card__message verification-card__message--error"
+          class="verification-modal__message verification-modal__message--error"
           role="alert"
         >
           {{ missatge }}
         </p>
-        <p>Demana un nou enllaç de verificació si el problema continua.</p>
+        <p class="verification-modal__text">
+          Demana un nou enllaç de verificació si el problema continua.
+        </p>
       </template>
 
-      <RouterLink class="verification-card__link" to="/">
-        Tornar a l'inici
+      <RouterLink class="verification-modal__button" to="/">
+        Tornar a l'inici <span aria-hidden="true">→</span>
       </RouterLink>
     </section>
   </main>
@@ -77,73 +87,117 @@ onMounted(verificaCompte);
 
 <style scoped>
 .verification-page {
-  display: grid;
+  position: relative;
+  display: flex;
   min-height: 100svh;
-  padding: 1.5rem;
-  place-items: center;
-  box-sizing: border-box;
-  color: #241914;
-  background: #f9f4eb;
-}
-
-.verification-card {
-  width: min(100%, 34rem);
-  padding: 2.5rem;
-  border: 1px solid #dfd1bd;
-  border-radius: 1rem;
-  background: #fffdf9;
-  box-shadow: 0 1rem 2rem rgb(72 0 0 / 10%);
-  text-align: center;
-}
-
-.verification-card__brand {
-  margin-bottom: 1rem;
-  color: #980000;
-  font-size: 1.5rem;
-  font-weight: 800;
-}
-
-.verification-card h1 {
-  margin: 0 0 1.5rem;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(1.7rem, 5vw, 2.3rem);
-}
-
-.verification-card__message {
-  margin-bottom: 1rem;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
   padding: 1rem;
-  border-radius: 0.5rem;
+  box-sizing: border-box;
+  background-position: center;
+  background-size: cover;
 }
 
-.verification-card__message--success {
+.verification-page__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(25 26 31 / 58%);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.verification-modal {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: min(100%, 360px);
+  box-sizing: border-box;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1.1rem 1.25rem;
+  border-radius: 0.7rem;
+  color: #4d4541;
+  background: #fffdf8;
+  box-shadow: 0 1.2rem 3rem rgb(0 0 0 / 30%);
+}
+
+.verification-modal__welcome {
+  margin: 0;
+  color: #756d66;
+  font-size: 0.58rem;
+  font-weight: 700;
+}
+
+.verification-modal h1 {
+  margin: 0;
+  color: #442d2a;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.verification-modal__text {
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
+.verification-modal__message {
+  margin: 0;
+  padding: 0.7rem;
+  border-radius: 0.45rem;
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
+.verification-modal__message--success {
   color: #155724;
   background: #d4edda;
 }
 
-.verification-card__message--error {
+.verification-modal__message--error {
   color: #721c24;
   background: #f8d7da;
 }
 
-.verification-card__link {
-  display: inline-block;
-  margin-top: 1.5rem;
-  padding: 0.7rem 1.2rem;
-  border-radius: 0.55rem;
+.verification-modal__button {
+  display: flex;
+  min-height: 1.8rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+  padding: 0.3rem 1rem;
+  border-radius: 0.35rem;
   color: #fff;
-  background: #980000;
+  background: #a00000;
+  box-shadow: 0 0.2rem 0.35rem rgb(91 0 0 / 20%);
+  font-size: 0.7rem;
   font-weight: 700;
   text-decoration: none;
 }
 
-.verification-card__link:focus-visible {
-  outline: 3px solid #ffbf47;
-  outline-offset: 3px;
+.verification-modal__button:hover,
+.verification-modal__button:focus-visible {
+  background: #850000;
+}
+
+.verification-modal__button:focus-visible {
+  outline: 2px solid #ffbf47;
+  outline-offset: 2px;
+}
+
+.verification-modal__button span {
+  font-size: 1rem;
+  font-weight: 400;
 }
 
 @media (max-width: 500px) {
-  .verification-card {
-    padding: 1.5rem;
+  .verification-modal {
+    padding: 1.1rem;
   }
 }
 </style>
