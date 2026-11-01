@@ -1,9 +1,12 @@
 import { test, expect } from "@playwright/test";
 
-// Tests E2E del formulari de registre de repartidor (US1.1-T8) i de la seva validació al client (US1.1-T9).
-// L'enviament a l'API és la US1.1-T10; de moment es comprova que no se'n fa cap petició.
+// Tests E2E del formulari de registre de repartidor (US1.1-T8), de la seva validació al client (US1.1-T9) i de
+// l'enviament a l'API (US1.1-T10).
+//
+// L'endpoint del backend encara no existeix (US1.1-T4), així que els tests de l'enviament simulen les respostes
+// de l'API tal com les descriu docs/api-registre-repartidor.md.
 
-const URL_REGISTRE_API = "/api/auth/register/";
+const URL_REGISTRE_API = "/api/auth/register/repartidor/";
 
 const CAMPS = [
   "Correu electrònic",
@@ -110,7 +113,7 @@ test("tornar a Lector mostra el formulari de lector", async ({ page }) => {
   await expect(camp(page, "Tipus de vehicle")).toBeHidden();
 });
 
-test("enviar el formulari de repartidor encara no crida l'API", async ({ page }) => {
+test("si el formulari té errors no es crida l'API", async ({ page }) => {
   const peticions = [];
   page.on("request", (peticio) => {
     if (peticio.url().endsWith(URL_REGISTRE_API)) peticions.push(peticio);
@@ -213,21 +216,149 @@ test.describe("validació al client (US1.1-T9)", () => {
     await expect(camp(page, "Nom")).toHaveAccessibleDescription("");
     await expect(camp(page, "Cognoms")).toHaveAccessibleDescription(OBLIGATORI);
   });
+});
 
-  test("amb totes les dades correctes no hi ha cap error ni es crida l'API", async ({ page }) => {
-    const peticions = [];
-    page.on("request", (peticio) => {
-      if (peticio.url().endsWith(URL_REGISTRE_API)) peticions.push(peticio);
+// Respon a les peticions a l'endpoint de registre amb l'estat i el cos indicats, i guarda les dades que s'hi
+// envien. El frontend i l'API són en ports diferents, per això cal respondre també la petició prèvia de CORS.
+const CAPCALERES_CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+async function simulaApi(page, estat, cos = {}) {
+  const enviades = [];
+  await page.route(`**${URL_REGISTRE_API}`, async (ruta) => {
+    if (ruta.request().method() === "OPTIONS") {
+      await ruta.fulfill({ status: 204, headers: CAPCALERES_CORS });
+      return;
+    }
+    enviades.push(ruta.request().postDataJSON());
+    await ruta.fulfill({ status: estat, headers: CAPCALERES_CORS, json: cos });
+  });
+  return enviades;
+}
+
+test.describe("enviament a l'API (US1.1-T10)", () => {
+  test("envia les dades del repartidor i, si el registre és correcte, torna a l'inici", async ({ page }) => {
+    const enviades = await simulaApi(page, 201, { id: 1, rol: "repartidor", estat: "pendent" });
+    await obrirFormulariRepartidor(page);
+    await omplir(page, dadesValides());
+
+    await botoEnviar(page).click();
+
+    await expect(page).toHaveURL("/");
+    expect(enviades).toEqual([
+      {
+        nom: "Pol",
+        cognoms: "Ferrer Soler",
+        correu: "repartidor@example.com",
+        dni: "12345678Z",
+        telefon: "+34 612 345 678",
+        vehicle: "moto",
+        matricula: "1234 BCD",
+        num_seguretat_social: "28/12345678/90",
+        contrasenya: "Llibres-de-tardor-24",
+      },
+    ]);
+  });
+
+  test("amb bicicleta no s'envia la matrícula", async ({ page }) => {
+    const enviades = await simulaApi(page, 201);
+    await obrirFormulariRepartidor(page);
+    await omplir(page, dadesValides(), "Bicicleta");
+
+    await botoEnviar(page).click();
+
+    await expect(page).toHaveURL("/");
+    expect(enviades).toHaveLength(1);
+    expect(enviades[0].vehicle).toBe("bici");
+    expect(enviades[0]).not.toHaveProperty("matricula");
+  });
+
+  test("mentre s'envia, el botó queda desactivat", async ({ page }) => {
+    let respon;
+    const resposta = new Promise((resolve) => {
+      respon = resolve;
+    });
+    await page.route(`**${URL_REGISTRE_API}`, async (ruta) => {
+      await resposta;
+      await ruta.fulfill({ status: 201, headers: CAPCALERES_CORS, json: {} });
     });
     await obrirFormulariRepartidor(page);
     await omplir(page, dadesValides());
 
     await botoEnviar(page).click();
 
-    for (const etiqueta of [...CAMPS, "Matrícula"]) {
-      await expect(camp(page, etiqueta), etiqueta).toHaveAccessibleDescription("");
-    }
+    const botoEnviant = page.getByRole("button", { name: "Registrant..." });
+    await expect(botoEnviant).toBeDisabled();
+    respon();
+    await expect(page).toHaveURL("/");
+  });
+
+  test("si el correu o el DNI ja existeixen, es mostra l'error sota cada camp", async ({ page }) => {
+    await simulaApi(page, 400, {
+      correu: ["DNI/correu ja registrat"],
+      dni: ["DNI/correu ja registrat"],
+    });
+    await obrirFormulariRepartidor(page);
+    await omplir(page, dadesValides());
+
+    await botoEnviar(page).click();
+
+    await expect(camp(page, "Correu electrònic")).toHaveAccessibleDescription("DNI/correu ja registrat");
+    await expect(camp(page, "DNI / NIE")).toHaveAccessibleDescription("DNI/correu ja registrat");
+    await expect(camp(page, "DNI / NIE")).toHaveAttribute("aria-invalid", "true");
     await expect(page).toHaveURL("/registre");
-    expect(peticions).toEqual([]);
+  });
+
+  test("els errors dels camps amb nom diferent a l'API van al camp que toca", async ({ page }) => {
+    await simulaApi(page, 400, {
+      num_seguretat_social: ["El número de la Seguretat Social ha de tenir 12 xifres"],
+      contrasenya: ["Aquesta contrasenya és massa comuna."],
+    });
+    await obrirFormulariRepartidor(page);
+    await omplir(page, dadesValides());
+
+    await botoEnviar(page).click();
+
+    await expect(camp(page, "Número de la Seguretat Social")).toHaveAccessibleDescription(
+      "El número de la Seguretat Social ha de tenir 12 xifres",
+    );
+    await expect(camp(page, "Contrasenya")).toHaveAccessibleDescription("Aquesta contrasenya és massa comuna.");
+  });
+
+  test("en tornar a escriure en un camp se n'esborra l'error del backend", async ({ page }) => {
+    await simulaApi(page, 400, { correu: ["DNI/correu ja registrat"] });
+    await obrirFormulariRepartidor(page);
+    await omplir(page, dadesValides());
+    await botoEnviar(page).click();
+    await expect(camp(page, "Correu electrònic")).toHaveAccessibleDescription("DNI/correu ja registrat");
+
+    await camp(page, "Correu electrònic").fill("un-altre@example.com");
+
+    await expect(camp(page, "Correu electrònic")).toHaveAccessibleDescription("");
+  });
+
+  test("un error que no és de cap camp es mostra com a error general", async ({ page }) => {
+    await simulaApi(page, 400, { non_field_errors: ["Error inesperat"] });
+    await obrirFormulariRepartidor(page);
+    await omplir(page, dadesValides());
+
+    await botoEnviar(page).click();
+
+    await expect(page.getByText("No s'ha pogut completar el registre. Revisa les dades")).toBeVisible();
+    await expect(page).toHaveURL("/registre");
+  });
+
+  test("si el backend falla, es demana tornar-ho a provar més tard", async ({ page }) => {
+    await simulaApi(page, 500);
+    await obrirFormulariRepartidor(page);
+    await omplir(page, dadesValides());
+
+    await botoEnviar(page).click();
+
+    await expect(page.getByText("Torna-ho a provar més tard")).toBeVisible();
+    await expect(botoEnviar(page)).toBeEnabled();
+    await expect(page).toHaveURL("/registre");
   });
 });
