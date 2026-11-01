@@ -162,10 +162,18 @@ function tornaInici() {
   router.push({ name: "home" });
 }
 
-// Registre correcte: sense tokens ni inici de sessió automàtic. De moment
-// tots dos tipus tornen a l'inici; la pantalla de confirmació del repartidor
-// és la US1.1-T11.
+// Registre correcte: sense tokens ni inici de sessió automàtic. El lector
+// torna a l'inici. El repartidor va a la pantalla de confirmació, perquè el
+// seu compte queda pendent de validació.
 function registreCorrecte() {
+  if (tipusCompte.value === "repartidor") {
+    router.push({
+      name: "registre-confirmacio",
+      state: { nom: formulariRepartidor.nom.trim() },
+    });
+    return;
+  }
+
   router.push({ name: "home" });
 }
 
