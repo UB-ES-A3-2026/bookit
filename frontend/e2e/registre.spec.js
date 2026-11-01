@@ -99,7 +99,9 @@ test.describe("caixa de registre (US1-T7)", () => {
     }
     await expect(tipusCompte(page, "Lector")).toHaveAttribute("aria-pressed", "true");
     await expect(tipusCompte(page, "Repartidor")).toHaveAttribute("aria-pressed", "false");
-    await expect(tipusCompte(page, "Biblioteca")).toHaveAttribute("aria-pressed", "false");
+    await expect(
+      tipusCompte(page, "Biblioteca"),
+    ).toHaveAttribute("aria-pressed", "false");
     await expect(botoEnviar(page)).toBeVisible();
   });
 
@@ -303,10 +305,7 @@ test.describe("camps obligatoris (US1-T8 o US1-T9)", () => {
 });
 
 test.describe("tipus de compte no disponibles (US1-T11)", () => {
-  for (const [cas, tipus] of [
-    ["CP-US1-10", "Repartidor"],
-    ["CP-US1-11", "Biblioteca"],
-  ]) {
+  for (const [cas, tipus] of [["CP-US1-10", "Repartidor"]]) {
     test(`${cas} · tipus de compte "${tipus}"`, async ({ page }) => {
       const peticions = peticionsDeRegistre(page);
       await obrirCaixa(page);
@@ -324,6 +323,26 @@ test.describe("tipus de compte no disponibles (US1-T11)", () => {
       expect(peticions).toEqual([]);
     });
   }
+
+  test("US1.2-T8 · Biblioteca mostra el formulari específic", async ({ page }) => {
+    await obrirCaixa(page);
+
+    await tipusCompte(page, "Biblioteca").click();
+
+    await expect(page.getByText("Funcionalitat no implementada")).toBeHidden();
+    await expect(
+      page.getByLabel("Correu electrònic oficial", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByLabel("Nom de la biblioteca", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByLabel("DNI / NIE del responsable", { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByLabel("Nom complet", { exact: true })).toBeHidden();
+    await expect(termes(page)).toBeVisible();
+    await expect(botoEnviar(page)).toBeVisible();
+  });
 
   test("CP-US1-12 · tornar a Lector després de l'avís", async ({ page }) => {
     await obrirCaixa(page);

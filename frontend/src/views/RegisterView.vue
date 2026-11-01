@@ -11,9 +11,12 @@ const router = useRouter();
 const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 const tipusComptes = [
-  { valor: "lector", etiqueta: "Lector", icona: "♙" },
-  { valor: "repartidor", etiqueta: "Repartidor", icona: "→" },
-  { valor: "biblioteca", etiqueta: "Biblioteca", icona: "▣" },
+  { valor: "lector", etiqueta: "Lector" },
+  { valor: "repartidor", etiqueta: "Repartidor" },
+  {
+    valor: "biblioteca",
+    etiqueta: "Biblioteca",
+  },
 ];
 
 const tipusCompte = ref("lector");
@@ -25,7 +28,8 @@ const AVIS_NO_IMPLEMENTAT = "Funcionalitat no implementada.";
 // i es mostra l'avís; el formulari no s'envia fins que es torna a "Lector".
 function seleccionaTipus(valor) {
   tipusCompte.value = valor;
-  avisTipus.value = valor === "lector" ? "" : AVIS_NO_IMPLEMENTAT;
+  avisTipus.value =
+    valor === "lector" || valor === "biblioteca" ? "" : AVIS_NO_IMPLEMENTAT;
 }
 
 const formulari = reactive({
@@ -35,6 +39,12 @@ const formulari = reactive({
   numCarnet: "",
   contrasenya: "",
   confirmarContrasenya: "",
+});
+
+const formulariBiblioteca = reactive({
+  correuOficial: "",
+  nom: "",
+  dniNie: "",
 });
 
 const errors = reactive({
@@ -190,7 +200,11 @@ async function enviaFormulari() {
     class="register-page"
     :style="{ backgroundImage: `url(${bibliotecaImage})` }"
   >
-    <div class="register-page__overlay"></div>
+    <div
+      class="register-page__overlay"
+      aria-hidden="true"
+      @click.self="tornaInici"
+    ></div>
 
     <section class="register-modal" aria-labelledby="register-title">
       <header class="register-modal__header">
@@ -219,11 +233,7 @@ async function enviaFormulari() {
         </button>
       </nav>
 
-      <form
-        class="register-form"
-        novalidate
-        @submit.prevent="enviaFormulari"
-      >
+      <form class="register-form" novalidate @submit.prevent="enviaFormulari">
         <fieldset class="account-type">
           <legend>Com et vols registrar?</legend>
 
@@ -240,17 +250,86 @@ async function enviaFormulari() {
               :aria-pressed="tipusCompte === tipus.valor"
               @click="seleccionaTipus(tipus.valor)"
             >
-              <span aria-hidden="true">{{ tipus.icona }}</span>
+              <svg
+                v-if="tipus.valor === 'lector'"
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                focusable="false"
+              >
+                <circle cx="12" cy="7" r="3" />
+                <path d="M6.5 20a5.5 5.5 0 0 1 11 0" />
+              </svg>
+              <svg
+                v-else-if="tipus.valor === 'repartidor'"
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                focusable="false"
+              >
+                <path d="M4 12h14" />
+                <path d="m14 8 4 4-4 4" />
+              </svg>
+              <svg
+                v-else
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                focusable="false"
+              >
+                <rect x="5" y="6" width="14" height="12" rx="1.5" />
+                <path d="M8 9h8M8 15h4" />
+              </svg>
               {{ tipus.etiqueta }}
             </button>
           </div>
 
-          <p v-if="avisTipus" class="register-form__error" role="alert">
+          <p
+            v-if="avisTipus && tipusCompte !== 'biblioteca'"
+            class="register-form__error"
+            role="alert"
+          >
             {{ avisTipus }}
           </p>
         </fieldset>
 
-        <div class="register-form__field">
+        <template v-if="tipusCompte === 'biblioteca'">
+          <div class="register-form__field">
+            <label for="correu-oficial">Correu electrònic oficial</label>
+            <input
+              id="correu-oficial"
+              v-model="formulariBiblioteca.correuOficial"
+              name="correu_oficial"
+              type="email"
+              autocomplete="email"
+              placeholder="biblioteca@exemple.cat"
+            />
+          </div>
+
+          <div class="register-form__field">
+            <label for="nom-biblioteca">Nom de la biblioteca</label>
+            <input
+              id="nom-biblioteca"
+              v-model="formulariBiblioteca.nom"
+              name="nom_biblioteca"
+              type="text"
+              autocomplete="organization"
+              placeholder="p. ex. Biblioteca Central"
+            />
+          </div>
+
+          <div class="register-form__field">
+            <label for="dni-nie-responsable">DNI / NIE del responsable</label>
+            <input
+              id="dni-nie-responsable"
+              v-model="formulariBiblioteca.dniNie"
+              name="dni_nie_responsable"
+              type="text"
+              autocomplete="off"
+              placeholder="DNI / NIE"
+            />
+          </div>
+        </template>
+
+        <template v-else>
+          <div class="register-form__field">
           <label for="correu">Correu electrònic</label>
           <input
             id="correu"
@@ -370,6 +449,8 @@ async function enviaFormulari() {
             {{ errors.confirmarContrasenya }}
           </p>
         </div>
+
+        </template>
 
         <label class="register-form__terms" for="accepta-termes">
           <input id="accepta-termes" name="accepta_termes" type="checkbox" />
@@ -558,9 +639,15 @@ async function enviaFormulari() {
   font-weight: 700;
 }
 
-.account-type__option span {
-  font-size: 0.85rem;
-  font-weight: 400;
+.account-type__option svg {
+  width: 0.85rem;
+  height: 0.85rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+  flex: 0 0 0.85rem;
 }
 
 .account-type__option--active {
