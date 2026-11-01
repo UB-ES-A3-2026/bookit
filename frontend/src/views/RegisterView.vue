@@ -57,6 +57,7 @@ const errors = reactive({
 });
 
 const errorGeneral = ref("");
+const errorBiblioteca = ref("");
 const enviant = ref(false);
 
 function tornaInici() {
@@ -78,6 +79,22 @@ function netejaErrors() {
     errors[camp] = "";
   });
   errorGeneral.value = "";
+}
+
+function validaFormulariBiblioteca() {
+  const correu = formulariBiblioteca.correuOficial.trim();
+  const nom = formulariBiblioteca.nom.trim();
+  const dniNie = formulariBiblioteca.dniNie.trim();
+  const correuValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correu);
+
+  if (!correu || !nom || !dniNie || !correuValid) {
+    errorBiblioteca.value =
+      "Algún dels camps no és vàlid o no s'ha introduït, torna a intentar-ho";
+    return false;
+  }
+
+  errorBiblioteca.value = "";
+  return true;
 }
 
 function validaCamp(camp) {
@@ -158,6 +175,11 @@ function assignaErrorsBackend(errorsBackend) {
 
 async function enviaFormulari() {
   netejaErrors();
+
+  if (tipusCompte.value === "biblioteca") {
+    validaFormulariBiblioteca();
+    return;
+  }
 
   // Amb un tipus de compte no implementat no es crea cap compte (US1-T11).
   if (tipusCompte.value !== "lector") {
@@ -326,6 +348,9 @@ async function enviaFormulari() {
               placeholder="DNI / NIE"
             />
           </div>
+          <p v-if="errorBiblioteca" class="register-form__general-error" role="alert">
+            {{ errorBiblioteca }}
+          </p>
         </template>
 
         <template v-else>
