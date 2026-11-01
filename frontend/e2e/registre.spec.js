@@ -342,8 +342,6 @@ test.describe("tipus de compte no disponibles (US1-T11)", () => {
 });
 
 test.describe("clicar fora de la caixa (CA6)", () => {
-  test.fixme(true, "Cap tasca de frontend no implementa encara CA6 (vegeu docs/casos-prova-us1.md).");
-
   test("CP-US1-09 · clicar fora de la caixa la tanca", async ({ page }) => {
     await obrirCaixa(page);
     const caixa = page.getByRole("region", { name: "Crear un compte" });

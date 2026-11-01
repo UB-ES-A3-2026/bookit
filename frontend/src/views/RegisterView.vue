@@ -190,7 +190,11 @@ async function enviaFormulari() {
     class="register-page"
     :style="{ backgroundImage: `url(${bibliotecaImage})` }"
   >
-    <div class="register-page__overlay"></div>
+    <div
+      class="register-page__overlay"
+      aria-hidden="true"
+      @click.self="tornaInici"
+    ></div>
 
     <section class="register-modal" aria-labelledby="register-title">
       <header class="register-modal__header">
