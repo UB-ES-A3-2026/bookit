@@ -162,7 +162,9 @@ function tornaInici() {
   router.push({ name: "home" });
 }
 
-// Registre correcte: sense tokens ni inici de sessió automàtic.
+// Registre correcte: sense tokens ni inici de sessió automàtic. De moment
+// tots dos tipus tornen a l'inici; la pantalla de confirmació del repartidor
+// és la US1.1-T11.
 function registreCorrecte() {
   router.push({ name: "home" });
 }
@@ -227,15 +229,30 @@ function validaFormulari() {
   return resultats.every(Boolean);
 }
 
-function assignaErrorsBackend(errorsBackend) {
-  const mapatgeCamps = {
-    correu: "correu",
-    nom: "nom",
-    adreca: "adreca",
-    num_carnet: "numCarnet",
-    contrasenya: "contrasenya",
-  };
+// Correspondència entre els camps de l'API i els del formulari de cada tipus.
+const campsApiLector = {
+  correu: "correu",
+  nom: "nom",
+  adreca: "adreca",
+  num_carnet: "numCarnet",
+  contrasenya: "contrasenya",
+};
 
+const campsApiRepartidor = {
+  correu: "correu",
+  nom: "nom",
+  cognoms: "cognoms",
+  dni: "dni",
+  telefon: "telefon",
+  vehicle: "vehicle",
+  matricula: "matricula",
+  num_seguretat_social: "numSeguretatSocial",
+  contrasenya: "contrasenya",
+};
+
+// Posa cada missatge del backend sota el seu camp. Si cap missatge correspon a
+// un camp del formulari, es mostra un error general.
+function assignaErrorsBackend(errorsBackend, mapatgeCamps, errorsFormulari) {
   let errorAssignat = false;
 
   Object.entries(errorsBackend).forEach(([camp, missatges]) => {
@@ -245,7 +262,7 @@ function assignaErrorsBackend(errorsBackend) {
       return;
     }
 
-    errors[campFormulari] = missatges.join(" ");
+    errorsFormulari[campFormulari] = missatges.join(" ");
     errorAssignat = true;
   });
 
@@ -253,6 +270,48 @@ function assignaErrorsBackend(errorsBackend) {
     errorGeneral.value =
       "No s'ha pogut completar el registre. Revisa les dades i torna-ho a provar.";
   }
+}
+
+// Envia les dades a l'API. Si el backend respon amb errors de validació (400),
+// es mostren sota cada camp; qualsevol altre error es mostra com a general.
+async function enviaRegistre(url, dades, mapatgeCamps, errorsFormulari) {
+  enviant.value = true;
+
+  try {
+    await axios.post(url, dades);
+    registreCorrecte();
+  } catch (error) {
+    if (error.response?.status === 400 && error.response.data) {
+      assignaErrorsBackend(error.response.data, mapatgeCamps, errorsFormulari);
+    } else {
+      errorGeneral.value =
+        "No s'ha pogut completar el registre. Torna-ho a provar més tard.";
+    }
+  } finally {
+    enviant.value = false;
+  }
+}
+
+// Dades del repartidor tal com les espera l'API (docs/api-registre-repartidor.md).
+// La confirmació de la contrasenya només es comprova aquí, i la matrícula
+// només s'envia amb moto o cotxe.
+function dadesRegistreRepartidor() {
+  const dades = {
+    nom: formulariRepartidor.nom,
+    cognoms: formulariRepartidor.cognoms,
+    correu: formulariRepartidor.correu,
+    dni: formulariRepartidor.dni,
+    telefon: formulariRepartidor.telefon,
+    vehicle: formulariRepartidor.vehicle,
+    num_seguretat_social: formulariRepartidor.numSeguretatSocial,
+    contrasenya: formulariRepartidor.contrasenya,
+  };
+
+  if (demanaMatricula.value) {
+    dades.matricula = formulariRepartidor.matricula;
+  }
+
+  return dades;
 }
 
 async function enviaFormulari() {
@@ -264,9 +323,17 @@ async function enviaFormulari() {
     return;
   }
 
-  // De moment només es valida: l'enviament a l'API és la US1.1-T10.
   if (tipusCompte.value === "repartidor") {
-    validaFormulariRepartidor();
+    if (!validaFormulariRepartidor()) {
+      return;
+    }
+
+    await enviaRegistre(
+      `${apiUrl}/api/auth/register/repartidor/`,
+      dadesRegistreRepartidor(),
+      campsApiRepartidor,
+      errorsRepartidor,
+    );
     return;
   }
 
@@ -274,29 +341,18 @@ async function enviaFormulari() {
     return;
   }
 
-  enviant.value = true;
-
-  const dadesRegistre = {
-    nom: formulari.nom,
-    correu: formulari.correu,
-    adreca: formulari.adreca,
-    num_carnet: formulari.numCarnet,
-    contrasenya: formulari.contrasenya,
-  };
-
-  try {
-    await axios.post(`${apiUrl}/api/auth/register/`, dadesRegistre);
-    registreCorrecte();
-  } catch (error) {
-    if (error.response?.status === 400 && error.response.data) {
-      assignaErrorsBackend(error.response.data);
-    } else {
-      errorGeneral.value =
-        "No s'ha pogut completar el registre. Torna-ho a provar més tard.";
-    }
-  } finally {
-    enviant.value = false;
-  }
+  await enviaRegistre(
+    `${apiUrl}/api/auth/register/`,
+    {
+      nom: formulari.nom,
+      correu: formulari.correu,
+      adreca: formulari.adreca,
+      num_carnet: formulari.numCarnet,
+      contrasenya: formulari.contrasenya,
+    },
+    campsApiLector,
+    errors,
+  );
 }
 </script>
 
