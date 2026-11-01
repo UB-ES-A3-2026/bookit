@@ -344,6 +344,36 @@ test.describe("tipus de compte no disponibles (US1-T11)", () => {
     await expect(botoEnviar(page)).toBeVisible();
   });
 
+  test("US1.2-T9 · valida els camps de Biblioteca", async ({ page }) => {
+    const peticions = peticionsDeRegistre(page);
+    await obrirCaixa(page);
+    await tipusCompte(page, "Biblioteca").click();
+
+    await botoEnviar(page).click();
+
+    await expect(
+      page.getByText(
+        "Algún dels camps no és vàlid o no s'ha introduït, torna a intentar-ho",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(page).toHaveURL("/registre");
+    expect(peticions).toEqual([]);
+
+    await page.getByLabel("Correu electrònic oficial", { exact: true }).fill("correu-invalid");
+    await page.getByLabel("Nom de la biblioteca", { exact: true }).fill("Biblioteca Central");
+    await page.getByLabel("DNI / NIE del responsable", { exact: true }).fill("12345678Z");
+    await botoEnviar(page).click();
+
+    await expect(
+      page.getByText(
+        "Algún dels camps no és vàlid o no s'ha introduït, torna a intentar-ho",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    expect(peticions).toEqual([]);
+  });
+
   test("CP-US1-12 · tornar a Lector després de l'avís", async ({ page }) => {
     await obrirCaixa(page);
     await tipusCompte(page, "Repartidor").click();
