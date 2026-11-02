@@ -6,6 +6,8 @@ from django.contrib.messages import get_messages
 from django.urls import reverse
 
 from usuaris.models import PerfilRepartidor, Usuari
+from usuaris.test_registre_repartidor import URL as URL_REGISTRE
+from usuaris.test_registre_repartidor import dades_valides
 
 pytestmark = pytest.mark.django_db
 
@@ -205,3 +207,23 @@ def test_usuari_sense_staff_no_pot_validar(client):
     executa_accio(client, "validar", perfil)
 
     assert estat_de(perfil) == Estat.PENDENT
+
+
+def test_un_repartidor_registrat_per_l_api_surt_a_la_llista_de_pendents(client_admin):
+    client_admin.post(URL_REGISTRE, dades_valides(), content_type="application/json")
+
+    assert resultats(client_admin.get(URL_LLISTA)) == {PerfilRepartidor.objects.get()}
+
+
+@pytest.mark.parametrize(
+    "accio, estat",
+    [("validar", Estat.VALIDAT), ("rebutjar", Estat.REBUTJAT)],
+)
+def test_es_pot_resoldre_un_repartidor_registrat_per_l_api(client_admin, accio, estat):
+    client_admin.post(URL_REGISTRE, dades_valides(), content_type="application/json")
+    perfil = PerfilRepartidor.objects.get()
+
+    executa_accio(client_admin, accio, perfil)
+
+    assert estat_de(perfil) == estat
+    assert not resultats(client_admin.get(URL_LLISTA))
