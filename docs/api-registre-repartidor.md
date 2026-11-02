@@ -20,7 +20,7 @@ Cos JSON (`Content-Type: application/json`):
 |---|---|---|---|
 | `nom` | text | Sí | No pot ser buit. Màxim 150 caràcters. |
 | `cognoms` | text | Sí | No pot ser buit. Màxim 150 caràcters. |
-| `correu` | text | Sí | Format de correu electrònic vàlid. Únic (no distingeix majúscules de minúscules). |
+| `correu` | text | Sí | Format de correu electrònic vàlid. Màxim 254 caràcters. Únic (no distingeix majúscules de minúscules). |
 | `dni` | text | Sí | DNI (8 xifres i lletra de control) o NIE (lletra inicial X, Y o Z, 7 xifres i lletra de control) vàlid segons l'algorisme estàndard de mòdul 23. Únic. Espais, guions i barres no compten. |
 | `telefon` | text | Sí | Telèfon espanyol vàlid de 9 xifres començat per 6, 7, 8 o 9, amb prefix `+34` opcional. Espais, guions i barres no compten. |
 | `vehicle` | text | Sí | Tipus de vehicle. Valors permesos: `"bici"`, `"moto"`, `"cotxe"`. |
@@ -112,7 +112,7 @@ Exemple:
 | Camp obligatori buit o absent | el camp afectat | `Aquest camp és obligatori.` |
 | Correu ja registrat | `correu` | `DNI/correu ja registrat` |
 | DNI/NIE ja registrat | `dni` | `DNI/correu ja registrat` |
-| Correu amb format invàlid | `correu` | `Introduïu una adreça de correu electrònic vàlida.` |
+| Correu amb format invàlid o de més de 254 caràcters | `correu` | `Introduïu una adreça de correu electrònic vàlida.` |
 | Format de DNI/NIE invàlid o lletra incorrecta | `dni` | `El DNI/NIE no és vàlid` |
 | Format de telèfon incorrecte | `telefon` | `El telèfon ha de tenir 9 xifres` |
 | Vehicle invàlid (no és bici, moto ni cotxe) | `vehicle` | `"bici", "moto" o "cotxe" no és una opció vàlida.` |

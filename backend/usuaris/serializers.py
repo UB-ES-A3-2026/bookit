@@ -15,12 +15,24 @@ from usuaris.validacions import (
 )
 
 CAMP_OBLIGATORI = "Aquest camp és obligatori."
+CORREU_INVALID = "Introduïu una adreça de correu electrònic vàlida."
 DNI_CORREU_REGISTRAT = "DNI/correu ja registrat"
 ERRORS_OBLIGATORI = {
     "blank": CAMP_OBLIGATORI,
     "required": CAMP_OBLIGATORI,
     "null": CAMP_OBLIGATORI,
 }
+
+
+def neteja_correu(correu):
+    """Retorna el correu en minúscules, perquè no hi hagi duplicats per majúscules.
+
+    El límit es comprova aquí i no amb `max_length` perquè, a partir de 320
+    caràcters, EmailField també el rebutja i el missatge sortiria repetit.
+    """
+    if len(correu) > Usuari._meta.get_field("email").max_length:
+        raise serializers.ValidationError(CORREU_INVALID)
+    return correu.lower()
 
 
 def missatges_contrasenya(error):
@@ -68,7 +80,7 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
             )
         ],
         error_messages={
-            "invalid": "Introduïu una adreça de correu electrònic vàlida.",
+            "invalid": CORREU_INVALID,
             "required": "Aquest camp és obligatori.",
             "blank": "Aquest camp és obligatori.",
         },
@@ -121,8 +133,7 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
         )
 
     def validate_correu(self, value):
-        """Desa el correu en minúscules perquè no hi hagi duplicats per majúscules."""
-        return value.lower()
+        return neteja_correu(value)
 
     def validate(self, attrs):
         """Valida la contrasenya amb les dades de l'usuari que es vol crear.
@@ -180,7 +191,7 @@ class RepartidorRegistreSerializer(serializers.ModelSerializer):
         ],
         error_messages={
             **ERRORS_OBLIGATORI,
-            "invalid": "Introduïu una adreça de correu electrònic vàlida.",
+            "invalid": CORREU_INVALID,
         },
     )
     dni = serializers.CharField(
@@ -241,8 +252,7 @@ class RepartidorRegistreSerializer(serializers.ModelSerializer):
         )
 
     def validate_correu(self, value):
-        """Desa el correu en minúscules perquè no hi hagi duplicats per majúscules."""
-        return value.lower()
+        return neteja_correu(value)
 
     def validate_dni(self, value):
         """Normalitza el DNI/NIE abans de comprovar que no estigui registrat."""
