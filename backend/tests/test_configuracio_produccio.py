@@ -25,6 +25,7 @@ VARIABLES = (
     "DJANGO_CSRF_COOKIE_SECURE",
     "DJANGO_COOKIE_SAMESITE",
     "DJANGO_PROXY_HTTPS",
+    "POSTGRES_SSLMODE",
 )
 
 
@@ -69,9 +70,35 @@ def test_en_local_no_es_forca_https(carrega_settings):
     assert configuracio["CSRF_COOKIE_SECURE"] is False
 
 
+def test_en_produccio_la_connexio_a_la_bd_va_xifrada(carrega_settings):
+    configuracio = carrega_settings(DJANGO_SECRET_KEY=CLAU_REAL)
+
+    assert configuracio["DATABASES"]["default"]["OPTIONS"]["sslmode"] == "require"
+
+
+def test_en_local_la_bd_no_exigeix_ssl(carrega_settings):
+    configuracio = carrega_settings(DJANGO_DEBUG="True")
+
+    assert configuracio["DATABASES"]["default"]["OPTIONS"]["sslmode"] == "prefer"
+
+
+def test_el_mode_ssl_es_pot_canviar_amb_l_entorn(carrega_settings):
+    configuracio = carrega_settings(
+        DJANGO_SECRET_KEY=CLAU_REAL, POSTGRES_SSLMODE="verify-full"
+    )
+
+    assert configuracio["DATABASES"]["default"]["OPTIONS"]["sslmode"] == "verify-full"
+
+
 @pytest.mark.parametrize(
     "clau",
-    ["", "canvieu-aquesta-clau", "django-insecure-nomes-per-desenvolupament"],
+    [
+        "",
+        "massa-curta",
+        "canvieu-aquesta-clau",
+        "canvieu-aquesta-clau-per-una-de-llarga-i-aleatoria",
+        "django-insecure-nomes-per-desenvolupament",
+    ],
 )
 def test_en_produccio_es_rebutja_una_clau_d_exemple(carrega_settings, clau):
     with pytest.raises(ImproperlyConfigured):
@@ -104,6 +131,46 @@ def test_sense_variables_no_hi_ha_cap_origen_de_confianca(carrega_settings):
 
     assert configuracio["CORS_ALLOWED_ORIGINS"] == []
     assert configuracio["CSRF_TRUSTED_ORIGINS"] == []
+
+
+def test_en_produccio_localhost_no_es_un_host_per_defecte(carrega_settings):
+    configuracio = carrega_settings(DJANGO_SECRET_KEY=CLAU_REAL)
+
+    assert configuracio["ALLOWED_HOSTS"] == []
+
+
+def test_en_local_localhost_es_un_host_per_defecte(carrega_settings):
+    configuracio = carrega_settings(DJANGO_DEBUG="True")
+
+    assert configuracio["ALLOWED_HOSTS"] == ["localhost", "127.0.0.1"]
+
+
+def test_darrere_del_proxy_una_peticio_https_no_es_redirigeix(client, settings):
+    settings.SECURE_SSL_REDIRECT = True
+    settings.SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+    resposta = client.get("/api/health/", HTTP_X_FORWARDED_PROTO="https")
+
+    assert resposta.status_code == 200
+
+
+def test_darrere_del_proxy_una_peticio_http_es_redirigeix_a_https(client, settings):
+    settings.SECURE_SSL_REDIRECT = True
+    settings.SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+    resposta = client.get("/api/health/", HTTP_X_FORWARDED_PROTO="http")
+
+    assert resposta.status_code == 301
+    assert resposta["Location"].startswith("https://")
+
+
+def test_sense_la_capcalera_del_proxy_https_entraria_en_bucle(client, settings):
+    settings.SECURE_SSL_REDIRECT = True
+    settings.SECURE_PROXY_SSL_HEADER = None
+
+    resposta = client.get("/api/health/", HTTP_X_FORWARDED_PROTO="https")
+
+    assert resposta.status_code == 301
 
 
 def test_les_opcions_es_poden_canviar_amb_l_entorn(carrega_settings):

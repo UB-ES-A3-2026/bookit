@@ -56,7 +56,8 @@ Ja hi ha els projectes de backend i frontend i la base de dades PostgreSQL; Djan
   Tests del backend al contenidor: `docker compose exec backend pytest`.
 - Sense `DJANGO_DEBUG=True` s'aplica la configuració de producció: HTTPS, cookies segures i un
   `DJANGO_SECRET_KEY` real obligatori (si no, Django no arrenca). Cal aquesta variable al `.env` per treballar
-  en local i a la CI. Les variables de producció estan documentades al `.env.example`.
+  en local fora de Docker; el `docker-compose.yml` i la CI ja la defineixen. Els valors de producció són a la
+  secció "Desplegament" del README.
 
 ## Àrees sensibles
 Explica el pla i espera confirmació abans de tocar:
