@@ -234,6 +234,23 @@ Aquesta és una decisió de l'equip per a aquest projecte. Es revisarà si canvi
 - Els serveis gratuïts poden tenir limitacions d'ús, rendiment, emmagatzematge o disponibilitat: [verificar segons el pla vigent abans del desplegament].
 - Render PostgreSQL no s'utilitzarà perquè el servei gratuït caduca als 30 dies.
 
+### Variables d'entorn del desplegament
+
+Variables del Render Web Service del backend. `<backend>` i `<frontend>` són els noms dels serveis a Render. Els secrets es posen només al panell de Render, mai al repositori.
+
+| Variable | Valor a Render |
+|---|---|
+| `DJANGO_DEBUG` | `False` |
+| `DJANGO_SECRET_KEY` | Clau aleatòria de 32 caràcters com a mínim |
+| `DJANGO_ALLOWED_HOSTS` | `<backend>.onrender.com` |
+| `CORS_ALLOWED_ORIGINS` | `https://<frontend>.onrender.com` |
+| `CSRF_TRUSTED_ORIGINS` | `https://<frontend>.onrender.com` |
+| `DJANGO_PROXY_HTTPS` | `True`, perquè Render acaba l'HTTPS abans d'arribar a Django |
+| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Dades de connexió de Neon |
+| `POSTGRES_HOST` | Host directe de Neon, sense `-pooler` |
+
+Amb `DJANGO_DEBUG=False`, les cookies segures, la redirecció a HTTPS, HSTS i `POSTGRES_SSLMODE=require` s'activen sols. Si s'afegeix un domini propi, cal afegir-lo a les variables de domini.
+
 ### Pendent
 
 - [Configurar les variables d'entorn del desplegament](#variables-dentorn-del-desplegament).

@@ -25,6 +25,7 @@ VARIABLES = (
     "DJANGO_CSRF_COOKIE_SECURE",
     "DJANGO_COOKIE_SAMESITE",
     "DJANGO_PROXY_HTTPS",
+    "POSTGRES_SSLMODE",
 )
 
 
@@ -69,9 +70,35 @@ def test_en_local_no_es_forca_https(carrega_settings):
     assert configuracio["CSRF_COOKIE_SECURE"] is False
 
 
+def test_en_produccio_la_connexio_a_la_bd_va_xifrada(carrega_settings):
+    configuracio = carrega_settings(DJANGO_SECRET_KEY=CLAU_REAL)
+
+    assert configuracio["DATABASES"]["default"]["OPTIONS"]["sslmode"] == "require"
+
+
+def test_en_local_la_bd_no_exigeix_ssl(carrega_settings):
+    configuracio = carrega_settings(DJANGO_DEBUG="True")
+
+    assert configuracio["DATABASES"]["default"]["OPTIONS"]["sslmode"] == "prefer"
+
+
+def test_el_mode_ssl_es_pot_canviar_amb_l_entorn(carrega_settings):
+    configuracio = carrega_settings(
+        DJANGO_SECRET_KEY=CLAU_REAL, POSTGRES_SSLMODE="verify-full"
+    )
+
+    assert configuracio["DATABASES"]["default"]["OPTIONS"]["sslmode"] == "verify-full"
+
+
 @pytest.mark.parametrize(
     "clau",
-    ["", "canvieu-aquesta-clau", "django-insecure-nomes-per-desenvolupament"],
+    [
+        "",
+        "massa-curta",
+        "canvieu-aquesta-clau",
+        "canvieu-aquesta-clau-per-una-de-llarga-i-aleatoria",
+        "django-insecure-nomes-per-desenvolupament",
+    ],
 )
 def test_en_produccio_es_rebutja_una_clau_d_exemple(carrega_settings, clau):
     with pytest.raises(ImproperlyConfigured):
