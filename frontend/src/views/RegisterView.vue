@@ -24,8 +24,6 @@ const avisTipus = ref("");
 
 const AVIS_NO_IMPLEMENTAT = "Funcionalitat no implementada.";
 
-// Només "Lector" està implementat. Amb els altres tipus es marca l'opció triada
-// i es mostra l'avís; el formulari no s'envia fins que es torna a "Lector".
 function seleccionaTipus(valor) {
   tipusCompte.value = valor;
   avisTipus.value =
@@ -58,6 +56,7 @@ const errors = reactive({
 
 const errorGeneral = ref("");
 const errorBiblioteca = ref("");
+const registreBibliotecaEnviat = ref(false);
 const enviant = ref(false);
 
 function tornaInici() {
@@ -79,6 +78,7 @@ function netejaErrors() {
     errors[camp] = "";
   });
   errorGeneral.value = "";
+  errorBiblioteca.value = "";
 }
 
 function validaFormulariBiblioteca() {
@@ -177,7 +177,38 @@ async function enviaFormulari() {
   netejaErrors();
 
   if (tipusCompte.value === "biblioteca") {
-    validaFormulariBiblioteca();
+    if (!validaFormulariBiblioteca()) {
+      return;
+    }
+
+    enviant.value = true;
+
+    try {
+      await axios.post(`${apiUrl}/api/auth/register/biblioteca/`, {
+        nom: formulariBiblioteca.nom.trim(),
+        correu: formulariBiblioteca.correuOficial.trim(),
+      });
+      registreBibliotecaEnviat.value = true;
+    } catch (error) {
+      if (error.response?.status === 400 && error.response.data) {
+        const errorsBackend = error.response.data;
+        const errorsCamp = ["correu", "nom"]
+          .map((camp) => errorsBackend[camp])
+          .find((missatges) => Array.isArray(missatges));
+
+        if (errorsCamp) {
+          errorBiblioteca.value = errorsCamp.join(" ");
+        } else {
+          errorBiblioteca.value =
+            "No s'ha pogut completar el registre. Revisa les dades i torna-ho a provar.";
+        }
+      } else {
+        errorBiblioteca.value =
+          "No s'ha pogut completar el registre. Torna-ho a provar més tard.";
+      }
+    } finally {
+      enviant.value = false;
+    }
     return;
   }
 
@@ -255,7 +286,28 @@ async function enviaFormulari() {
         </button>
       </nav>
 
-      <form class="register-form" novalidate @submit.prevent="enviaFormulari">
+      <div v-if="registreBibliotecaEnviat" class="register-success" role="status">
+        <h2>Revisa el teu correu</h2>
+        <p>
+          T'hem enviat un correu a
+          <strong>{{ formulariBiblioteca.correuOficial }}</strong>
+          amb l'enllaç per activar el compte de biblioteca.
+        </p>
+        <button
+          class="register-form__submit"
+          type="button"
+          @click="tornaInici"
+        >
+          Tornar a l'inici
+        </button>
+      </div>
+
+      <form
+        v-else
+        class="register-form"
+        novalidate
+        @submit.prevent="enviaFormulari"
+      >
         <fieldset class="account-type">
           <legend>Com et vols registrar?</legend>
 
@@ -793,6 +845,27 @@ async function enviaFormulari() {
   font-size: 0.55rem;
   line-height: 1.2;
   text-align: center;
+}
+
+.register-success {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  color: #4d4541;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.register-success h2 {
+  margin: 0;
+  color: #442d2a;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.15rem;
+}
+
+.register-success p {
+  margin: 0;
 }
 
 .register-form__submit:disabled {
