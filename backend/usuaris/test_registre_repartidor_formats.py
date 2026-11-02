@@ -299,3 +299,25 @@ def test_un_registre_rebutjat_no_canvia_el_repartidor_existent(client):
     usuari = Usuari.objects.get()
     assert usuari.name == "Pol"
     assert usuari.perfil_repartidor.telefon == "+34612345678"
+
+
+def correu_de(mida):
+    return f"{'a' * (mida - len('@example.com'))}@example.com"
+
+
+@pytest.mark.django_db
+def test_correu_de_254_caracters_es_registra(client):
+    resposta = registra(client, correu=correu_de(254))
+
+    assert resposta.status_code == 201
+    assert resposta.json()["correu"] == correu_de(254)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("mida", [255, 320, 321])
+def test_correu_massa_llarg_retorna_400(client, mida):
+    resposta = registra(client, correu=correu_de(mida))
+
+    assert resposta.status_code == 400
+    assert resposta.json() == {"correu": [CORREU_INVALID]}
+    assert not Usuari.objects.exists()
