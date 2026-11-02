@@ -234,6 +234,18 @@ Aquesta és una decisió de l'equip per a aquest projecte. Es revisarà si canvi
 - Els serveis gratuïts poden tenir limitacions d'ús, rendiment, emmagatzematge o disponibilitat: [verificar segons el pla vigent abans del desplegament].
 - Render PostgreSQL no s'utilitzarà perquè el servei gratuït caduca als 30 dies.
 
+### Backend a Render Web Service
+
+El backend Django s'executa en producció amb Gunicorn i utilitza WhiteNoise per servir els fitxers estàtics.
+
+A la configuració del servei de Render, l'ordre de compilació ha d'instal·lar les dependències del backend:
+
+```bash
+pip install -r backend/requirements.txt
+
+cd backend && python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
+
+
 ### Pendent
 
 - [Configurar les variables d'entorn del desplegament](#variables-dentorn-del-desplegament).
