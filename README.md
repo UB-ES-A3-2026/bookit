@@ -28,7 +28,7 @@ Projecte d'Enginyeria del Software (UB), treballat amb Scrum i tauler Kanban.
 - **Frontend**: framework Vue 3 (Vite, Vue Router, Pinia, axios).
 - **Base de dades**: PostgreSQL 16, executat amb Docker. Accés amb l'ORM de Django i migracions.
 - **Entorn de desenvolupament**: VS Code com a IDE, Docker Compose (backend + frontend + PostgreSQL) i variables d'entorn en un fitxer `.env`.
-- **Control de versions i CI**: GitHub i GitHub Actions per executar els tests a cada pull request (sense desplegament de moment).
+- **Control de versions i CI**: GitHub i GitHub Actions per executar els tests a cada pull request i preparar el desplegament del frontend, el backend i la base de dades segons la secció "Desplegament".
 - **Tests**: pytest-django (backend), Vitest (frontend) i Playwright (E2E).
 
 ### Configuració de VS Code
@@ -212,3 +212,30 @@ El contracte de l'endpoint de registre és a `docs/api-registre.md`. La T5 (toke
 | T17 | Configurar CORS amb `django-cors-headers` i els orígens permesos al fitxer `.env` (mai al repositori). | DevOps | C3 | | Backlog |
 | T18 | Crear un component reutilitzable de missatge/avís (toast o modal) per a "Funcionalitat no implementada". *(Abans US0-T11.)* | Frontend | C4 | Pau Albert | Backlog |
 | T19 | Configurar els permisos per defecte de DRF: `IsAuthenticated` per defecte i `AllowAny` explícit als endpoints públics (registre i salut). *(Abans US0-T15.)* | Backend | C3 | Alejandro | Backlog |
+
+
+
+
+
+## Desplegament
+
+La decisió d'equip per al desplegament de l'aplicació és la següent:
+
+| Component | Servei triat | Motiu | Alternativa descartada |
+|---|---|---|---|
+| Frontend (Vue 3 + Vite) | Render Static Site | Servei gratuït i senzill d'utilitzar per desplegar un frontend estàtic. | Vercel i Netlify: no s'han triat perquè l'equip ha acordat utilitzar Render per al frontend. |
+| Backend (Django + DRF) | Render Web Service | Servei gratuït i senzill d'utilitzar per desplegar una aplicació web amb Django. | Azure: més complex per a un projecte petit. |
+| Base de dades (PostgreSQL 16) | Neon | Servei gratuït, senzill d'utilitzar i compatible amb PostgreSQL i amb l'ORM de Django. | Firebase: és NoSQL i no encaixa amb l'ORM de Django; Azure: més complex per a un projecte petit; Render PostgreSQL: el servei gratuït caduca als 30 dies. |
+
+Aquesta és una decisió de l'equip per a aquest projecte. Es revisarà si canvien les condicions, els plans gratuïts o les necessitats de l'aplicació.
+
+### Limitacions conegudes
+
+- Els serveis gratuïts poden tenir limitacions d'ús, rendiment, emmagatzematge o disponibilitat: [verificar segons el pla vigent abans del desplegament].
+- Render PostgreSQL no s'utilitzarà perquè el servei gratuït caduca als 30 dies.
+
+### Pendent
+
+- [Configurar les variables d'entorn del desplegament](#variables-dentorn-del-desplegament).
+- [Configurar la CI/CD](#cicd).
+- [Documentar la configuració dels serveis de desplegament](#configuració-dels-serveis-de-desplegament).
