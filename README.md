@@ -244,6 +244,34 @@ pip install -r backend/requirements.txt
 
 cd backend && python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
 
+### Frontend a Render Static Site
+
+El frontend es publica com a lloc estàtic: Render fa el build de Vue i serveix els fitxers de `frontend/dist`. Configuració del servei:
+
+| Camp a Render | Valor |
+|---|---|
+| Root Directory | `frontend` |
+| Build Command | `npm ci && npm run build` |
+| Publish Directory | `dist` |
+| Variable `VITE_API_URL` | `https://<backend>.onrender.com`, sense `/api` al final |
+
+`VITE_API_URL` s'incrusta al codi en fer el build, així que si es canvia cal tornar a desplegar el frontend. Si no està definida, el build de Render s'atura amb un error, perquè el frontend publicat no busqui l'API a `localhost`.
+
+Perquè rutes com `/registre` funcionin en recarregar la pàgina o en obrir-les des d'un enllaç, cal afegir aquesta regla a "Redirects/Rewrites":
+
+| Source | Destination | Action |
+|---|---|---|
+| `/*` | `/index.html` | Rewrite |
+
+Sense la regla, Render busca un fitxer `/registre` que no existeix i respon 404. Amb la regla, sempre serveix `index.html` i és Vue Router qui mostra la pàgina. Els fitxers que sí existeixen (JavaScript, CSS, imatges) es continuen servint normalment.
+
+Per provar el build de producció en local abans de desplegar (des de `frontend/`):
+
+```bash
+VITE_API_URL=http://localhost:8000 npm run build
+npm run preview
+```
+
 ### Variables d'entorn del desplegament
 
 Variables del Render Web Service del backend. `<backend>` i `<frontend>` són els noms dels serveis a Render. Els secrets es posen només al panell de Render, mai al repositori.
