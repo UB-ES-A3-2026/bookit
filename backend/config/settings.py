@@ -36,7 +36,10 @@ if not DEBUG and (
         "producció. En local, afegiu DJANGO_DEBUG=True al .env."
     )
 
-ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+# En producció no hi ha valor per defecte: sense el domini real no s'accepta cap petició.
+ALLOWED_HOSTS = env.list(
+    "DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"] if DEBUG else []
+)
 
 # Orígens (el frontend) que poden cridar l'API des del navegador. Es llegeixen del .env;
 # sense la variable no se n'accepta cap.
