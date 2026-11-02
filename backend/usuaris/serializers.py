@@ -3,6 +3,10 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import RegexValidator
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
+from rest_framework_simplejwt.serializers import (
+    PasswordField,
+    TokenObtainPairSerializer,
+)
 
 from usuaris.models import Usuari
 
@@ -128,3 +132,41 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         password = validated_data.pop("password")
         return Usuari.objects.create_user(password=password, **validated_data)
+
+
+class IniciSessioSerializer(TokenObtainPairSerializer):
+    """Credencials d'inici de sessió: `correu` i `contrasenya`, com a la resta de l'API.
+
+    Els camps públics es tradueixen a `email` i `password`, que són els que
+    simplejwt fa servir per autenticar l'usuari.
+    """
+
+    default_error_messages = {
+        "no_active_account": "El correu o la contrasenya no són correctes.",
+    }
+
+    correu = serializers.CharField(
+        source="email",
+        write_only=True,
+        error_messages={
+            "required": "Aquest camp és obligatori.",
+            "blank": "Aquest camp és obligatori.",
+        },
+    )
+    contrasenya = PasswordField(
+        source="password",
+        error_messages={
+            "required": "Aquest camp és obligatori.",
+            "blank": "Aquest camp és obligatori.",
+        },
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # simplejwt els afegeix en crear el serializer; aquí els substitueixen els camps en català.
+        del self.fields["email"]
+        del self.fields["password"]
+
+    def validate_correu(self, value):
+        """Passa el correu a minúscules, que és com el desa el registre."""
+        return value.lower()

@@ -3,6 +3,7 @@
 Referència: https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -53,9 +54,20 @@ INSTALLED_APPS = [
 AUTH_USER_MODEL = "usuaris.Usuari"
 
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+}
+
+# Tokens JWT: el frontend renova l'accés sol quan caduca i els desa a sessionStorage,
+# que es buida en tancar la pestanya. Sense rotació ni llista negra.
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "TOKEN_OBTAIN_SERIALIZER": "usuaris.serializers.IniciSessioSerializer",
 }
 
 MIDDLEWARE = [
