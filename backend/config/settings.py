@@ -27,16 +27,13 @@ SECRET_KEY = env(
     "DJANGO_SECRET_KEY", default="django-insecure-nomes-per-desenvolupament"
 )
 
-# Sense DEBUG, el servidor no arrenca amb una clau d'exemple.
-CLAUS_D_EXEMPLE = (
-    "",
-    "canvieu-aquesta-clau",
-    "django-insecure-nomes-per-desenvolupament",
-)
-if not DEBUG and SECRET_KEY in CLAUS_D_EXEMPLE:
+# Sense DEBUG, el servidor no arrenca amb una clau curta o d'exemple.
+if not DEBUG and (
+    len(SECRET_KEY) < 32 or SECRET_KEY.startswith(("canvieu-", "django-insecure-"))
+):
     raise ImproperlyConfigured(
-        "Cal definir un DJANGO_SECRET_KEY real en producció. "
-        "En local, afegiu DJANGO_DEBUG=True al .env."
+        "Cal definir un DJANGO_SECRET_KEY real, de 32 caràcters com a mínim, en "
+        "producció. En local, afegiu DJANGO_DEBUG=True al .env."
     )
 
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
@@ -135,6 +132,12 @@ DATABASES = {
         "PASSWORD": env("POSTGRES_PASSWORD"),
         "HOST": env("POSTGRES_HOST", default="127.0.0.1"),
         "PORT": env("POSTGRES_PORT", default="5432"),
+        # En producció (Neon) la connexió ha d'anar xifrada; en local no hi ha SSL.
+        "OPTIONS": {
+            "sslmode": env(
+                "POSTGRES_SSLMODE", default="prefer" if DEBUG else "require"
+            ),
+        },
     }
 }
 
