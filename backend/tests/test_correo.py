@@ -16,4 +16,4 @@ def test_el_correu_de_consola_no_requereix_smtp():
         recipient_list=["destinatari@example.test"],
     )
 
-    assert resultat == 1
+    assert resultat == 1  # El correu s'ha enviat correctament a la consola
