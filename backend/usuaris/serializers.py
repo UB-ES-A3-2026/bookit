@@ -170,3 +170,19 @@ class IniciSessioSerializer(TokenObtainPairSerializer):
     def validate_correu(self, value):
         """Passa el correu a minúscules, que és com el desa el registre."""
         return value.lower()
+
+
+class UsuariActualSerializer(serializers.ModelSerializer):
+    """Dades de l'usuari autenticat: els mateixos camps per als tres rols.
+
+    No inclou `adreca` ni `num_carnet`: només tenen sentit per al rol `usuari` i
+    el carnet dels altres rols és intern (vegeu `docs/api-auth.md`).
+    """
+
+    nom = serializers.CharField(source="name", read_only=True)
+    correu = serializers.EmailField(source="email", read_only=True)
+    rol = serializers.CharField(source="role", read_only=True)
+
+    class Meta:
+        model = Usuari
+        fields = ("id", "nom", "correu", "rol")
