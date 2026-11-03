@@ -10,7 +10,13 @@ from django.db import transaction
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from rest_framework import serializers
+from rest_framework.exceptions import AuthenticationFailed, PermissionDenied
 from rest_framework.validators import UniqueValidator
+from rest_framework_simplejwt.serializers import (
+    PasswordField,
+    TokenObtainPairSerializer,
+    TokenRefreshSerializer,
+)
 
 from usuaris.models import Biblioteca, PerfilRepartidor, Usuari
 from usuaris.validacions import (
@@ -22,6 +28,12 @@ from usuaris.validacions import (
 )
 
 CAMP_OBLIGATORI = "Aquest camp és obligatori."
+VERIFICA_CORREU = "Verifica el teu correu"
+# Missatges de l'inici de sessió d'un repartidor que encara no pot entrar.
+MISSATGES_ESTAT_REPARTIDOR = {
+    PerfilRepartidor.Estat.PENDENT: "Pendent de validació",
+    PerfilRepartidor.Estat.REBUTJAT: "Validació incompleta",
+}
 CORREU_INVALID = "Introduïu una adreça de correu electrònic vàlida."
 DNI_CORREU_REGISTRAT = "DNI/correu ja registrat"
 ERRORS_OBLIGATORI = {
@@ -177,6 +189,114 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         password = validated_data.pop("password")
         return Usuari.objects.create_user(password=password, **validated_data)
+
+
+class IniciSessioSerializer(TokenObtainPairSerializer):
+    """Credencials d'inici de sessió: `correu` i `contrasenya`, com a la resta de l'API.
+
+    Els camps públics es tradueixen a `email` i `password`, que són els que
+    simplejwt fa servir per autenticar l'usuari.
+    """
+
+    default_error_messages = {
+        "no_active_account": "El correu o la contrasenya no són correctes.",
+    }
+
+    correu = serializers.CharField(
+        source="email",
+        write_only=True,
+        error_messages={
+            "required": "Aquest camp és obligatori.",
+            "blank": "Aquest camp és obligatori.",
+        },
+    )
+    contrasenya = PasswordField(
+        source="password",
+        error_messages={
+            "required": "Aquest camp és obligatori.",
+            "blank": "Aquest camp és obligatori.",
+        },
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # simplejwt els afegeix en crear el serializer; aquí els substitueixen els camps en català.
+        del self.fields["email"]
+        del self.fields["password"]
+
+    def validate_correu(self, value):
+        """Passa el correu a minúscules, que és com el desa el registre."""
+        return value.lower()
+
+    def validate(self, attrs):
+        """Retorna els tokens només si l'estat del compte permet entrar (US2-T3).
+
+        Amb les credencials correctes però un compte que no pot entrar, respon 403
+        amb el motiu. Amb una contrasenya incorrecta sempre es respon el 401
+        genèric, perquè ningú pugui esbrinar l'estat d'un compte aliè.
+        """
+        try:
+            dades = super().validate(attrs)
+        except AuthenticationFailed:
+            self.comprova_biblioteca_sense_verificar(attrs["email"], attrs["password"])
+            raise
+        self.comprova_estat_repartidor(self.user)
+        return dades
+
+    @staticmethod
+    def comprova_biblioteca_sense_verificar(correu, contrasenya):
+        """Django no autentica els comptes inactius, així que la contrasenya es comprova aquí.
+
+        Una biblioteca té el compte inactiu fins que verifica el correu.
+        """
+        biblioteca = Usuari.objects.filter(
+            email=correu, role=Usuari.Role.BIBLIOTECA, is_active=False
+        ).first()
+        if biblioteca is not None and biblioteca.check_password(contrasenya):
+            raise PermissionDenied(VERIFICA_CORREU)
+
+    @staticmethod
+    def comprova_estat_repartidor(usuari):
+        """Rebutja els repartidors amb el perfil pendent o rebutjat."""
+        try:
+            estat = usuari.perfil_repartidor.estat
+        except PerfilRepartidor.DoesNotExist:
+            return
+        if estat in MISSATGES_ESTAT_REPARTIDOR:
+            raise PermissionDenied(MISSATGES_ESTAT_REPARTIDOR[estat])
+
+
+class UsuariActualSerializer(serializers.ModelSerializer):
+    """Dades de l'usuari autenticat: els mateixos camps per als tres rols.
+
+    No inclou `adreca` ni `num_carnet`: només tenen sentit per al rol `usuari` i
+    el carnet dels altres rols és intern (vegeu `docs/api-auth.md`).
+    """
+
+    nom = serializers.CharField(source="name", read_only=True)
+    correu = serializers.EmailField(source="email", read_only=True)
+    rol = serializers.CharField(source="role", read_only=True)
+
+    class Meta:
+        model = Usuari
+        fields = ("id", "nom", "correu", "rol")
+
+
+class RenovacioTokenSerializer(TokenRefreshSerializer):
+    """Renovació del token d'accés que també rebutja els comptes esborrats.
+
+    simplejwt busca l'usuari del token de refresc amb `get()` i, si el compte ja
+    no existeix, la petició acaba en un error 500. Aquí es respon 401, com amb un
+    compte desactivat.
+    """
+
+    def validate(self, attrs):
+        try:
+            return super().validate(attrs)
+        except Usuari.DoesNotExist:
+            raise AuthenticationFailed(
+                self.error_messages["no_active_account"], "no_active_account"
+            )
 
 
 class BibliotecaRegistreSerializer(serializers.Serializer):

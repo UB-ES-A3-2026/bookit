@@ -1,10 +1,35 @@
 <script setup>
+import { computed, ref } from "vue";
+import { useRouter } from "vue-router";
+import { useSessioStore } from "../stores/sessio.js";
 import bibliotecaImage from "../assets/biblioteca.jpg";
 import logoImage from "../assets/bookit-logo.jpg";
+
+const router = useRouter();
+const sessio = useSessioStore();
+
+const nomUsuari = computed(() => {
+  return sessio.usuari?.nom ?? sessio.usuari?.correu ?? "Usuari";
+});
+
+const textCerca = ref("");
+const campCerca = ref(null);
+
+// Porta a la pàgina de resultats amb el text cercat a l'adreça (/cerca?q=...).
+// Si el camp és buit, no es cerca res i el cursor torna al camp.
+function cercaLlibres() {
+  const text = textCerca.value.trim();
+  if (text === "") {
+    campCerca.value.focus();
+    return;
+  }
+  router.push({ name: "cerca", query: { q: text } });
+}
 </script>
 
 <template>
   <main class="home-page">
+    <a class="skip-link" href="#contingut-principal">Vés al contingut principal</a>
     <header class="site-header">
       <RouterLink class="brand" to="/" aria-label="bookit inici">
         <span
@@ -20,13 +45,30 @@ import logoImage from "../assets/bookit-logo.jpg";
         Addison
       </p>
 
-      <RouterLink class="register-button" to="/registre">Registra't</RouterLink>
+      <nav class="header-actions" aria-label="Compte">
+        <template v-if="sessio.autenticat">
+          <span class="user-name">{{ nomUsuari }}</span>
+          <button class="logout-button" type="button" @click="sessio.tancarSessio">
+            Tancar sessió
+          </button>
+        </template>
+        <template v-else>
+          <RouterLink class="login-link" to="/inicia-sessio">
+            Inicia sessió
+          </RouterLink>
+          <RouterLink class="register-button" to="/registre">
+            Registra't
+          </RouterLink>
+        </template>
+      </nav>
     </header>
 
-    <section
-      class="hero-section"
-      :style="{ backgroundImage: `url(${bibliotecaImage})` }"
-    >
+    <section id="contingut-principal" class="hero-section">
+      <img
+        class="hero-image"
+        :src="bibliotecaImage"
+        alt="Interior lluminós d'una biblioteca amb prestatgeries de llibres"
+      />
       <div class="hero-content">
         <p class="eyebrow">La literatura, a la porta de casa</p>
         <h1>Històries que arriben<br />fins a tu.</h1>
@@ -34,6 +76,33 @@ import logoImage from "../assets/bookit-logo.jpg";
           Descobreix els llibres de les biblioteques de la teva ciutat i rep-los
           a casa de manera fàcil, ràpida i sostenible.
         </p>
+
+        <form class="search-box" role="search" @submit.prevent="cercaLlibres">
+          <label class="search-box__label" for="cerca-llibres">
+            Cerca llibres per títol, autor o ISBN
+          </label>
+          <svg
+            class="search-box__icon"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <line x1="16.5" y1="16.5" x2="21" y2="21" />
+          </svg>
+          <input
+            id="cerca-llibres"
+            ref="campCerca"
+            v-model="textCerca"
+            type="search"
+            name="q"
+            autocomplete="off"
+            placeholder="Quin llibre busques?"
+          />
+          <button type="submit">
+            Buscar llibres
+            <span aria-hidden="true">→</span>
+          </button>
+        </form>
       </div>
     </section>
 
@@ -70,6 +139,21 @@ import logoImage from "../assets/bookit-logo.jpg";
   background: #f9f4eb;
 }
 
+.skip-link {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  left: 0;
+  padding: 0.75rem 1rem;
+  color: #fff;
+  background: #5f0000;
+  transform: translateY(-100%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
 .site-header {
   position: relative;
   z-index: 1;
@@ -94,6 +178,12 @@ import logoImage from "../assets/bookit-logo.jpg";
   text-decoration: none;
 }
 
+.brand:focus-visible,
+.register-button:focus-visible {
+  outline: 3px solid #ffbf47;
+  outline-offset: 3px;
+}
+
 .brand-mark {
   display: block;
   width: 2rem;
@@ -105,16 +195,59 @@ import logoImage from "../assets/bookit-logo.jpg";
 
 .header-quote {
   max-width: 30rem;
-  color: #92867c;
+  color: #6b5d52;
   font-family: Georgia, serif;
   font-size: 0.7rem;
   font-weight: 700;
   text-align: center;
 }
 
-.register-button {
+.header-actions {
+  display: flex;
+  align-items: center;
   justify-self: end;
+  gap: 1.1rem;
+}
+
+.login-link {
+  color: #241914;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.login-link:hover,
+.login-link:focus-visible {
+  color: #980000;
+}
+
+.user-name {
+  color: #241914;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.logout-button {
   padding: 0.65rem 1.2rem;
+  border: 0;
+  border-radius: 0.55rem;
+  color: #fff;
+  background: #980000;
+  box-shadow: 0 0.2rem 0.35rem rgb(72 0 0 / 20%);
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.logout-button:hover,
+.logout-button:focus-visible {
+  background: #740000;
+}
+
+.register-button {
+  padding: 0.65rem 1.2rem;
+  white-space: nowrap;
   border-radius: 0.55rem;
   color: #fff;
   background: #980000;
@@ -135,13 +268,25 @@ import logoImage from "../assets/bookit-logo.jpg";
 .hero-section {
   position: relative;
   display: grid;
+  overflow: hidden;
   min-height: 618px;
   place-items: start center;
   padding: 4rem 1.5rem 3rem;
   box-sizing: border-box;
-  background-position: center;
-  background-size: cover;
-  background-attachment: fixed;
+}
+
+.hero-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.hero-section > *:not(.hero-image) {
+  position: relative;
+  z-index: 1;
 }
 
 .hero-section::before {
@@ -160,8 +305,6 @@ import logoImage from "../assets/bookit-logo.jpg";
 }
 
 .hero-content {
-  position: relative;
-  z-index: 1;
   max-width: 52rem;
   text-align: center;
   text-shadow: 0 0 1.5rem rgb(255 253 249 / 92%);
@@ -169,7 +312,7 @@ import logoImage from "../assets/bookit-logo.jpg";
 
 .eyebrow {
   margin: 0 0 1rem;
-  color: #9b2721;
+  color: #7d1713;
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.2em;
@@ -208,6 +351,84 @@ import logoImage from "../assets/bookit-logo.jpg";
   font-weight: 600;
   line-height: 1.35;
   text-shadow: 0 0 0.9rem rgb(255 253 249 / 100%);
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 46rem;
+  margin: 2.5rem auto 0;
+  padding: 0.45rem 0.45rem 0.45rem 1.25rem;
+  border-radius: 0.6rem;
+  background: #fffdf8;
+  box-shadow: 0 0.8rem 2rem rgb(36 25 20 / 22%);
+  text-shadow: none;
+}
+
+/* L'etiqueta no es veu, però els lectors de pantalla la llegeixen. */
+.search-box__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.search-box__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: 0 0 1.25rem;
+  fill: none;
+  stroke: #8e8176;
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+
+.search-box input {
+  min-width: 0;
+  flex: 1;
+  padding: 0.6rem 0;
+  border: 0;
+  color: #241914;
+  background: transparent;
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.search-box input::placeholder {
+  color: #aea7a0;
+}
+
+.search-box input:focus {
+  outline: none;
+}
+
+.search-box:focus-within {
+  outline: 2px solid #a00000;
+  outline-offset: 2px;
+}
+
+.search-box button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.8rem 1.4rem;
+  border: 0;
+  border-radius: 0.45rem;
+  color: #fff;
+  background: #980000;
+  box-shadow: 0 0.2rem 0.35rem rgb(72 0 0 / 20%);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.search-box button:hover,
+.search-box button:focus-visible {
+  background: #720000;
 }
 
 .benefits {
@@ -256,7 +477,7 @@ import logoImage from "../assets/bookit-logo.jpg";
 }
 
 .benefit div span {
-  color: #8e8176;
+  color: #6b5d52;
   font-size: 0.75rem;
 }
 
@@ -271,9 +492,18 @@ import logoImage from "../assets/bookit-logo.jpg";
     display: none;
   }
 
+  .header-actions {
+    gap: 0.75rem;
+    font-size: 0.85rem;
+  }
+
   .hero-section {
     min-height: 31rem;
     padding: 3.5rem 1.25rem 2rem;
+  }
+
+  .hero-image {
+    object-position: 58% center;
   }
 
   .hero-content h1 {
@@ -282,6 +512,22 @@ import logoImage from "../assets/bookit-logo.jpg";
 
   .hero-description {
     font-size: 0.9rem;
+  }
+
+  /* En mòbil, el botó passa a sota del camp i ocupa tot l'ample. */
+  .search-box {
+    flex-wrap: wrap;
+    margin-top: 2rem;
+    padding: 0.45rem;
+  }
+
+  .search-box__icon {
+    margin-left: 0.6rem;
+  }
+
+  .search-box button {
+    flex: 1 0 100%;
+    justify-content: center;
   }
 
   .benefits {
