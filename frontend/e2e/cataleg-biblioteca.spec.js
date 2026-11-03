@@ -7,6 +7,7 @@ const PASSWORD = process.env.E2E_BIBLIOTECA_PASSWORD;
 const URL_LOGIN = "/api/auth/login/";
 const URL_ME = "/api/auth/me/";
 const URL_CATALEG = "/api/cataleg/biblioteca/llibres/";
+const URL_CERCA = "/cerca";
 
 const MISSATGE_CAMPS_OBLIGATORIS =
   "Omple tots els camps obligatoris per continuar";
@@ -19,7 +20,8 @@ function identificador() {
 }
 
 function isbn13Valid() {
-  const base = `978${identificador()}`.slice(0, 12);
+  // Els últims dígits de l'identificador canvien a cada crida; els primers (l'hora) no.
+  const base = `978${identificador().slice(-9)}`;
   const suma = [...base].reduce(
     (total, xifra, index) => total + Number(xifra) * (index % 2 === 0 ? 1 : 3),
     0,
@@ -321,7 +323,7 @@ test.describe("catàleg de biblioteca (US17-T13)", () => {
       .getByRole("button", { name: "Afegir al catàleg", exact: false })
       .click();
 
-    await expect(page.getByText(ISBN_INVALID, { exact: true })).toBeVisible();
+    await expect(page.getByText(MISSATGE_ISBN_INVALID, { exact: true })).toBeVisible();
     await expect(page).toHaveURL("/cataleg/afegir");
   });
 
@@ -364,7 +366,8 @@ test.describe("catàleg de biblioteca (US17-T13)", () => {
         .click();
 
       await expect(page).toHaveURL("/cataleg/afegir");
-      await expect(page.getByRole("alert")).toContainText(MISSATGE_DUPLICAT);
+      // El missatge de duplicat surt sota el camp ISBN (docs/api-cataleg.md).
+      await expect(page.getByText(MISSATGE_DUPLICAT, { exact: true })).toBeVisible();
     } finally {
       await netejarLlibre(request, token, existent.titol);
     }
@@ -396,7 +399,9 @@ test.describe("catàleg de biblioteca (US17-T13)", () => {
         .getByLabel("Portada (URL)", { exact: true })
         .fill("https://example.com/portada-editada.jpg");
 
-      await llibre.getByRole("button", { name: "Desar dades" }).click();
+      // En editar, el títol del llibre es substitueix pel formulari, així que el
+      // botó es busca a la llista i no dins de la fila filtrada pel títol.
+      await llistaCataleg(page).getByRole("button", { name: "Desar dades" }).click();
 
       const editat = llibreCataleg(page, titolEditat);
 
