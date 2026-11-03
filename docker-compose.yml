@@ -31,6 +31,8 @@ services:
       # no pel POSTGRES_HOST ni el POSTGRES_PORT de la màquina local del .env.
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
+      # Aquest docker-compose és només per a desenvolupament.
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-True}
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     volumes:
