@@ -38,8 +38,11 @@ class CercaLlibresView(generics.ListAPIView):
             )
             .annotate(
                 disponible=Exists(exemplar_disponible),
-                mitjana_valoracions=Avg("valoracions__puntuacio"),
-                nombre_valoracions=Count("valoracions", distinct=True),
+                mitjana_valoracions_cerca=Avg("valoracions__puntuacio"),
+                nombre_valoracions_cerca=Count(
+                    "valoracions",
+                    distinct=True,
+                ),
             )
             .order_by("titol", "id")
         )
