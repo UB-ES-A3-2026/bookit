@@ -77,6 +77,9 @@ docker compose ps                  # els tres serveis han de sortir "healthy"
 - En arrencar, el contenidor del backend aplica les migracions pendents (`migrate`) abans d'aixecar el servidor.
   Si creeu migracions noves, reinicieu-lo (`docker compose restart backend`) o executeu
   `docker compose exec backend python manage.py migrate`.
+- Per carregar el catàleg de demostració (biblioteques, llibres, exemplars i valoracions), executeu:
+  `docker compose exec backend python manage.py carrega_dades_exemple`.
+  L'ordre és idempotent i es pot repetir sense duplicar dades.
 
 ---
 

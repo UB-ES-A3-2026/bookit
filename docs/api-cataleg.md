@@ -8,7 +8,8 @@ s'avisa les dues parts.
 
 **Estat**: esborrany. Les decisions pendents són al final del document.
 
-La cerca de llibres que fan els usuaris (US4) no forma part d'aquest contracte. Només s'hi indica què n'ha de veure.
+La cerca de llibres que fan els usuaris (US4) no forma part d'aquest contracte, sinó de `docs/api-cerca.md`. Només
+s'hi indica què n'ha de veure.
 
 ## Resum
 
