@@ -3,12 +3,19 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Avg
 
+from cataleg.validacions import PORTADA_MAX_LENGTH, valida_portada
+
 
 class Llibre(models.Model):
     titol = models.CharField(max_length=255)
     autor = models.CharField(max_length=255)
     isbn = models.CharField(max_length=17, unique=True)
-    portada = models.URLField(blank=True, default="")
+    portada = models.CharField(
+        max_length=PORTADA_MAX_LENGTH,
+        blank=True,
+        default="",
+        validators=[valida_portada],
+    )
 
     def __str__(self):
         return self.titol
