@@ -53,6 +53,7 @@ def neteja_correu(correu):
         raise serializers.ValidationError(CORREU_INVALID)
     return correu.lower()
 
+
 CAMPS_BIBLIOTECA_INVALIDS = (
     "Algún dels camps no és vàlid o no s'ha introduït, torna a intentar-ho"
 )
@@ -298,6 +299,52 @@ class RenovacioTokenSerializer(TokenRefreshSerializer):
             )
 
 
+class BibliotecaRegistreSerializer(serializers.Serializer):
+    nom = serializers.CharField(
+        max_length=150,
+        error_messages={
+            "blank": CAMPS_BIBLIOTECA_INVALIDS,
+            "required": CAMPS_BIBLIOTECA_INVALIDS,
+        },
+    )
+    correu = serializers.EmailField(
+        error_messages={
+            "blank": CAMPS_BIBLIOTECA_INVALIDS,
+            "required": CAMPS_BIBLIOTECA_INVALIDS,
+            "invalid": CAMPS_BIBLIOTECA_INVALIDS,
+        },
+    )
+
+    def validate_correu(self, value):
+        if Usuari.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError(CORREU_BIBLIOTECA_DUPLICAT)
+        return value.lower()
+
+    def create(self, validated_data):
+        with transaction.atomic():
+            usuari = Usuari.objects.create_user(
+                validated_data["correu"],
+                None,
+                {
+                    "name": validated_data["nom"],
+                    "address": "",
+                    "library_card_number": f"biblioteca-{uuid4().hex}",
+                    "role": Usuari.Role.BIBLIOTECA,
+                    "is_active": False,
+                },
+            )
+            return Biblioteca.objects.create(
+                usuari=usuari,
+                nom=validated_data["nom"],
+            )
+
+    def to_representation(self, instance):
+        return {
+            "nom": instance.nom,
+            "correu": instance.usuari.email,
+        }
+
+
 class RepartidorRegistreSerializer(serializers.ModelSerializer):
     """Registre d'un repartidor. Contracte a `docs/api-registre-repartidor.md`.
 
@@ -454,49 +501,3 @@ class RepartidorRegistreSerializer(serializers.ModelSerializer):
             )
             PerfilRepartidor.objects.create(usuari=usuari, **perfil)
         return usuari
-
-
-class BibliotecaRegistreSerializer(serializers.Serializer):
-    nom = serializers.CharField(
-        max_length=150,
-        error_messages={
-            "blank": CAMPS_BIBLIOTECA_INVALIDS,
-            "required": CAMPS_BIBLIOTECA_INVALIDS,
-        },
-    )
-    correu = serializers.EmailField(
-        error_messages={
-            "blank": CAMPS_BIBLIOTECA_INVALIDS,
-            "required": CAMPS_BIBLIOTECA_INVALIDS,
-            "invalid": CAMPS_BIBLIOTECA_INVALIDS,
-        },
-    )
-
-    def validate_correu(self, value):
-        if Usuari.objects.filter(email__iexact=value).exists():
-            raise serializers.ValidationError(CORREU_BIBLIOTECA_DUPLICAT)
-        return value.lower()
-
-    def create(self, validated_data):
-        with transaction.atomic():
-            usuari = Usuari.objects.create_user(
-                validated_data["correu"],
-                None,
-                {
-                    "name": validated_data["nom"],
-                    "address": "",
-                    "library_card_number": f"biblioteca-{uuid4().hex}",
-                    "role": Usuari.Role.BIBLIOTECA,
-                    "is_active": False,
-                },
-            )
-            return Biblioteca.objects.create(
-                usuari=usuari,
-                nom=validated_data["nom"],
-            )
-
-    def to_representation(self, instance):
-        return {
-            "nom": instance.nom,
-            "correu": instance.usuari.email,
-        }

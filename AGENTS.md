@@ -54,6 +54,10 @@ Ja hi ha els projectes de backend i frontend i la base de dades PostgreSQL; Djan
 - Entorn complet amb Docker (des de l'arrel): `docker compose up -d --build --wait` aixeca `db`, `backend`
   (http://localhost:8000) i `frontend` (http://localhost:5173). Dins de Docker el backend usa `POSTGRES_HOST=db`.
   Tests del backend al contenidor: `docker compose exec backend pytest`.
+- Sense `DJANGO_DEBUG=True` s'aplica la configuració de producció: HTTPS, cookies segures i un
+  `DJANGO_SECRET_KEY` real obligatori (si no, Django no arrenca). Cal aquesta variable al `.env` per treballar
+  en local fora de Docker; el `docker-compose.yml` i la CI ja la defineixen. Els valors de producció són a la
+  secció "Desplegament" del README.
 
 ## Àrees sensibles
 Explica el pla i espera confirmació abans de tocar:

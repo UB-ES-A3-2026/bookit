@@ -1,9 +1,11 @@
 import { test, expect } from "@playwright/test";
 
-// Tests E2E de navegació com a convidat (US0-T17).
-// Cada test correspon a un cas de docs/casos-prova-us0.md. El CP-US0-06 (teclat) es prova a mà a la T18.
+// Tests E2E de navegació com a convidat (US0-T17, ampliats a la US0-T24).
+// Cada test correspon a un cas de docs/casos-prova-us0.md. El CP-US0-06 (teclat) es prova a mà a la T18, i el
+// CP-US0-09 i el CP-US0-10 (cercador) són als tests de la cerca de la US4 (e2e/cerca.spec.js).
 
 const botoRegistre = (page) => page.getByRole("link", { name: "Registra't" });
+const botoIniciSessio = (page) => page.getByRole("link", { name: "Inicia sessió" });
 
 // Des de US1-T7, la pantalla de registre és la caixa "Crear un compte".
 const titolRegistre = (page) => page.getByRole("heading", { name: "Crear un compte" });
@@ -19,6 +21,7 @@ test("CP-US0-01 · un convidat obre la pàgina d'inici", async ({ page }) => {
 
   await expect(page).toHaveURL("/");
   await expect(page.getByText("bookit.", { exact: true })).toBeVisible();
+  await expect(botoIniciSessio(page)).toBeVisible();
   await expect(botoRegistre(page)).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -70,4 +73,26 @@ test("CP-US0-05 · obrir /registre directament o recarregar-la", async ({ page }
 
   expect(respostaRecarrega.status()).toBe(200);
   await expect(titolRegistre(page)).toBeVisible();
+});
+
+test("CP-US0-07 · clic a \"Inicia sessió\" obre la caixa d'inici de sessió", async ({ page }) => {
+  await page.goto("/");
+
+  await botoIniciSessio(page).click();
+
+  await expect(page).toHaveURL("/inicia-sessio");
+  await expect(page.getByRole("heading", { name: "Inicia Sessió" })).toBeVisible();
+});
+
+test.describe("capçalera en mòbil", () => {
+  test.use({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
+
+  test("CP-US0-08 · \"Inicia sessió\" i \"Registra't\" es veuen sencers", async ({ page }) => {
+    await page.goto("/");
+
+    await expect(botoIniciSessio(page)).toBeInViewport({ ratio: 1 });
+    await expect(botoRegistre(page)).toBeInViewport({ ratio: 1 });
+    const ampladaPagina = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(ampladaPagina).toBeLessThanOrEqual(375);
+  });
 });

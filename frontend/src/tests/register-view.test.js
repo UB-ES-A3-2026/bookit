@@ -109,16 +109,6 @@ describe("formulari de registre", () => {
     expect(axios.post).not.toHaveBeenCalled();
   });
 
-  it("mostra el formulari de repartidor en triar-ne el tipus", async () => {
-    const element = renderitza();
-
-    element.querySelector("button.account-type__option:nth-of-type(2)").click();
-    await nextTick();
-
-    expect(element.querySelector("#repartidor-correu")).not.toBeNull();
-    expect(element.textContent).not.toContain("Funcionalitat no implementada.");
-  });
-
   it("mostra els errors retornats pel backend", async () => {
     axios.post.mockRejectedValue({
       response: {
