@@ -256,3 +256,98 @@ test.describe("registre de biblioteca (US1.2)", () => {
     await page.goto("/registre");
   });
 });
+
+// Pàgina de verificació: la biblioteca tria la contrasenya en obrir l'enllaç del correu.
+// L'API es simula amb page.route perquè l'enllaç real només surt al correu.
+test.describe("triar la contrasenya en verificar el compte", () => {
+  const RUTA = "/verificacio/biblioteca/MQ/token-de-prova";
+  const URL_API = "**/api/auth/verify/biblioteca/MQ/token-de-prova/";
+  const CAPCALERES_CORS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "*",
+  };
+
+  // Respon el GET (comprovació de l'enllaç) i el POST (contrasenya) de la verificació.
+  async function simulaVerificacio(page, { get, post }) {
+    const enviades = [];
+    await page.route(URL_API, async (route) => {
+      const peticio = route.request();
+      if (peticio.method() === "OPTIONS") {
+        await route.fulfill({ status: 204, headers: CAPCALERES_CORS });
+        return;
+      }
+      if (peticio.method() === "POST") {
+        enviades.push(peticio.postDataJSON());
+        await route.fulfill({ headers: CAPCALERES_CORS, ...post });
+        return;
+      }
+      await route.fulfill({ headers: CAPCALERES_CORS, ...get });
+    });
+    return enviades;
+  }
+
+  const enllacValid = { status: 200, json: { correu: "biblioteca@example.com" } };
+  const enllacInvalid = {
+    status: 400,
+    json: { detail: "L'enllaç de verificació no és vàlid o ha caducat." },
+  };
+
+  test("demana la contrasenya i activa el compte", async ({ page }) => {
+    const enviades = await simulaVerificacio(page, {
+      get: enllacValid,
+      post: { status: 200, json: { detail: "El compte de biblioteca s'ha verificat correctament." } },
+    });
+    await page.goto(RUTA);
+
+    await expect(page.getByText("biblioteca@example.com")).toBeVisible();
+    await page.getByLabel("Contrasenya", { exact: true }).fill("Llibres-de-tardor-24");
+    await page.getByLabel("Confirmar contrasenya", { exact: true }).fill("Llibres-de-tardor-24");
+    await page.getByRole("button", { name: "Activar el compte" }).click();
+
+    await expect(page.getByText("El compte de biblioteca s'ha verificat correctament.")).toBeVisible();
+    expect(enviades).toEqual([{ contrasenya: "Llibres-de-tardor-24" }]);
+
+    await page.getByRole("link", { name: "Iniciar sessió" }).click();
+    await expect(page).toHaveURL("/inicia-sessio");
+  });
+
+  test("no envia res si les contrasenyes no coincideixen", async ({ page }) => {
+    const enviades = await simulaVerificacio(page, { get: enllacValid, post: enllacValid });
+    await page.goto(RUTA);
+
+    await page.getByLabel("Contrasenya", { exact: true }).fill("Llibres-de-tardor-24");
+    await page.getByLabel("Confirmar contrasenya", { exact: true }).fill("Una-altra-cosa-24");
+    await page.getByRole("button", { name: "Activar el compte" }).click();
+
+    await expect(page.getByText("Les contrasenyes no coincideixen.")).toBeVisible();
+    expect(enviades).toEqual([]);
+  });
+
+  test("mostra el motiu si la contrasenya no és prou segura", async ({ page }) => {
+    await simulaVerificacio(page, {
+      get: enllacValid,
+      post: {
+        status: 400,
+        json: { contrasenya: ["Aquesta contrasenya és massa curta. Ha de tenir com a mínim 8 caràcters."] },
+      },
+    });
+    await page.goto(RUTA);
+
+    await page.getByLabel("Contrasenya", { exact: true }).fill("curta1");
+    await page.getByLabel("Confirmar contrasenya", { exact: true }).fill("curta1");
+    await page.getByRole("button", { name: "Activar el compte" }).click();
+
+    await expect(page.getByText(/massa curta/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Activar el compte" })).toBeVisible();
+  });
+
+  test("amb un enllaç caducat no demana la contrasenya", async ({ page }) => {
+    await simulaVerificacio(page, { get: enllacInvalid, post: enllacInvalid });
+    await page.goto(RUTA);
+
+    await expect(page.getByRole("alert")).toContainText(
+      "L'enllaç de verificació no és vàlid o ha caducat.",
+    );
+    await expect(page.getByLabel("Contrasenya", { exact: true })).toHaveCount(0);
+  });
+});
