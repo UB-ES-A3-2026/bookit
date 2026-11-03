@@ -1,17 +1,125 @@
 <script setup>
-import { onMounted, ref } from "vue";
+import { onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import logoImage from "../assets/bookit-logo.jpg";
-import { llistaCataleg } from "../services/cataleg.js";
+import {
+  actualitzaExemplars,
+  editaLlibre,
+  llistaCataleg,
+  retiraLlibre,
+} from "../services/cataleg.js";
 
 const router = useRouter();
 
 const llibres = ref([]);
 const carregant = ref(true);
 const error = ref("");
+const editantId = ref(null);
+const desantId = ref(null);
+const errorAccio = ref("");
+const formulariEdicio = reactive({
+  titol: "",
+  autor: "",
+  portada: "",
+  exemplars: 0,
+});
 
 function textExemplars(quantitat) {
   return quantitat === 1 ? "1 exemplar" : `${quantitat} exemplars`;
+}
+
+function iniciaEdicio(llibre) {
+  editantId.value = llibre.id;
+  errorAccio.value = "";
+  Object.assign(formulariEdicio, {
+    titol: llibre.titol,
+    autor: llibre.autor,
+    portada: llibre.portada,
+    exemplars: llibre.exemplars,
+  });
+}
+
+function cancel·laEdicio() {
+  editantId.value = null;
+  errorAccio.value = "";
+}
+
+function actualitzaLlibreLocal(dades) {
+  const index = llibres.value.findIndex((llibre) => llibre.id === dades.id);
+  if (index !== -1) {
+    llibres.value[index] = dades;
+  }
+}
+
+async function desaEdicio(llibre) {
+  const titol = formulariEdicio.titol.trim();
+  const autor = formulariEdicio.autor.trim();
+
+  if (!titol || !autor) {
+    errorAccio.value = "El títol i l'autor són obligatoris.";
+    return;
+  }
+
+  desantId.value = llibre.id;
+  errorAccio.value = "";
+  try {
+    const dades = await editaLlibre(llibre.id, {
+      titol,
+      autor,
+      portada: formulariEdicio.portada.trim(),
+    });
+    actualitzaLlibreLocal(dades);
+    cancel·laEdicio();
+  } catch {
+    errorAccio.value =
+      "No s'han pogut desar les dades del llibre. Torna-ho a provar.";
+  } finally {
+    desantId.value = null;
+  }
+}
+
+async function desaExemplars(llibre) {
+  const exemplars = Number(llibre.exemplars);
+  if (!Number.isInteger(exemplars) || exemplars < 0) {
+    errorAccio.value = "Els exemplars han de ser un nombre enter més gran o igual a 0.";
+    return;
+  }
+
+  desantId.value = llibre.id;
+  errorAccio.value = "";
+  try {
+    const dades = await actualitzaExemplars(llibre.id, exemplars);
+    actualitzaLlibreLocal(dades);
+    if (editantId.value === llibre.id) {
+      formulariEdicio.exemplars = dades.exemplars;
+    }
+  } catch {
+    errorAccio.value =
+      "No s'han pogut actualitzar els exemplars. Torna-ho a provar.";
+  } finally {
+    desantId.value = null;
+  }
+}
+
+async function confirmaRetirada(llibre) {
+  if (!window.confirm(`Vols retirar «${llibre.titol}» del catàleg?`)) {
+    return;
+  }
+
+  desantId.value = llibre.id;
+  errorAccio.value = "";
+  try {
+    await retiraLlibre(llibre.id);
+    llibres.value = llibres.value.filter((element) => element.id !== llibre.id);
+    if (editantId.value === llibre.id) {
+      cancel·laEdicio();
+    }
+  } catch {
+    errorAccio.value =
+      "No s'ha pogut retirar el llibre. Torna-ho a provar.";
+  } finally {
+    desantId.value = null;
+  }
 }
 
 async function carregaCataleg() {
@@ -71,7 +179,11 @@ onMounted(carregaCataleg);
         Encara no tens cap llibre al catàleg.
       </p>
 
-      <ul v-else class="llista-llibres" aria-label="Llibres del catàleg">
+      <p v-if="errorAccio" class="accio-error" role="alert">
+        {{ errorAccio }}
+      </p>
+
+      <ul v-if="llibres.length > 0" class="llista-llibres" aria-label="Llibres del catàleg">
         <li v-for="llibre in llibres" :key="llibre.id" class="llibre">
           <img
             v-if="llibre.portada"
@@ -83,13 +195,65 @@ onMounted(carregaCataleg);
             {{ llibre.titol.charAt(0) }}
           </span>
 
-          <div class="dades-llibre">
+          <div v-if="editantId !== llibre.id" class="dades-llibre">
             <h2>{{ llibre.titol }}</h2>
             <p class="autor">{{ llibre.autor }}</p>
             <p class="isbn">ISBN {{ llibre.isbn }}</p>
           </div>
 
-          <span class="exemplars">{{ textExemplars(llibre.exemplars) }}</span>
+          <div v-else class="formulari-edicio">
+            <label>
+              Títol
+              <input v-model="formulariEdicio.titol" type="text" />
+            </label>
+            <label>
+              Autor
+              <input v-model="formulariEdicio.autor" type="text" />
+            </label>
+            <label>
+              Portada (URL)
+              <input v-model="formulariEdicio.portada" type="url" />
+            </label>
+            <div class="accions">
+              <button
+                type="button"
+                :disabled="desantId === llibre.id"
+                @click="desaEdicio(llibre)"
+              >
+                Desar dades
+              </button>
+              <button type="button" class="secondary-button" @click="cancel·laEdicio">
+                Cancel·lar
+              </button>
+            </div>
+          </div>
+
+          <div class="accions-llibre">
+            <span class="exemplars">{{ textExemplars(llibre.exemplars) }}</span>
+            <button type="button" @click="iniciaEdicio(llibre)">
+              Editar
+            </button>
+            <label class="camp-exemplars">
+              Exemplars
+              <input
+                v-model.number="llibre.exemplars"
+                type="number"
+                min="0"
+                :aria-label="`Exemplars de ${llibre.titol}`"
+              />
+              <button type="button" :disabled="desantId === llibre.id" @click="desaExemplars(llibre)">
+                Actualitzar
+              </button>
+            </label>
+            <button
+              type="button"
+              class="danger-button"
+              :disabled="desantId === llibre.id"
+              @click="confirmaRetirada(llibre)"
+            >
+              Retirar
+            </button>
+          </div>
         </li>
       </ul>
     </section>
@@ -192,6 +356,15 @@ h1 {
   margin: 0 0 1rem;
 }
 
+.accio-error {
+  margin: 0 0 1rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid #d59b9b;
+  border-radius: 0.55rem;
+  color: #870000;
+  background: #fff5f5;
+}
+
 .secondary-button {
   padding: 0.6rem 1.1rem;
   border: 1px solid #dfd1bd;
@@ -265,6 +438,77 @@ h1 {
   font-size: 0.85rem;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.accions-llibre,
+.accions,
+.camp-exemplars {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.accions-llibre {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.accions-llibre button,
+.accions button,
+.camp-exemplars button {
+  padding: 0.35rem 0.6rem;
+  border: 1px solid #dfd1bd;
+  border-radius: 0.4rem;
+  color: #241914;
+  background: #fff;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.accions-llibre button:disabled,
+.accions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.danger-button {
+  color: #870000 !important;
+}
+
+.camp-exemplars {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.camp-exemplars input {
+  width: 4.5rem;
+  padding: 0.35rem;
+  border: 1px solid #dfd1bd;
+  border-radius: 0.4rem;
+  font: inherit;
+}
+
+.formulari-edicio {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.formulari-edicio label {
+  display: grid;
+  gap: 0.2rem;
+  color: #4d4541;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.formulari-edicio input {
+  min-width: 14rem;
+  padding: 0.45rem;
+  border: 1px solid #dfd1bd;
+  border-radius: 0.4rem;
+  font: inherit;
 }
 
 @media (max-width: 560px) {
