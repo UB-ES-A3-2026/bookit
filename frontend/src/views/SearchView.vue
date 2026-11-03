@@ -108,7 +108,6 @@ watch(() => [textCercat.value, pagina.value], cerca, { immediate: true });
         </button>
       </div>
 
-      <!-- El missatge quan no hi ha resultats és la US4-T9. -->
       <template v-else-if="resultats.length > 0">
         <ul class="llista-resultats" aria-label="Resultats de la cerca">
           <li v-for="llibre in resultats" :key="llibre.id" class="llibre">
@@ -160,6 +159,11 @@ watch(() => [textCercat.value, pagina.value], cerca, { immediate: true });
           </button>
         </nav>
       </template>
+
+      <p v-else-if="textCercat" class="estat sense-resultats">
+        No s'ha trobat el llibre cercat, assegura't que l'informació introduïda
+        sigui correcta
+      </p>
     </section>
   </main>
 </template>
@@ -247,6 +251,11 @@ h1 {
   border-radius: 0.75rem;
   color: #4d4541;
   background: #fffdf8;
+}
+
+.sense-resultats {
+  color: #241914;
+  font-weight: 700;
 }
 
 .estat-error {
