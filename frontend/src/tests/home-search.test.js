@@ -1,4 +1,5 @@
 import { mount } from "@vue/test-utils";
+import { createPinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import HomeView from "../views/HomeView.vue";
 
@@ -14,6 +15,8 @@ vi.mock("vue-router", () => ({
 function muntaInici() {
   return mount(HomeView, {
     global: {
+      // La capçalera consulta la sessió (Pinia) per saber quins botons mostra.
+      plugins: [createPinia()],
       components: {
         RouterLink: {
           template: "<a><slot /></a>",

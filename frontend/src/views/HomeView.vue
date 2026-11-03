@@ -1,10 +1,16 @@
 <script setup>
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
+import { useSessioStore } from "../stores/sessio.js";
 import bibliotecaImage from "../assets/biblioteca.jpg";
 import logoImage from "../assets/bookit-logo.jpg";
 
 const router = useRouter();
+const sessio = useSessioStore();
+
+const nomUsuari = computed(() => {
+  return sessio.usuari?.nom ?? sessio.usuari?.correu ?? "Usuari";
+});
 
 const textCerca = ref("");
 const campCerca = ref(null);
@@ -23,6 +29,7 @@ function cercaLlibres() {
 
 <template>
   <main class="home-page">
+    <a class="skip-link" href="#contingut-principal">Vés al contingut principal</a>
     <header class="site-header">
       <RouterLink class="brand" to="/" aria-label="bookit inici">
         <span
@@ -38,13 +45,30 @@ function cercaLlibres() {
         Addison
       </p>
 
-      <RouterLink class="register-button" to="/registre">Registra't</RouterLink>
+      <nav class="header-actions" aria-label="Compte">
+        <template v-if="sessio.autenticat">
+          <span class="user-name">{{ nomUsuari }}</span>
+          <button class="logout-button" type="button" @click="sessio.tancarSessio">
+            Tancar sessió
+          </button>
+        </template>
+        <template v-else>
+          <RouterLink class="login-link" to="/inicia-sessio">
+            Inicia sessió
+          </RouterLink>
+          <RouterLink class="register-button" to="/registre">
+            Registra't
+          </RouterLink>
+        </template>
+      </nav>
     </header>
 
-    <section
-      class="hero-section"
-      :style="{ backgroundImage: `url(${bibliotecaImage})` }"
-    >
+    <section id="contingut-principal" class="hero-section">
+      <img
+        class="hero-image"
+        :src="bibliotecaImage"
+        alt="Interior lluminós d'una biblioteca amb prestatgeries de llibres"
+      />
       <div class="hero-content">
         <p class="eyebrow">La literatura, a la porta de casa</p>
         <h1>Històries que arriben<br />fins a tu.</h1>
@@ -115,6 +139,21 @@ function cercaLlibres() {
   background: #f9f4eb;
 }
 
+.skip-link {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  left: 0;
+  padding: 0.75rem 1rem;
+  color: #fff;
+  background: #5f0000;
+  transform: translateY(-100%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
 .site-header {
   position: relative;
   z-index: 1;
@@ -139,6 +178,12 @@ function cercaLlibres() {
   text-decoration: none;
 }
 
+.brand:focus-visible,
+.register-button:focus-visible {
+  outline: 3px solid #ffbf47;
+  outline-offset: 3px;
+}
+
 .brand-mark {
   display: block;
   width: 2rem;
@@ -150,16 +195,59 @@ function cercaLlibres() {
 
 .header-quote {
   max-width: 30rem;
-  color: #92867c;
+  color: #6b5d52;
   font-family: Georgia, serif;
   font-size: 0.7rem;
   font-weight: 700;
   text-align: center;
 }
 
-.register-button {
+.header-actions {
+  display: flex;
+  align-items: center;
   justify-self: end;
+  gap: 1.1rem;
+}
+
+.login-link {
+  color: #241914;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.login-link:hover,
+.login-link:focus-visible {
+  color: #980000;
+}
+
+.user-name {
+  color: #241914;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.logout-button {
   padding: 0.65rem 1.2rem;
+  border: 0;
+  border-radius: 0.55rem;
+  color: #fff;
+  background: #980000;
+  box-shadow: 0 0.2rem 0.35rem rgb(72 0 0 / 20%);
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.logout-button:hover,
+.logout-button:focus-visible {
+  background: #740000;
+}
+
+.register-button {
+  padding: 0.65rem 1.2rem;
+  white-space: nowrap;
   border-radius: 0.55rem;
   color: #fff;
   background: #980000;
@@ -180,13 +268,25 @@ function cercaLlibres() {
 .hero-section {
   position: relative;
   display: grid;
+  overflow: hidden;
   min-height: 618px;
   place-items: start center;
   padding: 4rem 1.5rem 3rem;
   box-sizing: border-box;
-  background-position: center;
-  background-size: cover;
-  background-attachment: fixed;
+}
+
+.hero-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.hero-section > *:not(.hero-image) {
+  position: relative;
+  z-index: 1;
 }
 
 .hero-section::before {
@@ -205,8 +305,6 @@ function cercaLlibres() {
 }
 
 .hero-content {
-  position: relative;
-  z-index: 1;
   max-width: 52rem;
   text-align: center;
   text-shadow: 0 0 1.5rem rgb(255 253 249 / 92%);
@@ -214,7 +312,7 @@ function cercaLlibres() {
 
 .eyebrow {
   margin: 0 0 1rem;
-  color: #9b2721;
+  color: #7d1713;
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.2em;
@@ -379,7 +477,7 @@ function cercaLlibres() {
 }
 
 .benefit div span {
-  color: #8e8176;
+  color: #6b5d52;
   font-size: 0.75rem;
 }
 
@@ -394,9 +492,18 @@ function cercaLlibres() {
     display: none;
   }
 
+  .header-actions {
+    gap: 0.75rem;
+    font-size: 0.85rem;
+  }
+
   .hero-section {
     min-height: 31rem;
     padding: 3.5rem 1.25rem 2rem;
+  }
+
+  .hero-image {
+    object-position: 58% center;
   }
 
   .hero-content h1 {
