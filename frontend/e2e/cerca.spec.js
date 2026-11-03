@@ -57,3 +57,148 @@ test.describe("en mòbil", () => {
     expect(ampladaPagina).toBeLessThanOrEqual(375);
   });
 });
+
+// Tests E2E de la pàgina de resultats (US4-T8). L'API es simula amb page.route perquè encara no hi ha dades
+// d'exemple del catàleg (US4-T4).
+test.describe("pàgina de resultats (US4-T8)", () => {
+  const CAPCALERES_CORS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "*",
+  };
+
+  const llibres = [
+    {
+      id: 1,
+      titol: "La plaça del Diamant",
+      autor: "Mercè Rodoreda",
+      isbn: "9788475882574",
+      portada: "https://example.com/portades/placa.jpg",
+      disponible: true,
+      mitjana_valoracions: 4.25,
+      nombre_valoracions: 12,
+    },
+    {
+      id: 2,
+      titol: "Mirall trencat",
+      autor: "Mercè Rodoreda",
+      isbn: "9788475881355",
+      portada: "",
+      disponible: false,
+      mitjana_valoracions: null,
+      nombre_valoracions: 0,
+    },
+  ];
+
+  const resposta = (results, canvis = {}) => ({
+    count: results.length,
+    next: null,
+    previous: null,
+    results,
+    ...canvis,
+  });
+
+  // Respon les peticions de cerca i en desa els paràmetres per poder-los comprovar.
+  async function simulaCerca(page, estat, cos) {
+    const peticions = [];
+    await page.route("**/api/cataleg/llibres/**", async (route) => {
+      if (route.request().method() === "OPTIONS") {
+        await route.fulfill({ status: 204, headers: CAPCALERES_CORS });
+        return;
+      }
+      peticions.push(new URL(route.request().url()).searchParams);
+      await route.fulfill({ status: estat, headers: CAPCALERES_CORS, json: cos });
+    });
+    return peticions;
+  }
+
+  const targetes = (page) => page.getByRole("list", { name: "Resultats de la cerca" }).getByRole("listitem");
+
+  test("demana a l'API el text cercat", async ({ page }) => {
+    const peticions = await simulaCerca(page, 200, resposta(llibres));
+    await page.goto("/cerca?q=Rodoreda");
+
+    await expect(targetes(page)).toHaveCount(2);
+    expect(peticions[0].get("q")).toBe("Rodoreda");
+    expect(peticions[0].get("page")).toBe("1");
+  });
+
+  test("mostra el títol, l'autor, la disponibilitat i les valoracions de cada llibre", async ({ page }) => {
+    await simulaCerca(page, 200, resposta(llibres));
+    await page.goto("/cerca?q=Rodoreda");
+
+    await expect(page.getByText("2 resultats.")).toBeVisible();
+    const primer = targetes(page).nth(0);
+    await expect(primer.getByRole("heading", { name: "La plaça del Diamant" })).toBeVisible();
+    await expect(primer).toContainText("Mercè Rodoreda");
+    await expect(primer).toContainText("Disponible");
+    await expect(primer).toContainText("4,3 de 5 · 12 valoracions");
+
+    const segon = targetes(page).nth(1);
+    await expect(segon).toContainText("No disponible");
+    await expect(segon).toContainText("Sense valoracions");
+  });
+
+  test("mostra la portada o, si no n'hi ha, una imatge per defecte", async ({ page }) => {
+    await simulaCerca(page, 200, resposta(llibres));
+    await page.goto("/cerca?q=Rodoreda");
+
+    await expect(targetes(page).nth(0).getByRole("img", { name: "Portada de La plaça del Diamant" })).toHaveAttribute(
+      "src",
+      llibres[0].portada,
+    );
+    await expect(targetes(page).nth(1).getByRole("img")).toHaveCount(0);
+    await expect(targetes(page).nth(1).locator(".portada-per-defecte")).toBeVisible();
+  });
+
+  test("mostra un missatge mentre cerca", async ({ page }) => {
+    await page.route("**/api/cataleg/llibres/**", () => {});
+    await page.goto("/cerca?q=Rodoreda");
+
+    await expect(page.getByRole("status")).toHaveText("Cercant llibres...");
+  });
+
+  test("mostra un error si l'API falla i permet tornar-ho a provar", async ({ page }) => {
+    let intents = 0;
+    await page.route("**/api/cataleg/llibres/**", async (route) => {
+      intents += 1;
+      if (intents === 1) {
+        await route.fulfill({ status: 500, headers: CAPCALERES_CORS, body: "" });
+        return;
+      }
+      await route.fulfill({ status: 200, headers: CAPCALERES_CORS, json: resposta(llibres) });
+    });
+    await page.goto("/cerca?q=Rodoreda");
+
+    await expect(page.getByRole("alert")).toContainText("No s'ha pogut fer la cerca.");
+    await page.getByRole("button", { name: "Tornar-ho a provar" }).click();
+
+    await expect(page.getByRole("alert")).toHaveCount(0);
+    await expect(targetes(page)).toHaveCount(2);
+  });
+
+  test("mostra un error si el servidor no respon", async ({ page }) => {
+    await page.route("**/api/cataleg/llibres/**", (route) => route.abort());
+    await page.goto("/cerca?q=Rodoreda");
+
+    await expect(page.getByRole("alert")).toContainText("No s'ha pogut fer la cerca.");
+  });
+
+  test("passa a la pàgina següent de resultats", async ({ page }) => {
+    const peticions = await simulaCerca(page, 200, resposta(llibres, { count: 12, next: "pagina-2" }));
+    await page.goto("/cerca?q=Rodoreda");
+
+    await expect(page.getByRole("button", { name: "Anterior" })).toBeDisabled();
+    await page.getByRole("button", { name: "Següent" }).click();
+
+    await expect(page).toHaveURL("/cerca?q=Rodoreda&pagina=2");
+    await expect.poll(() => peticions.at(-1)?.get("page")).toBe("2");
+  });
+
+  test("sense text cercat no es fa cap petició", async ({ page }) => {
+    const peticions = await simulaCerca(page, 200, resposta(llibres));
+    await page.goto("/cerca");
+
+    await expect(page.getByText("Escriu el títol, l'autor o l'ISBN al cercador de la pàgina d'inici.")).toBeVisible();
+    expect(peticions).toHaveLength(0);
+  });
+});
