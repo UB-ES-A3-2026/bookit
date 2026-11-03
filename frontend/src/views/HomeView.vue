@@ -13,6 +13,7 @@ const nomUsuari = computed(() => {
 
 <template>
   <main class="home-page">
+    <a class="skip-link" href="#contingut-principal">Vés al contingut principal</a>
     <header class="site-header">
       <RouterLink class="brand" to="/" aria-label="bookit inici">
         <span
@@ -46,10 +47,12 @@ const nomUsuari = computed(() => {
       </nav>
     </header>
 
-    <section
-      class="hero-section"
-      :style="{ backgroundImage: `url(${bibliotecaImage})` }"
-    >
+    <section id="contingut-principal" class="hero-section">
+      <img
+        class="hero-image"
+        :src="bibliotecaImage"
+        alt="Interior lluminós d'una biblioteca amb prestatgeries de llibres"
+      />
       <div class="hero-content">
         <p class="eyebrow">La literatura, a la porta de casa</p>
         <h1>Històries que arriben<br />fins a tu.</h1>
@@ -93,6 +96,21 @@ const nomUsuari = computed(() => {
   background: #f9f4eb;
 }
 
+.skip-link {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  left: 0;
+  padding: 0.75rem 1rem;
+  color: #fff;
+  background: #5f0000;
+  transform: translateY(-100%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
 .site-header {
   position: relative;
   z-index: 1;
@@ -117,6 +135,12 @@ const nomUsuari = computed(() => {
   text-decoration: none;
 }
 
+.brand:focus-visible,
+.register-button:focus-visible {
+  outline: 3px solid #ffbf47;
+  outline-offset: 3px;
+}
+
 .brand-mark {
   display: block;
   width: 2rem;
@@ -128,7 +152,7 @@ const nomUsuari = computed(() => {
 
 .header-quote {
   max-width: 30rem;
-  color: #92867c;
+  color: #6b5d52;
   font-family: Georgia, serif;
   font-size: 0.7rem;
   font-weight: 700;
@@ -201,13 +225,25 @@ const nomUsuari = computed(() => {
 .hero-section {
   position: relative;
   display: grid;
+  overflow: hidden;
   min-height: 618px;
   place-items: start center;
   padding: 4rem 1.5rem 3rem;
   box-sizing: border-box;
-  background-position: center;
-  background-size: cover;
-  background-attachment: fixed;
+}
+
+.hero-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.hero-section > *:not(.hero-image) {
+  position: relative;
+  z-index: 1;
 }
 
 .hero-section::before {
@@ -226,8 +262,6 @@ const nomUsuari = computed(() => {
 }
 
 .hero-content {
-  position: relative;
-  z-index: 1;
   max-width: 52rem;
   text-align: center;
   text-shadow: 0 0 1.5rem rgb(255 253 249 / 92%);
@@ -235,7 +269,7 @@ const nomUsuari = computed(() => {
 
 .eyebrow {
   margin: 0 0 1rem;
-  color: #9b2721;
+  color: #7d1713;
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.2em;
@@ -322,7 +356,7 @@ const nomUsuari = computed(() => {
 }
 
 .benefit div span {
-  color: #8e8176;
+  color: #6b5d52;
   font-size: 0.75rem;
 }
 
@@ -345,6 +379,10 @@ const nomUsuari = computed(() => {
   .hero-section {
     min-height: 31rem;
     padding: 3.5rem 1.25rem 2rem;
+  }
+
+  .hero-image {
+    object-position: 58% center;
   }
 
   .hero-content h1 {
