@@ -57,11 +57,6 @@ export default createRouter({
       name: "verificacio-biblioteca",
       component: VerifyLibraryView,
     },
-    {
-      path: "/api/auth/verify/biblioteca/:uidb64/:token",
-      name: "verificacio-biblioteca-api",
-      component: VerifyLibraryView,
-    },
     { path: "/cerca", name: "cerca", component: SearchView },
   ],
 });
