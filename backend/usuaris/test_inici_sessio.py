@@ -147,6 +147,16 @@ def test_refresh_rebutja_un_compte_desactivat(client, usuari):
     assert resposta.data["detail"].code == "no_active_account"
 
 
+def test_refresh_rebutja_un_compte_esborrat(client, usuari):
+    refresh = RefreshToken.for_user(usuari)
+    usuari.delete()
+
+    resposta = renova(client, refresh)
+
+    assert resposta.status_code == status.HTTP_401_UNAUTHORIZED
+    assert resposta.data["detail"].code == "no_active_account"
+
+
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     ("dades", "missatge"),

@@ -68,6 +68,7 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "TOKEN_OBTAIN_SERIALIZER": "usuaris.serializers.IniciSessioSerializer",
+    "TOKEN_REFRESH_SERIALIZER": "usuaris.serializers.RenovacioTokenSerializer",
 }
 
 MIDDLEWARE = [

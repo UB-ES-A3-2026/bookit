@@ -2,10 +2,12 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import RegexValidator
 from rest_framework import serializers
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.validators import UniqueValidator
 from rest_framework_simplejwt.serializers import (
     PasswordField,
     TokenObtainPairSerializer,
+    TokenRefreshSerializer,
 )
 
 from usuaris.models import Usuari
@@ -170,3 +172,20 @@ class IniciSessioSerializer(TokenObtainPairSerializer):
     def validate_correu(self, value):
         """Passa el correu a minúscules, que és com el desa el registre."""
         return value.lower()
+
+
+class RenovacioTokenSerializer(TokenRefreshSerializer):
+    """Renovació del token d'accés que també rebutja els comptes esborrats.
+
+    simplejwt busca l'usuari del token de refresc amb `get()` i, si el compte ja
+    no existeix, la petició acaba en un error 500. Aquí es respon 401, com amb un
+    compte desactivat.
+    """
+
+    def validate(self, attrs):
+        try:
+            return super().validate(attrs)
+        except Usuari.DoesNotExist:
+            raise AuthenticationFailed(
+                self.error_messages["no_active_account"], "no_active_account"
+            )
