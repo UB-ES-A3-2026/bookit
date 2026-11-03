@@ -133,7 +133,7 @@ tal com arriba (US2-T11).
 | `refresh` buit | 400 | `{"refresh": ["Aquest camp no pot estar en blanc."]}` |
 | Token invàlid | 401 | `{"detail": "Token is invalid", "code": "token_not_valid"}` |
 | Token caducat | 401 | `{"detail": "Token is expired", "code": "token_not_valid"}` |
-| Compte desactivat | 401 | `{"detail": "No active account found for the given token.", "code": "no_active_account"}` |
+| Compte desactivat o esborrat | 401 | `{"detail": "No active account found for the given token."}` |
 
 Els textos dels 401 són de `simplejwt`, que no té traducció al català, i no es mostren mai a l'usuari. El frontend
 només mira l'estat: si la renovació falla amb un 401, tanca la sessió (US2-T10).
@@ -191,14 +191,9 @@ tanca la sessió (US2-T10).
 
 ## Canvis pendents al codi existent
 
-- **Ruta de renovació al frontend.** `frontend/src/services/api.js` crida `/auth/token/refresh/`, però la ruta
-  d'aquest contracte és `/auth/refresh/`. Cal canviar-la; si no, la sessió es tancarà quan caduqui el primer token
-  d'accés.
 - **Compte de biblioteca sense verificar (US2-T3).** Django no autentica els comptes inactius, de manera que
   `simplejwt` hi retorna el missatge genèric. Cal comprovar la contrasenya d'aquests comptes a part per poder
   respondre `Verifica el teu correu`.
-- **Compte esborrat (US2-T2).** `simplejwt` no gestiona que l'usuari d'un token de refresc vàlid ja no existeixi i
-  la petició acaba en un error 500. Ha de respondre 401, com un compte desactivat.
 
 ## Decisions pendents
 
