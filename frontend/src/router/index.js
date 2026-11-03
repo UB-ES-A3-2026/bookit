@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import HomeView from "../views/HomeView.vue";
 import LoginView from "../views/LoginView.vue";
 import RegisterView from "../views/RegisterView.vue";
+import RoleHomeView from "../views/RoleHomeView.vue";
 
 export default createRouter({
   history: createWebHistory(),
@@ -9,5 +10,11 @@ export default createRouter({
     { path: "/", name: "home", component: HomeView },
     { path: "/registre", name: "registre", component: RegisterView },
     { path: "/inicia-sessio", name: "inici-sessio", component: LoginView },
+    {
+      path: "/repartidor",
+      name: "espai-repartidor",
+      component: RoleHomeView,
+    },
+    { path: "/cataleg", name: "cataleg", component: RoleHomeView },
   ],
 });
