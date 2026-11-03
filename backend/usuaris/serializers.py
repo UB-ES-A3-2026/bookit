@@ -63,14 +63,20 @@ CORREU_BIBLIOTECA_DUPLICAT = (
 
 
 def enviar_correu_verificacio(usuari):
+    """Envia l'enllaç per verificar el correu i triar la contrasenya del compte.
+
+    L'enllaç porta a la pàgina de verificació del frontend, que és on la
+    biblioteca tria la contrasenya i activa el compte.
+    """
     uid = urlsafe_base64_encode(force_bytes(usuari.pk))
     token = default_token_generator.make_token(usuari)
-    enllac = f"/api/auth/verify/biblioteca/{uid}/{token}/"
+    enllac = f"{settings.FRONTEND_URL}/verificacio/biblioteca/{uid}/{token}"
     send_mail(
         "Verifica el teu compte de biblioteca",
         (
             f"Hola {usuari.name},\n\n"
-            "Verifica el teu compte de biblioteca amb aquest enllaç:\n"
+            "Verifica el correu i tria la contrasenya del teu compte de "
+            "biblioteca amb aquest enllaç:\n"
             f"{enllac}\n\n"
             "Aquest enllaç caduca en 24 hores."
         ),
