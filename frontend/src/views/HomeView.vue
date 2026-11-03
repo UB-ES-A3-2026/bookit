@@ -7,7 +7,6 @@ import logoImage from "../assets/bookit-logo.jpg";
 
 const router = useRouter();
 const sessio = useSessioStore();
-const router = useRouter();
 
 const nomUsuari = computed(() => {
   return sessio.usuari?.nom ?? sessio.usuari?.correu ?? "Usuari";
