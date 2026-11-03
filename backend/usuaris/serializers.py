@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import RegexValidator
 from django.db import transaction
 from rest_framework import serializers
-from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.exceptions import AuthenticationFailed, PermissionDenied
 from rest_framework.validators import UniqueValidator
 from rest_framework_simplejwt.serializers import (
     PasswordField,
@@ -21,6 +21,12 @@ from usuaris.validacions import (
 )
 
 CAMP_OBLIGATORI = "Aquest camp és obligatori."
+VERIFICA_CORREU = "Verifica el teu correu"
+# Missatges de l'inici de sessió d'un repartidor que encara no pot entrar.
+MISSATGES_ESTAT_REPARTIDOR = {
+    PerfilRepartidor.Estat.PENDENT: "Pendent de validació",
+    PerfilRepartidor.Estat.REBUTJAT: "Validació incompleta",
+}
 CORREU_INVALID = "Introduïu una adreça de correu electrònic vàlida."
 DNI_CORREU_REGISTRAT = "DNI/correu ja registrat"
 ERRORS_OBLIGATORI = {
@@ -199,6 +205,43 @@ class IniciSessioSerializer(TokenObtainPairSerializer):
     def validate_correu(self, value):
         """Passa el correu a minúscules, que és com el desa el registre."""
         return value.lower()
+
+    def validate(self, attrs):
+        """Retorna els tokens només si l'estat del compte permet entrar (US2-T3).
+
+        Amb les credencials correctes però un compte que no pot entrar, respon 403
+        amb el motiu. Amb una contrasenya incorrecta sempre es respon el 401
+        genèric, perquè ningú pugui esbrinar l'estat d'un compte aliè.
+        """
+        try:
+            dades = super().validate(attrs)
+        except AuthenticationFailed:
+            self.comprova_biblioteca_sense_verificar(attrs["email"], attrs["password"])
+            raise
+        self.comprova_estat_repartidor(self.user)
+        return dades
+
+    @staticmethod
+    def comprova_biblioteca_sense_verificar(correu, contrasenya):
+        """Django no autentica els comptes inactius, així que la contrasenya es comprova aquí.
+
+        Una biblioteca té el compte inactiu fins que verifica el correu.
+        """
+        biblioteca = Usuari.objects.filter(
+            email=correu, role=Usuari.Role.BIBLIOTECA, is_active=False
+        ).first()
+        if biblioteca is not None and biblioteca.check_password(contrasenya):
+            raise PermissionDenied(VERIFICA_CORREU)
+
+    @staticmethod
+    def comprova_estat_repartidor(usuari):
+        """Rebutja els repartidors amb el perfil pendent o rebutjat."""
+        try:
+            estat = usuari.perfil_repartidor.estat
+        except PerfilRepartidor.DoesNotExist:
+            return
+        if estat in MISSATGES_ESTAT_REPARTIDOR:
+            raise PermissionDenied(MISSATGES_ESTAT_REPARTIDOR[estat])
 
 
 class UsuariActualSerializer(serializers.ModelSerializer):
