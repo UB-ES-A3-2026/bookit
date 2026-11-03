@@ -1,10 +1,13 @@
 import { createApp } from "vue";
 import { createMemoryHistory, createRouter } from "vue-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import axios from "axios";
+import { createPinia, setActivePinia } from "pinia";
+import api from "../services/api.js";
+import { useSessioStore } from "../stores/sessio.js";
+import { nomesBiblioteques } from "../router/index.js";
 import CatalegView from "../views/CatalegView.vue";
 
-vi.mock("axios", () => ({
+vi.mock("../services/api.js", () => ({
   default: {
     get: vi.fn(),
   },
@@ -57,21 +60,20 @@ async function renderitza() {
 afterEach(() => {
   app?.unmount();
   document.body.innerHTML = "";
+  sessionStorage.clear();
   vi.clearAllMocks();
 });
 
 describe("El meu catàleg", () => {
   it("demana el catàleg de la biblioteca a l'API", async () => {
-    axios.get.mockResolvedValue({ data: llibres });
+    api.get.mockResolvedValue({ data: llibres });
     await renderitza();
 
-    expect(axios.get).toHaveBeenCalledWith(
-      expect.stringMatching(/\/api\/cataleg\/biblioteca\/llibres\/$/),
-    );
+    expect(api.get).toHaveBeenCalledWith("/cataleg/biblioteca/llibres/");
   });
 
   it("mostra cada llibre amb el seu nombre d'exemplars", async () => {
-    axios.get.mockResolvedValue({ data: llibres });
+    api.get.mockResolvedValue({ data: llibres });
     const { element } = await renderitza();
 
     const files = element.querySelectorAll(".llibre");
@@ -84,7 +86,7 @@ describe("El meu catàleg", () => {
   });
 
   it("mostra la portada i, si no n'hi ha, la inicial del títol", async () => {
-    axios.get.mockResolvedValue({ data: llibres });
+    api.get.mockResolvedValue({ data: llibres });
     const { element } = await renderitza();
 
     const files = element.querySelectorAll(".llibre");
@@ -94,7 +96,7 @@ describe("El meu catàleg", () => {
   });
 
   it("mostra un missatge mentre carrega", async () => {
-    axios.get.mockReturnValue(new Promise(() => {}));
+    api.get.mockReturnValue(new Promise(() => {}));
     const { element } = await renderitza();
 
     expect(element.querySelector('[role="status"]').textContent).toContain(
@@ -103,7 +105,7 @@ describe("El meu catàleg", () => {
   });
 
   it("avisa quan el catàleg és buit", async () => {
-    axios.get.mockResolvedValue({ data: [] });
+    api.get.mockResolvedValue({ data: [] });
     const { element } = await renderitza();
 
     expect(element.textContent).toContain("Encara no tens cap llibre al catàleg.");
@@ -111,34 +113,62 @@ describe("El meu catàleg", () => {
   });
 
   it("mostra un error si no es pot carregar i permet tornar-ho a provar", async () => {
-    axios.get.mockRejectedValueOnce({ response: { status: 500 } });
+    api.get.mockRejectedValueOnce({ response: { status: 500 } });
     const { element } = await renderitza();
 
     expect(element.querySelector('[role="alert"]').textContent).toContain(
       "No s'ha pogut carregar el catàleg.",
     );
 
-    axios.get.mockResolvedValueOnce({ data: llibres });
+    api.get.mockResolvedValueOnce({ data: llibres });
     element.querySelector(".secondary-button").click();
     await esperaRenderitzat();
 
-    expect(axios.get).toHaveBeenCalledTimes(2);
+    expect(api.get).toHaveBeenCalledTimes(2);
     expect(element.querySelector('[role="alert"]')).toBeNull();
     expect(element.querySelectorAll(".llibre")).toHaveLength(2);
   });
 
   it("mostra l'error quan no hi ha connexió amb el servidor", async () => {
-    axios.get.mockRejectedValue(new Error("Network Error"));
+    api.get.mockRejectedValue(new Error("Network Error"));
     const { element } = await renderitza();
 
     expect(element.querySelector('[role="alert"]')).not.toBeNull();
   });
 
   it("torna a l'inici si l'usuari no és una biblioteca", async () => {
-    axios.get.mockRejectedValue({ response: { status: 403 } });
+    api.get.mockRejectedValue({ response: { status: 403 } });
     const { element, router } = await renderitza();
 
     expect(router.currentRoute.value.name).toBe("home");
     expect(element.querySelector('[role="alert"]')).toBeNull();
+  });
+});
+
+describe("accés a la ruta del catàleg", () => {
+  function sessioAmbRol(rol) {
+    setActivePinia(createPinia());
+    const sessio = useSessioStore();
+    if (rol) {
+      sessio.iniciarSessio({ accessToken: "token-de-prova", rol });
+    }
+  }
+
+  it("deixa entrar una biblioteca", () => {
+    sessioAmbRol("biblioteca");
+    expect(nomesBiblioteques()).toBe(true);
+  });
+
+  it("demana iniciar sessió si no n'hi ha cap", () => {
+    sessioAmbRol(null);
+    expect(nomesBiblioteques()).toEqual({ name: "inici-sessio" });
+  });
+
+  it("torna a l'inici si l'usuari té un altre rol", () => {
+    sessioAmbRol("usuari");
+    expect(nomesBiblioteques()).toEqual({ name: "home" });
+
+    sessioAmbRol("repartidor");
+    expect(nomesBiblioteques()).toEqual({ name: "home" });
   });
 });
