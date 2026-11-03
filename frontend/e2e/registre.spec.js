@@ -208,8 +208,11 @@ test.describe("registre amb el backend (US1-T9 i US1-T10)", () => {
   test("CP-US1-21 · backend sense resposta", async ({ page }) => {
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
+    // La petició tallada sempre deixa "Failed to load resource" a la consola; és l'error esperat.
     page.on("console", (missatge) => {
-      if (missatge.type() === "error") errors.push(missatge.text());
+      if (missatge.type() === "error" && !missatge.text().startsWith("Failed to load resource")) {
+        errors.push(missatge.text());
+      }
     });
 
     await page.route(`**${URL_REGISTRE_API}`, async (route) => {
@@ -424,9 +427,9 @@ test.describe("camps obligatoris (US1-T8 o US1-T9)", () => {
   });
 });
 
-// Des de la US1.1-T8 i la US1.2-T8, "Repartidor" i "Biblioteca" tenen el seu formulari i els CP-US1-10, CP-US1-11
-// i CP-US1-12 ja no s'apliquen: no queda cap tipus de compte no disponible.
-test.describe("registre de biblioteca (US1.2-T8 i US1.2-T9)", () => {
+// Des de la US1.1 i la US1.2, "Repartidor" i "Biblioteca" tenen el seu formulari i els CP-US1-10, 11 i 12 (avís de
+// funcionalitat no implementada) ja no s'apliquen. El formulari de repartidor es prova a e2e/registre-repartidor.spec.js.
+test.describe("formulari de biblioteca (US1.2)", () => {
   test("US1.2-T8 · Biblioteca mostra el formulari específic", async ({
     page,
   }) => {

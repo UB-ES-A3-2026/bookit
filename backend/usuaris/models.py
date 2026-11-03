@@ -67,6 +67,22 @@ class Usuari(AbstractUser):
         return self.name
 
 
+class Biblioteca(models.Model):
+    usuari = models.OneToOneField(
+        Usuari,
+        on_delete=models.CASCADE,
+        related_name="biblioteca",
+    )
+    nom = models.CharField(max_length=150)
+
+    def save(self, *args, **kwargs):
+        if self._state.adding:
+            self.usuari.role = Usuari.Role.BIBLIOTECA
+            self.usuari.is_active = False
+            self.usuari.save(update_fields=["role", "is_active"])
+        return super().save(*args, **kwargs)
+
+
 class PerfilRepartidor(models.Model):
     class Vehicle(models.TextChoices):
         BICI = "bici", "Bici"
@@ -105,18 +121,3 @@ class PerfilRepartidor(models.Model):
 
     def __str__(self):
         return f"{self.usuari} {self.cognoms}"
-
-class Biblioteca(models.Model):
-    usuari = models.OneToOneField(
-        Usuari,
-        on_delete=models.CASCADE,
-        related_name="biblioteca",
-    )
-    nom = models.CharField(max_length=150)
-
-    def save(self, *args, **kwargs):
-        if self._state.adding:
-            self.usuari.role = Usuari.Role.BIBLIOTECA
-            self.usuari.is_active = False
-            self.usuari.save(update_fields=["role", "is_active"])
-        return super().save(*args, **kwargs)

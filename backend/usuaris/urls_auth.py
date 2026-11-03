@@ -25,11 +25,6 @@ urlpatterns = [
         RegistreRepartidorView.as_view(),
         name="registre-repartidor",
     ),
-    # Les vistes de simplejwt són públiques i no autentiquen la petició: un token
-    # caducat a la capçalera no impedeix iniciar sessió ni renovar l'accés.
-    path("login/", TokenObtainPairView.as_view(), name="login"),
-    path("refresh/", TokenRefreshView.as_view(), name="refresh"),
-    path("me/", UsuariActualView.as_view(), name="me"),
     path(
         "register/biblioteca/",
         RegistreBibliotecaView.as_view(),
@@ -40,4 +35,9 @@ urlpatterns = [
         VerificacioBibliotecaView.as_view(),
         name="verificacio-biblioteca",
     ),
+    # Les vistes de simplejwt són públiques i no autentiquen la petició: un token
+    # caducat a la capçalera no impedeix iniciar sessió ni renovar l'accés.
+    path("login/", TokenObtainPairView.as_view(), name="login"),
+    path("refresh/", TokenRefreshView.as_view(), name="refresh"),
+    path("me/", UsuariActualView.as_view(), name="me"),
 ]

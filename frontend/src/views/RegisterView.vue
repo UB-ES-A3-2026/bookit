@@ -21,12 +21,14 @@ const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 const tipusComptes = [
   { valor: "lector", etiqueta: "Lector" },
   { valor: "repartidor", etiqueta: "Repartidor" },
-  { valor: "biblioteca", etiqueta: "Biblioteca" },
+  {
+    valor: "biblioteca",
+    etiqueta: "Biblioteca",
+  },
 ];
 
 const tipusCompte = ref("lector");
 
-// Els tres tipus de compte tenen formulari propi.
 function seleccionaTipus(valor) {
   tipusCompte.value = valor;
 }
@@ -133,12 +135,6 @@ function validaFormulariRepartidor() {
   return resultats.every(Boolean);
 }
 
-const formulariBiblioteca = reactive({
-  correuOficial: "",
-  nom: "",
-  dniNie: "",
-});
-
 const formulari = reactive({
   correu: "",
   nom: "",
@@ -146,6 +142,12 @@ const formulari = reactive({
   numCarnet: "",
   contrasenya: "",
   confirmarContrasenya: "",
+});
+
+const formulariBiblioteca = reactive({
+  correuOficial: "",
+  nom: "",
+  dniNie: "",
 });
 
 const errors = reactive({
@@ -158,9 +160,9 @@ const errors = reactive({
 });
 
 const errorGeneral = ref("");
-const enviant = ref(false);
 const errorBiblioteca = ref("");
 const registreBibliotecaEnviat = ref(false);
+const enviant = ref(false);
 
 if (route.query.missatge === "Validació incompleta") {
   errorGeneral.value = route.query.missatge;
@@ -527,6 +529,7 @@ async function enviaFormulari() {
               {{ tipus.etiqueta }}
             </button>
           </div>
+
         </fieldset>
 
         <template v-if="tipusCompte === 'biblioteca'">
@@ -1273,27 +1276,6 @@ async function enviaFormulari() {
   text-align: center;
 }
 
-.register-form__submit:disabled {
-  cursor: wait;
-  opacity: 0.7;
-}
-
-@media (max-width: 420px) {
-  .register-page {
-    align-items: flex-start;
-    padding: 0.6rem;
-  }
-
-  .register-modal {
-    max-height: calc(100svh - 1.2rem);
-    padding: 0.8rem 1.1rem;
-  }
-
-  .account-type__option {
-    font-size: 0.52rem;
-  }
-}
-
 .register-success {
   display: flex;
   flex-direction: column;
@@ -1313,5 +1295,26 @@ async function enviaFormulari() {
 
 .register-success p {
   margin: 0;
+}
+
+.register-form__submit:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+@media (max-width: 420px) {
+  .register-page {
+    align-items: flex-start;
+    padding: 0.6rem;
+  }
+
+  .register-modal {
+    max-height: calc(100svh - 1.2rem);
+    padding: 0.8rem 1.1rem;
+  }
+
+  .account-type__option {
+    font-size: 0.52rem;
+  }
 }
 </style>
