@@ -4,6 +4,7 @@ import LoginView from "../views/LoginView.vue";
 import RegisterConfirmationView from "../views/RegisterConfirmationView.vue";
 import RegisterView from "../views/RegisterView.vue";
 import RoleHomeView from "../views/RoleHomeView.vue";
+import VerifyLibraryView from "../views/VerifyLibraryView.vue";
 
 export default createRouter({
   history: createWebHistory(),
@@ -22,5 +23,15 @@ export default createRouter({
       component: RoleHomeView,
     },
     { path: "/cataleg", name: "cataleg", component: RoleHomeView },
+    {
+      path: "/verificacio/biblioteca/:uidb64/:token",
+      name: "verificacio-biblioteca",
+      component: VerifyLibraryView,
+    },
+    {
+      path: "/api/auth/verify/biblioteca/:uidb64/:token",
+      name: "verificacio-biblioteca-api",
+      component: VerifyLibraryView,
+    },
   ],
 });

@@ -1,7 +1,14 @@
+from uuid import uuid4
+
+from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import RegexValidator
+from django.core.mail import send_mail
 from django.db import transaction
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed, PermissionDenied
 from rest_framework.validators import UniqueValidator
@@ -11,7 +18,7 @@ from rest_framework_simplejwt.serializers import (
     TokenRefreshSerializer,
 )
 
-from usuaris.models import PerfilRepartidor, Usuari
+from usuaris.models import Biblioteca, PerfilRepartidor, Usuari
 from usuaris.validacions import (
     normalitza,
     valida_dni_nie,
@@ -47,12 +54,33 @@ def neteja_correu(correu):
     return correu.lower()
 
 
-def missatges_contrasenya(error):
-    """Missatges d'una contrasenya rebutjada, tots en català.
+CAMPS_BIBLIOTECA_INVALIDS = (
+    "Algún dels camps no és vàlid o no s'ha introduït, torna a intentar-ho"
+)
+CORREU_BIBLIOTECA_DUPLICAT = (
+    "Aquest correu correspon a un compte existent, torna a probar amb un altre correu"
+)
 
-    Django 5.2 no té la traducció catalana del missatge de contrasenya massa
-    curta, així que aquest es reescriu; la resta ja arriben en català.
-    """
+
+def enviar_correu_verificacio(usuari):
+    uid = urlsafe_base64_encode(force_bytes(usuari.pk))
+    token = default_token_generator.make_token(usuari)
+    enllac = f"/api/auth/verify/biblioteca/{uid}/{token}/"
+    send_mail(
+        "Verifica el teu compte de biblioteca",
+        (
+            f"Hola {usuari.name},\n\n"
+            "Verifica el teu compte de biblioteca amb aquest enllaç:\n"
+            f"{enllac}\n\n"
+            "Aquest enllaç caduca en 24 hores."
+        ),
+        settings.DEFAULT_FROM_EMAIL,
+        [usuari.email],
+    )
+
+
+def missatges_contrasenya(error):
+    """Missatges d'una contrasenya rebutjada, tots en català."""
     missatges = []
     for detall in error.error_list:
         if detall.code == "password_too_short":
@@ -84,7 +112,6 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
     correu = serializers.EmailField(
         source="email",
         validators=[
-            # "iexact": ANNA@example.com i anna@example.com són el mateix correu.
             UniqueValidator(
                 queryset=Usuari.objects.all(),
                 message="Aquest correu electrònic ja està registrat",
@@ -148,11 +175,6 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
         return neteja_correu(value)
 
     def validate(self, attrs):
-        """Valida la contrasenya amb les dades de l'usuari que es vol crear.
-
-        Es fa aquí i no al camp perquè el validador de semblança necessita el
-        correu i el nom (p. ex. rebutja una contrasenya igual al correu).
-        """
         dades_usuari = {
             camp: valor for camp, valor in attrs.items() if camp != "password"
         }
@@ -275,6 +297,52 @@ class RenovacioTokenSerializer(TokenRefreshSerializer):
             raise AuthenticationFailed(
                 self.error_messages["no_active_account"], "no_active_account"
             )
+
+
+class BibliotecaRegistreSerializer(serializers.Serializer):
+    nom = serializers.CharField(
+        max_length=150,
+        error_messages={
+            "blank": CAMPS_BIBLIOTECA_INVALIDS,
+            "required": CAMPS_BIBLIOTECA_INVALIDS,
+        },
+    )
+    correu = serializers.EmailField(
+        error_messages={
+            "blank": CAMPS_BIBLIOTECA_INVALIDS,
+            "required": CAMPS_BIBLIOTECA_INVALIDS,
+            "invalid": CAMPS_BIBLIOTECA_INVALIDS,
+        },
+    )
+
+    def validate_correu(self, value):
+        if Usuari.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError(CORREU_BIBLIOTECA_DUPLICAT)
+        return value.lower()
+
+    def create(self, validated_data):
+        with transaction.atomic():
+            usuari = Usuari.objects.create_user(
+                validated_data["correu"],
+                None,
+                {
+                    "name": validated_data["nom"],
+                    "address": "",
+                    "library_card_number": f"biblioteca-{uuid4().hex}",
+                    "role": Usuari.Role.BIBLIOTECA,
+                    "is_active": False,
+                },
+            )
+            return Biblioteca.objects.create(
+                usuari=usuari,
+                nom=validated_data["nom"],
+            )
+
+    def to_representation(self, instance):
+        return {
+            "nom": instance.nom,
+            "correu": instance.usuari.email,
+        }
 
 
 class RepartidorRegistreSerializer(serializers.ModelSerializer):
