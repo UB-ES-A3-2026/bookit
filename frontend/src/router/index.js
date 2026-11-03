@@ -22,6 +22,7 @@ export default createRouter({
       name: "espai-repartidor",
       component: RoleHomeView,
     },
+    { path: "/cataleg", name: "cataleg", component: RoleHomeView },
     {
       path: "/verificacio/biblioteca/:uidb64/:token",
       name: "verificacio-biblioteca",
