@@ -19,21 +19,18 @@ const route = useRoute();
 const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 const tipusComptes = [
-  { valor: "lector", etiqueta: "Lector", icona: "♙" },
-  { valor: "repartidor", etiqueta: "Repartidor", icona: "→" },
-  { valor: "biblioteca", etiqueta: "Biblioteca", icona: "▣" },
+  { valor: "lector", etiqueta: "Lector" },
+  { valor: "repartidor", etiqueta: "Repartidor" },
+  {
+    valor: "biblioteca",
+    etiqueta: "Biblioteca",
+  },
 ];
 
 const tipusCompte = ref("lector");
-const avisTipus = ref("");
 
-const AVIS_NO_IMPLEMENTAT = "Funcionalitat no implementada.";
-
-// "Lector" i "Repartidor" tenen formulari. Amb "Biblioteca" es marca l'opció
-// i es mostra l'avís; el formulari no s'envia fins que es canvia de tipus.
 function seleccionaTipus(valor) {
   tipusCompte.value = valor;
-  avisTipus.value = valor === "biblioteca" ? AVIS_NO_IMPLEMENTAT : "";
 }
 
 const tipusVehicles = [
@@ -147,6 +144,12 @@ const formulari = reactive({
   confirmarContrasenya: "",
 });
 
+const formulariBiblioteca = reactive({
+  correuOficial: "",
+  nom: "",
+  dniNie: "",
+});
+
 const errors = reactive({
   correu: "",
   nom: "",
@@ -157,6 +160,8 @@ const errors = reactive({
 });
 
 const errorGeneral = ref("");
+const errorBiblioteca = ref("");
+const registreBibliotecaEnviat = ref(false);
 const enviant = ref(false);
 
 if (route.query.missatge === "Validació incompleta") {
@@ -192,6 +197,23 @@ function netejaErrors() {
     errors[camp] = "";
   });
   errorGeneral.value = "";
+  errorBiblioteca.value = "";
+}
+
+function validaFormulariBiblioteca() {
+  const correu = formulariBiblioteca.correuOficial.trim();
+  const nom = formulariBiblioteca.nom.trim();
+  const dniNie = formulariBiblioteca.dniNie.trim();
+  const correuValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correu);
+
+  if (!correu || !nom || !dniNie || !correuValid) {
+    errorBiblioteca.value =
+      "Algún dels camps no és vàlid o no s'ha introduït, torna a intentar-ho";
+    return false;
+  }
+
+  errorBiblioteca.value = "";
+  return true;
 }
 
 function validaCamp(camp) {
@@ -330,9 +352,39 @@ function dadesRegistreRepartidor() {
 async function enviaFormulari() {
   netejaErrors();
 
-  // Amb un tipus de compte no implementat no es crea cap compte (US1-T11).
   if (tipusCompte.value === "biblioteca") {
-    avisTipus.value = AVIS_NO_IMPLEMENTAT;
+    if (!validaFormulariBiblioteca()) {
+      return;
+    }
+
+    enviant.value = true;
+
+    try {
+      await axios.post(`${apiUrl}/api/auth/register/biblioteca/`, {
+        nom: formulariBiblioteca.nom.trim(),
+        correu: formulariBiblioteca.correuOficial.trim(),
+      });
+      registreBibliotecaEnviat.value = true;
+    } catch (error) {
+      if (error.response?.status === 400 && error.response.data) {
+        const errorsBackend = error.response.data;
+        const errorsCamp = ["correu", "nom"]
+          .map((camp) => errorsBackend[camp])
+          .find((missatges) => Array.isArray(missatges));
+
+        if (errorsCamp) {
+          errorBiblioteca.value = errorsCamp.join(" ");
+        } else {
+          errorBiblioteca.value =
+            "No s'ha pogut completar el registre. Revisa les dades i torna-ho a provar.";
+        }
+      } else {
+        errorBiblioteca.value =
+          "No s'ha pogut completar el registre. Torna-ho a provar més tard.";
+      }
+    } finally {
+      enviant.value = false;
+    }
     return;
   }
 
@@ -374,7 +426,11 @@ async function enviaFormulari() {
     class="register-page"
     :style="{ backgroundImage: `url(${bibliotecaImage})` }"
   >
-    <div class="register-page__overlay"></div>
+    <div
+      class="register-page__overlay"
+      aria-hidden="true"
+      @click.self="tornaInici"
+    ></div>
 
     <section class="register-modal" aria-labelledby="register-title">
       <header class="register-modal__header">
@@ -405,7 +461,24 @@ async function enviaFormulari() {
         </button>
       </nav>
 
+      <div v-if="registreBibliotecaEnviat" class="register-success" role="status">
+        <h2>Revisa el teu correu</h2>
+        <p>
+          T'hem enviat un correu a
+          <strong>{{ formulariBiblioteca.correuOficial }}</strong>
+          amb l'enllaç per activar el compte de biblioteca.
+        </p>
+        <button
+          class="register-form__submit"
+          type="button"
+          @click="tornaInici"
+        >
+          Tornar a l'inici
+        </button>
+      </div>
+
       <form
+        v-else
         class="register-form"
         novalidate
         @submit.prevent="enviaFormulari"
@@ -426,17 +499,81 @@ async function enviaFormulari() {
               :aria-pressed="tipusCompte === tipus.valor"
               @click="seleccionaTipus(tipus.valor)"
             >
-              <span aria-hidden="true">{{ tipus.icona }}</span>
+              <svg
+                v-if="tipus.valor === 'lector'"
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                focusable="false"
+              >
+                <circle cx="12" cy="7" r="3" />
+                <path d="M6.5 20a5.5 5.5 0 0 1 11 0" />
+              </svg>
+              <svg
+                v-else-if="tipus.valor === 'repartidor'"
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                focusable="false"
+              >
+                <path d="M4 12h14" />
+                <path d="m14 8 4 4-4 4" />
+              </svg>
+              <svg
+                v-else
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                focusable="false"
+              >
+                <rect x="5" y="6" width="14" height="12" rx="1.5" />
+                <path d="M8 9h8M8 15h4" />
+              </svg>
               {{ tipus.etiqueta }}
             </button>
           </div>
 
-          <p v-if="avisTipus" class="register-form__error" role="alert">
-            {{ avisTipus }}
-          </p>
         </fieldset>
 
-        <template v-if="tipusCompte === 'repartidor'">
+        <template v-if="tipusCompte === 'biblioteca'">
+          <div class="register-form__field">
+            <label for="correu-oficial">Correu electrònic oficial</label>
+            <input
+              id="correu-oficial"
+              v-model="formulariBiblioteca.correuOficial"
+              name="correu_oficial"
+              type="email"
+              autocomplete="email"
+              placeholder="biblioteca@exemple.cat"
+            />
+          </div>
+
+          <div class="register-form__field">
+            <label for="nom-biblioteca">Nom de la biblioteca</label>
+            <input
+              id="nom-biblioteca"
+              v-model="formulariBiblioteca.nom"
+              name="nom_biblioteca"
+              type="text"
+              autocomplete="organization"
+              placeholder="p. ex. Biblioteca Central"
+            />
+          </div>
+
+          <div class="register-form__field">
+            <label for="dni-nie-responsable">DNI / NIE del responsable</label>
+            <input
+              id="dni-nie-responsable"
+              v-model="formulariBiblioteca.dniNie"
+              name="dni_nie_responsable"
+              type="text"
+              autocomplete="off"
+              placeholder="DNI / NIE"
+            />
+          </div>
+          <p v-if="errorBiblioteca" class="register-form__general-error" role="alert">
+            {{ errorBiblioteca }}
+          </p>
+        </template>
+
+        <template v-else-if="tipusCompte === 'repartidor'">
           <div class="register-form__field">
             <label for="repartidor-correu">Correu electrònic</label>
             <input
@@ -991,9 +1128,15 @@ async function enviaFormulari() {
   font-weight: 700;
 }
 
-.account-type__option span {
-  font-size: 0.85rem;
-  font-weight: 400;
+.account-type__option svg {
+  width: 0.85rem;
+  height: 0.85rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+  flex: 0 0 0.85rem;
 }
 
 .account-type__option--active {
@@ -1131,6 +1274,27 @@ async function enviaFormulari() {
   font-size: 0.55rem;
   line-height: 1.2;
   text-align: center;
+}
+
+.register-success {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  color: #4d4541;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.register-success h2 {
+  margin: 0;
+  color: #442d2a;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.15rem;
+}
+
+.register-success p {
+  margin: 0;
 }
 
 .register-form__submit:disabled {

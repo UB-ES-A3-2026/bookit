@@ -8,7 +8,13 @@ autenticat, a `docs/api-auth.md`.
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from usuaris.views import RegistreRepartidorView, RegistreView, UsuariActualView
+from usuaris.views import (
+    RegistreBibliotecaView,
+    RegistreRepartidorView,
+    RegistreView,
+    UsuariActualView,
+    VerificacioBibliotecaView,
+)
 
 app_name = "auth"
 
@@ -18,6 +24,16 @@ urlpatterns = [
         "register/repartidor/",
         RegistreRepartidorView.as_view(),
         name="registre-repartidor",
+    ),
+    path(
+        "register/biblioteca/",
+        RegistreBibliotecaView.as_view(),
+        name="registre-biblioteca",
+    ),
+    path(
+        "verify/biblioteca/<uidb64>/<token>/",
+        VerificacioBibliotecaView.as_view(),
+        name="verificacio-biblioteca",
     ),
     # Les vistes de simplejwt són públiques i no autentiquen la petició: un token
     # caducat a la capçalera no impedeix iniciar sessió ni renovar l'accés.
