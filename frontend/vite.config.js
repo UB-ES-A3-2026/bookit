@@ -18,7 +18,8 @@ export default defineConfig(({ command, mode }) => {
     plugins: [vue()],
     test: {
       environment: 'jsdom',
-      exclude: ['e2e/**'],
+      include: ['src/tests/**/*.test.js'],
+      setupFiles: './src/tests/setup.js',
     },
   }
 })

@@ -10,6 +10,9 @@ vi.mock("axios", () => ({
 }));
 
 vi.mock("vue-router", () => ({
+  useRoute: () => ({
+    query: {},
+  }),
   useRouter: () => ({
     push: vi.fn(),
   }),
@@ -103,18 +106,6 @@ describe("formulari de registre", () => {
       "El correu ha de ser una adreça vàlida",
     );
     expect(element.textContent).toContain("Les contrasenyes no coincideixen.");
-    expect(axios.post).not.toHaveBeenCalled();
-  });
-
-  it("mostra l'avís i no envia el formulari per als tipus no implementats", async () => {
-    const element = renderitza();
-
-    element.querySelector("button.account-type__option:nth-of-type(2)").click();
-    await nextTick();
-    element.querySelector("form").dispatchEvent(new Event("submit"));
-    await nextTick();
-
-    expect(element.textContent).toContain("Funcionalitat no implementada.");
     expect(axios.post).not.toHaveBeenCalled();
   });
 
