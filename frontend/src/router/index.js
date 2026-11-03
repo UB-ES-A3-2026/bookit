@@ -1,10 +1,26 @@
 import { createRouter, createWebHistory } from "vue-router";
+import { useSessioStore } from "../stores/sessio.js";
+import CatalegView from "../views/CatalegView.vue";
 import HomeView from "../views/HomeView.vue";
 import LoginView from "../views/LoginView.vue";
 import RegisterConfirmationView from "../views/RegisterConfirmationView.vue";
 import RegisterView from "../views/RegisterView.vue";
 import RoleHomeView from "../views/RoleHomeView.vue";
 import VerifyLibraryView from "../views/VerifyLibraryView.vue";
+
+// El catàleg només és per a biblioteques. Sense sessió es demana iniciar-la i
+// amb un altre rol es torna a l'inici.
+export function nomesBiblioteques() {
+  const sessio = useSessioStore();
+
+  if (!sessio.autenticat) {
+    return { name: "inici-sessio" };
+  }
+  if (sessio.rol !== "biblioteca") {
+    return { name: "home" };
+  }
+  return true;
+}
 
 export default createRouter({
   history: createWebHistory(),
@@ -22,7 +38,12 @@ export default createRouter({
       name: "espai-repartidor",
       component: RoleHomeView,
     },
-    { path: "/cataleg", name: "cataleg", component: RoleHomeView },
+    {
+      path: "/cataleg",
+      name: "cataleg",
+      component: CatalegView,
+      beforeEnter: nomesBiblioteques,
+    },
     {
       path: "/verificacio/biblioteca/:uidb64/:token",
       name: "verificacio-biblioteca",
