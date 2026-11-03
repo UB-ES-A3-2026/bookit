@@ -18,7 +18,7 @@ Qualsevol canvi d'aquest document passa per pull request i s'avisa les dues part
 | Camp | Tipus | Obligatori | Validació |
 |---|---|---|---|
 | `nom` | text | Sí | No pot ser buit. |
-| `correu` | text | Sí | Format de correu electrònic vàlid. Únic. |
+| `correu` | text | Sí | Format de correu electrònic vàlid. Màxim 254 caràcters. Únic. |
 | `adreca` | text | Sí | No pot ser buit. |
 | `num_carnet` | text | Sí | Exactament 10 dígits. Únic. |
 | `contrasenya` | text | Sí | Validadors de contrasenya de Django. No es retorna mai. |
@@ -83,7 +83,7 @@ defecte de Django REST Framework). El frontend mostra cada missatge sota el camp
 | Carnet ja registrat | `num_carnet` | `Aquest usuari ja està registrat` |
 | Format de carnet incorrecte | `num_carnet` | `El format d'aquest carnet no és vàlid` |
 | Camp obligatori buit o absent | el camp | `Aquest camp és obligatori.` |
-| Correu amb format incorrecte | `correu` | `Introduïu una adreça de correu electrònic vàlida.` |
+| Correu amb format incorrecte o de més de 254 caràcters | `correu` | `Introduïu una adreça de correu electrònic vàlida.` |
 | Contrasenya no vàlida | `contrasenya` | Missatges dels validadors de Django |
 
 Els tres primers missatges són literals dels criteris d'acceptació de la US1 i els tests els comproven

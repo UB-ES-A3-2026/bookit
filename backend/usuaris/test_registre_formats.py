@@ -27,6 +27,32 @@ def test_correu_amb_format_invalid_retorna_400(client, correu):
     assert not Usuari.objects.exists()
 
 
+def correu_de(mida):
+    return f"{'a' * (mida - len('@example.com'))}@example.com"
+
+
+@pytest.mark.django_db
+def test_correu_de_254_caracters_es_registra(client):
+    resposta = client.post(
+        URL, dades_valides(correu=correu_de(254)), content_type="application/json"
+    )
+
+    assert resposta.status_code == 201
+    assert resposta.json()["correu"] == correu_de(254)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("mida", [255, 320, 321])
+def test_correu_massa_llarg_retorna_400(client, mida):
+    resposta = client.post(
+        URL, dades_valides(correu=correu_de(mida)), content_type="application/json"
+    )
+
+    assert resposta.status_code == 400
+    assert resposta.json() == {"correu": [CORREU_INVALID]}
+    assert not Usuari.objects.exists()
+
+
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "num_carnet",
