@@ -3,7 +3,10 @@
 Referència: https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
 
 import environ
 
@@ -31,6 +34,37 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.
 # sense la variable no se n'accepta cap.
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 
+# Correu electrònic
+# En desenvolupament els missatges es mostren a la consola.
+# En producció es requereix una configuració SMTP completa.
+if DEBUG:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@localhost")
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = env("EMAIL_HOST", default="")
+    EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+    EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+    EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+    EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+    EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", default=False)
+    DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="")
+
+    if not EMAIL_HOST:
+        raise ImproperlyConfigured(
+            "Cal definir EMAIL_HOST en producció."
+        )
+
+    if not DEFAULT_FROM_EMAIL:
+        raise ImproperlyConfigured(
+            "Cal definir DEFAULT_FROM_EMAIL en producció."
+        )
+
+    if EMAIL_USE_TLS and EMAIL_USE_SSL:
+        raise ImproperlyConfigured(
+            "EMAIL_USE_TLS i EMAIL_USE_SSL no es poden activar alhora."
+        )
+
 
 # Aplicacions
 
@@ -53,10 +87,29 @@ INSTALLED_APPS = [
 AUTH_USER_MODEL = "usuaris.Usuari"
 
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
 }
+
+# Tokens JWT: el frontend renova l'accés sol quan caduca i els desa a sessionStorage,
+# que es buida en tancar la pestanya. Sense rotació ni llista negra.
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "TOKEN_OBTAIN_SERIALIZER": "usuaris.serializers.IniciSessioSerializer",
+    "TOKEN_REFRESH_SERIALIZER": "usuaris.serializers.RenovacioTokenSerializer",
+}
+
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND",
+    default="django.core.mail.backends.console.EmailBackend",
+)
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@bookit.local")
+PASSWORD_RESET_TIMEOUT = env.int("PASSWORD_RESET_TIMEOUT", default=86400)
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
