@@ -2,6 +2,13 @@ from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+from usuaris.validacions import (
+    valida_dni_nie,
+    valida_matricula,
+    valida_num_seguretat_social,
+    valida_telefon,
+)
+
 
 class GestorUsuari(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -52,3 +59,43 @@ class Usuari(AbstractUser):
 
     def __str__(self):
         return self.name
+
+
+class PerfilRepartidor(models.Model):
+    class Vehicle(models.TextChoices):
+        BICI = "bici", "Bici"
+        MOTO = "moto", "Moto"
+        COTXE = "cotxe", "Cotxe"
+
+    class Estat(models.TextChoices):
+        PENDENT = "pendent", "Pendent de validació"
+        VALIDAT = "validat", "Validat"
+        REBUTJAT = "rebutjat", "Rebutjat"
+
+    usuari = models.OneToOneField(
+        Usuari,
+        on_delete=models.CASCADE,
+        related_name="perfil_repartidor",
+    )
+    cognoms = models.CharField(max_length=150)
+    dni = models.CharField(max_length=9, unique=True, validators=[valida_dni_nie])
+    telefon = models.CharField(max_length=12, validators=[valida_telefon])
+    vehicle = models.CharField(max_length=5, choices=Vehicle.choices)
+    matricula = models.CharField(
+        max_length=7,
+        blank=True,
+        default="",
+        validators=[valida_matricula],
+    )
+    num_seguretat_social = models.CharField(
+        max_length=12,
+        validators=[valida_num_seguretat_social],
+    )
+    estat = models.CharField(
+        max_length=8,
+        choices=Estat.choices,
+        default=Estat.PENDENT,
+    )
+
+    def __str__(self):
+        return f"{self.usuari} {self.cognoms}"
