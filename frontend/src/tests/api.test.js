@@ -30,6 +30,11 @@ vi.mock("axios", () => {
 
 const { default: api } = await import("../services/api.js");
 
+// Els interceptors es registren en importar el mòdul. Es guarden ara perquè
+// Vitest buida l'historial de crides dels mocks abans de cada test.
+const interceptorPeticio = mocks.requestUse.mock.calls[0][0];
+const interceptorError = mocks.responseUse.mock.calls[0][1];
+
 describe("client HTTP", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
@@ -40,10 +45,9 @@ describe("client HTTP", () => {
   it("afegeix el token d'accés a les peticions", () => {
     const sessio = useSessioStore();
     sessio.iniciarSessio({ accessToken: "access" });
-    const interceptor = mocks.requestUse.mock.calls[0][0];
     const config = { headers: {} };
 
-    expect(interceptor(config)).toMatchObject({
+    expect(interceptorPeticio(config)).toMatchObject({
       headers: { Authorization: expect.stringContaining("Bearer") },
     });
   });
@@ -57,7 +61,6 @@ describe("client HTTP", () => {
     mocks.refreshPost.mockResolvedValue({
       data: { access: "nou", refresh: "nou-refresh" },
     });
-    const [, interceptorError] = mocks.responseUse.mock.calls[0];
     const config = { headers: {}, _reintentat: false };
     const resposta = await interceptorError({
       response: { status: 401 },
