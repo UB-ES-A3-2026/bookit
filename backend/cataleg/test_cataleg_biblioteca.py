@@ -8,7 +8,7 @@ from rest_framework_simplejwt.tokens import AccessToken
 from cataleg.models import ExemplarBiblioteca, Llibre
 from cataleg.permisos import SENSE_PERMISOS
 from cataleg.serializers import CAMPS_OBLIGATORIS, LLIBRE_JA_AL_CATALEG
-from cataleg.validacions import ISBN_INVALID
+from cataleg.validacions import ISBN_INVALID, PORTADA_MAX_LENGTH
 from usuaris.models import Biblioteca, Usuari
 
 URL = "/api/cataleg/biblioteca/llibres/"
@@ -284,11 +284,31 @@ def test_titol_i_autor_tenen_un_maxim_de_255_caracters(client, camp):
     assert resposta.data[camp][0].code == "max_length"
 
 
-def test_una_portada_que_no_es_un_enllac_dona_error(client):
-    resposta = client.post(URL, {**LLIBRE_NOU, "portada": "no-es-un-enllac"}, format="json")
+@pytest.mark.parametrize(
+    "portada", ["no-es-un-enllac", "ftp://example.com/portada.jpg", "javascript:alert(1)"]
+)
+def test_una_portada_que_no_es_un_enllac_http_dona_error(client, portada):
+    resposta = client.post(URL, {**LLIBRE_NOU, "portada": portada}, format="json")
 
     assert resposta.status_code == status.HTTP_400_BAD_REQUEST
     assert resposta.data == {"portada": ["Introduïu una URL vàlida."]}
+
+
+def test_accepta_una_portada_de_la_mida_maxima_i_rebutja_una_de_mes_llarga(client):
+    base = "https://example.com/"
+    maxima = base + "a" * (PORTADA_MAX_LENGTH - len(base))
+
+    resposta = client.post(URL, {**LLIBRE_NOU, "portada": maxima}, format="json")
+    massa_llarga = client.post(
+        URL,
+        {**LLIBRE_NOU, "isbn": "0-306-40615-2", "portada": maxima + "a"},
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_201_CREATED
+    assert resposta.data["portada"] == maxima
+    assert massa_llarga.status_code == status.HTTP_400_BAD_REQUEST
+    assert massa_llarga.data["portada"][0].code == "max_length"
 
 
 def test_el_llibre_afegit_surt_a_la_cerca_com_a_disponible(client):

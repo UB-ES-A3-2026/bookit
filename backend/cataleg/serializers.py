@@ -2,7 +2,13 @@ from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
 from cataleg.models import ExemplarBiblioteca, Llibre
-from cataleg.validacions import ISBN_INVALID, es_isbn_valid, normalitza_isbn
+from cataleg.validacions import (
+    ISBN_INVALID,
+    PORTADA_MAX_LENGTH,
+    es_isbn_valid,
+    normalitza_isbn,
+    valida_portada,
+)
 
 
 class LlibreCercaSerializer(serializers.ModelSerializer):
@@ -60,8 +66,12 @@ class LlibreCatalegSerializer(serializers.Serializer):
     titol = serializers.CharField(max_length=255, error_messages=ERRORS_OBLIGATORI)
     autor = serializers.CharField(max_length=255, error_messages=ERRORS_OBLIGATORI)
     isbn = serializers.CharField(error_messages=ERRORS_OBLIGATORI)
-    portada = serializers.URLField(
-        max_length=200, required=False, allow_blank=True, default=""
+    portada = serializers.CharField(
+        max_length=PORTADA_MAX_LENGTH,
+        required=False,
+        allow_blank=True,
+        default="",
+        validators=[valida_portada],
     )
     exemplars = EnterObligatori(min_value=1, error_messages=ERRORS_OBLIGATORI)
 
