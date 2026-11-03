@@ -6,7 +6,7 @@ canviar exemplars i retirar), US17-T5 (portada) i US17-T6 (tests); el frontend s
 US17-T10 i QA en treu els casos de prova a US17-T12. Qualsevol canvi d'aquest document passa per pull request i
 s'avisa les dues parts.
 
-**Estat**: esborrany. Les decisions pendents són al final del document.
+**Estat**: esborrany. Les decisions pendents són al final del document; la de la portada ja està presa (vegeu [Portada](#portada)).
 
 La cerca de llibres que fan els usuaris (US4) no forma part d'aquest contracte. Només s'hi indica què n'ha de veure.
 
@@ -53,7 +53,7 @@ Totes les respostes amb un llibre fan servir aquest format.
 | `titol` | text | Títol. |
 | `autor` | text | Autor. |
 | `isbn` | text | ISBN normalitzat: sense guions ni espais i amb la `X` final de l'ISBN-10 en majúscula. |
-| `portada` | text | Enllaç a la imatge de la portada, o `""` si no en té (vegeu P1). |
+| `portada` | text | Enllaç a la imatge de la portada, tal com es va desar, o `""` si no en té (vegeu [Portada](#portada)). |
 | `exemplars` | enter | Nombre d'exemplars que en té la biblioteca autenticada. |
 
 ```json
@@ -106,7 +106,7 @@ catàleg és buit, retorna `[]`.
 | `autor` | text | Sí | No pot ser buit. Màxim 255 caràcters. S'ignoren els espais del voltant. |
 | `isbn` | text | Sí | ISBN-10 o ISBN-13 amb el dígit de control correcte. Accepta guions i espais (US17-T2). |
 | `exemplars` | enter | Sí | Enter més gran o igual a 1. |
-| `portada` | text | No | Enllaç vàlid (vegeu P1). Si no s'envia o és buit, el llibre queda sense portada. |
+| `portada` | text | No | Enllaç `http` o `https` de 500 caràcters com a màxim (vegeu [Portada](#portada)). Si no s'envia o és buit, el llibre queda sense portada. |
 
 ```json
 {
@@ -150,7 +150,8 @@ contractes.
 | `exemplars` no és un enter | `exemplars` | `Es requereix un nombre enter vàlid.` |
 | `exemplars` és més petit que 1 | `exemplars` | `Aquest valor ha de ser més gran o igual a 1.` |
 | `titol` o `autor` amb més de 255 caràcters | el camp | Missatge per defecte de Django REST Framework |
-| `portada` no és un enllaç vàlid | `portada` | `Introdueixi una URL vàlida.` |
+| `portada` no és un enllaç `http` o `https` vàlid | `portada` | `Introduïu una URL vàlida.` |
+| `portada` amb més de 500 caràcters | `portada` | Missatge per defecte de Django REST Framework |
 
 Els tres primers missatges són literals dels criteris d'acceptació de la US17 i els tests els comproven exactament
 (US17-T6). Els altres són els de Django REST Framework en català.
@@ -194,7 +195,8 @@ Si s'envien, s'ignoren. Qualsevol altre camp desconegut també s'ignora.
 |---|---|---|
 | `titol` o `autor` enviat buit, només amb espais o `null` | el camp | `Omple tots els camps obligatoris per continuar` |
 | `titol` o `autor` amb més de 255 caràcters | el camp | Missatge per defecte de Django REST Framework |
-| `portada` no és un enllaç vàlid | `portada` | `Introdueixi una URL vàlida.` |
+| `portada` no és un enllaç `http` o `https` vàlid | `portada` | `Introduïu una URL vàlida.` |
+| `portada` amb més de 500 caràcters | `portada` | Missatge per defecte de Django REST Framework |
 
 També hi apliquen el 401, el 403 i el 404 de [Autenticació i permisos](#autenticació-i-permisos).
 
@@ -252,6 +254,22 @@ cas 2 d'[Afegir un llibre](#afegir-un-llibre).
 Només els 401, 403 i 404 de [Autenticació i permisos](#autenticació-i-permisos). Retirar un llibre que ja s'ha
 retirat rep un 404.
 
+## Portada
+
+El Product Owner ha decidit que la portada és un **enllaç** a una imatge, no una imatge que es puja (US17-T5). Per
+això no cal desar fitxers al servidor ni cap dependència nova.
+
+- Es desa al camp `portada` del model `Llibre`, de 500 caràcters com a màxim.
+- Només s'accepten enllaços `http` i `https`. Altres esquemes (`ftp:`, `javascript:`, `data:`, `file:`...) reben
+  `Introduïu una URL vàlida.`
+- S'ignoren els espais del voltant. `""` vol dir que el llibre no té portada.
+- La validació és al model (`cataleg.validacions.valida_portada`), de manera que l'apliquen tots els serializers del
+  catàleg (US17-T3 i US17-T4) sense repetir-la.
+- L'API retorna l'enllaç tal com està desat, aquí i a la cerca (`docs/api-cerca.md`). El frontend el posa al `src`
+  de la imatge i, si és buit, mostra una portada per defecte.
+- El backend no comprova que l'enllaç respongui ni que sigui una imatge. Com que la portada és compartida entre
+  biblioteques (vegeu P2), editar-la la canvia per a totes.
+
 ## Efecte a la cerca
 
 Els canvis es reflecteixen a la cerca i a la disponibilitat que veuen els usuaris (US4) sense cap pas addicional,
@@ -272,9 +290,6 @@ perquè la cerca llegeix els mateixos models:
 
 ## Decisions pendents
 
-- **P1. Portada.** El Product Owner ha de decidir si la portada és una imatge que es puja o un enllaç (US17-T5).
-  Aquest contracte fa servir un enllaç, que és el que admet el model actual (`URLField`). Si es puja una imatge, la
-  petició d'afegir i d'editar passarà a ser `multipart/form-data` i la resposta portarà l'enllaç on se serveix.
 - **P2. Dades compartides entre biblioteques.** El model `Llibre` és únic per ISBN i el comparteixen totes les
   biblioteques que el tenen. Mentre el Product Owner no respongui el dubte de la US17, editar les dades d'un llibre
   les canvia per a totes, i afegir un llibre que ja existeix no en sobreescriu les dades.
