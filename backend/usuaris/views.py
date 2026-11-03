@@ -3,7 +3,7 @@
 from rest_framework import generics
 from rest_framework.permissions import AllowAny
 
-from usuaris.serializers import UsuariRegistreSerializer
+from usuaris.serializers import RepartidorRegistreSerializer, UsuariRegistreSerializer
 
 
 class RegistreView(generics.CreateAPIView):
@@ -18,4 +18,17 @@ class RegistreView(generics.CreateAPIView):
     permission_classes = [AllowAny]
     # Sense autenticació: així una sessió oberta (p. ex. de l'admin)
     # no obliga a enviar el token CSRF.
+    authentication_classes = []
+
+
+class RegistreRepartidorView(generics.CreateAPIView):
+    """Registra un repartidor nou (US1.1). Contracte a `docs/api-registre-repartidor.md`.
+
+    Retorna 201 amb les dades del repartidor i l'estat del perfil (sense la
+    contrasenya) o 400 amb els errors agrupats per camp.
+    """
+
+    serializer_class = RepartidorRegistreSerializer
+    # Endpoint públic, com el registre d'usuaris: mateixos motius que a RegistreView.
+    permission_classes = [AllowAny]
     authentication_classes = []

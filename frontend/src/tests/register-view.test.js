@@ -10,6 +10,9 @@ vi.mock("axios", () => ({
 }));
 
 vi.mock("vue-router", () => ({
+  useRoute: () => ({
+    query: {},
+  }),
   useRouter: () => ({
     push: vi.fn(),
   }),
@@ -87,10 +90,11 @@ describe("formulari de registre", () => {
     expect(axios.post).not.toHaveBeenCalled();
   });
 
-  it("mostra l'avís i no envia el formulari per als tipus no implementats", async () => {
+  it("mostra l'avís i no envia el formulari si es tria Biblioteca", async () => {
     const element = renderitza();
 
-    element.querySelector("button.account-type__option:nth-of-type(2)").click();
+    // Repartidor ja té formulari (US1.1); Biblioteca encara mostra l'avís.
+    element.querySelector("button.account-type__option:nth-of-type(3)").click();
     await nextTick();
     element.querySelector("form").dispatchEvent(new Event("submit"));
     await nextTick();
