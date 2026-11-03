@@ -40,6 +40,7 @@ jobs:
     # Valors només per a la BD temporal de la CI; no són secrets.
     env:
       DJANGO_SECRET_KEY: clau-nomes-per-a-la-ci
+      DJANGO_DEBUG: "True"
       POSTGRES_DB: biblioteca
       POSTGRES_USER: biblioteca
       POSTGRES_PASSWORD: biblioteca-ci
@@ -86,6 +87,6 @@ jobs:
       - name: Compila
         run: npm run build
 
-      # S'executa quan existeixi l'script "test" al package.json (Vitest encara no està configurat).
+      # Executa els tests unitaris del frontend.
       - name: Executa els tests
         run: npm run test --if-present
