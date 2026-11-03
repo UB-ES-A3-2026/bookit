@@ -201,4 +201,40 @@ test.describe("pàgina de resultats (US4-T8)", () => {
     await expect(page.getByText("Escriu el títol, l'autor o l'ISBN al cercador de la pàgina d'inici.")).toBeVisible();
     expect(peticions).toHaveLength(0);
   });
+
+  test.describe("sense resultats (US4-T9)", () => {
+    const MISSATGE = "No s'ha trobat el llibre cercat, assegura't que l'informació introduïda sigui correcta";
+
+    test("mostra el missatge quan la cerca no troba cap llibre", async ({ page }) => {
+      await simulaCerca(page, 200, resposta([]));
+      await page.goto("/cerca?q=llibre que no existeix");
+
+      await expect(page.getByText(MISSATGE)).toBeVisible();
+      await expect(page.getByRole("list", { name: "Resultats de la cerca" })).toHaveCount(0);
+      await expect(page.getByRole("navigation", { name: "Pàgines de resultats" })).toHaveCount(0);
+    });
+
+    test("no mostra el missatge quan hi ha resultats", async ({ page }) => {
+      await simulaCerca(page, 200, resposta(llibres));
+      await page.goto("/cerca?q=Rodoreda");
+
+      await expect(targetes(page)).toHaveCount(2);
+      await expect(page.getByText(MISSATGE)).toHaveCount(0);
+    });
+
+    test("no mostra el missatge si la cerca falla", async ({ page }) => {
+      await simulaCerca(page, 500, {});
+      await page.goto("/cerca?q=Rodoreda");
+
+      await expect(page.getByRole("alert")).toBeVisible();
+      await expect(page.getByText(MISSATGE)).toHaveCount(0);
+    });
+
+    test("no mostra el missatge si no s'ha cercat res", async ({ page }) => {
+      await simulaCerca(page, 200, resposta([]));
+      await page.goto("/cerca");
+
+      await expect(page.getByText(MISSATGE)).toHaveCount(0);
+    });
+  });
 });
