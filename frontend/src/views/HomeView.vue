@@ -5,6 +5,7 @@ import { useSessioStore } from "../stores/sessio.js";
 import bibliotecaImage from "../assets/biblioteca.jpg";
 import logoImage from "../assets/bookit-logo.jpg";
 
+const router = useRouter();
 const sessio = useSessioStore();
 const router = useRouter();
 
