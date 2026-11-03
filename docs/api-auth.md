@@ -189,12 +189,6 @@ tanca la sessió (US2-T10).
 3. `iniciarSessio` de l'store amb els tokens, `usuari` (la resposta de `/me`) i `rol`.
 4. Redirecció segons el rol: `usuari` a l'inici, `repartidor` a la vista de repartidor i `biblioteca` al seu catàleg.
 
-## Canvis pendents al codi existent
-
-- **Compte de biblioteca sense verificar (US2-T3).** Django no autentica els comptes inactius, de manera que
-  `simplejwt` hi retorna el missatge genèric. Cal comprovar la contrasenya d'aquests comptes a part per poder
-  respondre `Verifica el teu correu`.
-
 ## Decisions pendents
 
 - **P1. Missatges de l'estat del compte.** Els missatges de la taula d'inici de sessió surten de US2-T3 i de la

@@ -130,6 +130,16 @@ async function enviaFormulari() {
     await router.push(ruta);
   } catch (error) {
     sessio.tancarSessio();
+    if (
+      error.response?.status === 403 &&
+      error.response.data?.detail === "Validació incompleta"
+    ) {
+      await router.push({
+        name: "registre",
+        query: { missatge: "Validació incompleta" },
+      });
+      return;
+    }
     assignaErrorsResposta(error.response);
   } finally {
     enviant.value = false;
