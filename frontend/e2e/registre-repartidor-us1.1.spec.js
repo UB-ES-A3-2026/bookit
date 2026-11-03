@@ -49,6 +49,12 @@ function dniUnic() {
   return `${String(numero).padStart(8, "0")}${lletraDni(numero)}`;
 }
 
+// El NIE comença per X, que compta com un 0 per calcular la lletra.
+function nieUnic() {
+  const numero = Number(identificadorUnic().slice(-7));
+  return `X${String(numero).padStart(7, "0")}${lletraDni(numero)}`;
+}
+
 function dadesNoves(canvis = {}) {
   const id = identificadorUnic();
 
@@ -87,7 +93,10 @@ async function omplirFormulari(page, dades) {
   await camp(page, "dni").fill(dades.dni);
   await camp(page, "telefon").fill(dades.telefon);
   await camp(page, "vehicle").selectOption(dades.vehicle);
-  await camp(page, "matricula").fill(dades.matricula);
+  // Amb bicicleta el camp de matrícula no es mostra.
+  if (dades.vehicle !== "bici") {
+    await camp(page, "matricula").fill(dades.matricula);
+  }
   await camp(page, "seguretatSocial").fill(dades.num_seguretat_social);
   await camp(page, "contrasenya").fill(dades.contrasenya);
   await camp(page, "confirmarContrasenya").fill(dades.confirmarContrasenya);
@@ -155,7 +164,7 @@ test.describe("formulari de registre de repartidor (US1.1)", () => {
     page,
   }) => {
     const dades = dadesNoves({
-      dni: "X1234567L",
+      dni: nieUnic(),
       vehicle: "bici",
       matricula: "",
     });
