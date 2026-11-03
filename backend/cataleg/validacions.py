@@ -1,11 +1,13 @@
-"""Validació de l'ISBN dels llibres del catàleg (US17-T2).
+"""Validació dels camps dels llibres del catàleg: l'ISBN (US17-T2) i la portada (US17-T5).
 
-Accepta ISBN-10 i ISBN-13, amb guions o espais o sense, i comprova el dígit de control.
+L'ISBN accepta ISBN-10 i ISBN-13, amb guions o espais o sense, i comprova el dígit de control.
+La portada és un enllaç http o https a la imatge, que el frontend mostra tal com està desat.
 """
 
 import re
 
 from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
 
 ISBN_INVALID = "L'ISBN introduït no és vàlid"
 
@@ -58,3 +60,22 @@ def valida_isbn(valor):
     """Validador de Django per a l'ISBN."""
     if not es_isbn_valid(valor):
         raise ValidationError(ISBN_INVALID, code="invalid")
+
+
+# Portada
+
+PORTADA_MAX_LENGTH = 500
+PORTADA_INVALIDA = URLValidator.message
+
+# Només http i https: el navegador ha de poder carregar l'enllaç com a imatge, i esquemes com
+# `javascript:` o `data:` no s'han d'acceptar.
+_valida_enllac_portada = URLValidator(schemes=["http", "https"])
+
+
+def valida_portada(valor):
+    """Validador de Django per a l'enllaç de la portada.
+
+    És una funció i no directament el `URLValidator` perquè Django REST Framework descarta els `URLValidator`
+    del model en generar els serializers, i llavors no es comprovaria l'esquema.
+    """
+    _valida_enllac_portada(valor)
