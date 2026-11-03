@@ -4,6 +4,7 @@ import LoginView from "../views/LoginView.vue";
 import RegisterConfirmationView from "../views/RegisterConfirmationView.vue";
 import RegisterView from "../views/RegisterView.vue";
 import RoleHomeView from "../views/RoleHomeView.vue";
+import SearchView from "../views/SearchView.vue";
 import VerifyLibraryView from "../views/VerifyLibraryView.vue";
 
 export default createRouter({
@@ -33,5 +34,6 @@ export default createRouter({
       name: "verificacio-biblioteca-api",
       component: VerifyLibraryView,
     },
+    { path: "/cerca", name: "cerca", component: SearchView },
   ],
 });
