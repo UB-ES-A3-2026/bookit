@@ -2,7 +2,7 @@
 import axios from "axios";
 
 import { computed, reactive, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import bibliotecaImage from "../assets/biblioteca.jpg";
 import {
   esCorreuValid,
@@ -13,6 +13,7 @@ import {
 } from "../utils/validacions";
 
 const router = useRouter();
+const route = useRoute();
 // Adreça del backend. Amb Docker la defineix el docker-compose.yml; amb
 // `npm run dev` es pot canviar en un fitxer frontend/.env.local.
 const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
@@ -157,6 +158,10 @@ const errors = reactive({
 
 const errorGeneral = ref("");
 const enviant = ref(false);
+
+if (route.query.missatge === "Validació incompleta") {
+  errorGeneral.value = route.query.missatge;
+}
 
 function tornaInici() {
   router.push({ name: "home" });

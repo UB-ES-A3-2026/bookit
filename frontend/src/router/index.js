@@ -1,7 +1,9 @@
 import { createRouter, createWebHistory } from "vue-router";
 import HomeView from "../views/HomeView.vue";
+import LoginView from "../views/LoginView.vue";
 import RegisterConfirmationView from "../views/RegisterConfirmationView.vue";
 import RegisterView from "../views/RegisterView.vue";
+import RoleHomeView from "../views/RoleHomeView.vue";
 
 export default createRouter({
   history: createWebHistory(),
@@ -12,6 +14,12 @@ export default createRouter({
       path: "/registre/confirmacio",
       name: "registre-confirmacio",
       component: RegisterConfirmationView,
+    },
+    { path: "/inicia-sessio", name: "inici-sessio", component: LoginView },
+    {
+      path: "/repartidor",
+      name: "espai-repartidor",
+      component: RoleHomeView,
     },
   ],
 });
