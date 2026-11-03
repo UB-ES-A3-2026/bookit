@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useSessioStore } from "../stores/sessio.js";
+import AfegirLlibreView from "../views/AfegirLlibreView.vue";
 import CatalegView from "../views/CatalegView.vue";
 import HomeView from "../views/HomeView.vue";
 import LoginView from "../views/LoginView.vue";
@@ -43,6 +44,12 @@ export default createRouter({
       path: "/cataleg",
       name: "cataleg",
       component: CatalegView,
+      beforeEnter: nomesBiblioteques,
+    },
+    {
+      path: "/cataleg/afegir",
+      name: "cataleg-afegir",
+      component: AfegirLlibreView,
       beforeEnter: nomesBiblioteques,
     },
     {

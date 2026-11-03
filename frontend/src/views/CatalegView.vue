@@ -155,7 +155,12 @@ onMounted(carregaCataleg);
         <span>bookit.</span>
       </RouterLink>
 
-      <span class="header-link">Catàleg</span>
+      <div class="header-accions">
+        <span class="header-link">Catàleg</span>
+        <RouterLink class="afegir-link" :to="{ name: 'cataleg-afegir' }">
+          Afegir un llibre
+        </RouterLink>
+      </div>
     </header>
 
     <section class="cataleg-content">
@@ -295,6 +300,27 @@ onMounted(carregaCataleg);
   border-radius: 0.35rem;
   background-position: center 36%;
   background-size: auto 240%;
+}
+
+.header-accions {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.afegir-link {
+  padding: 0.55rem 1rem;
+  border-radius: 0.55rem;
+  color: #fff;
+  background: #a00000;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.afegir-link:hover,
+.afegir-link:focus-visible {
+  background: #720000;
 }
 
 .header-link {

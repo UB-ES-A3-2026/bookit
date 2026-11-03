@@ -43,6 +43,7 @@ async function renderitza() {
     routes: [
       { path: "/", name: "home", component: { template: "<p>Inici</p>" } },
       { path: "/cataleg", name: "cataleg", component: CatalegView },
+      { path: "/cataleg/afegir", name: "cataleg-afegir", component: { template: "<p>Afegir</p>" } },
     ],
   });
   router.push("/cataleg");
