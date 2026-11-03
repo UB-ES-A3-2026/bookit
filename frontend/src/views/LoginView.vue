@@ -1,9 +1,12 @@
 <script setup>
 import { computed, onMounted, onUnmounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
+import api from "../services/api.js";
+import { useSessioStore } from "../stores/sessio.js";
 import bibliotecaImage from "../assets/biblioteca.jpg";
 
 const router = useRouter();
+const sessio = useSessioStore();
 
 function tancaCaixa() {
   router.push({ name: "home" });
@@ -31,17 +34,97 @@ const formulari = reactive({
 
 // La contrasenya surt amagada i es pot mostrar amb el botó del camp.
 const mostraContrasenya = ref(false);
+const errors = reactive({
+  correu: "",
+  contrasenya: "",
+});
+const errorGeneral = ref("");
+const enviant = ref(false);
 
 // Els dos camps són obligatoris: el botó no s'activa fins que estan plens.
 const formulariComplet = computed(
   () => formulari.correu.trim() !== "" && formulari.contrasenya !== "",
 );
 
-function enviaFormulari() {
+function netejaErrors() {
+  errors.correu = "";
+  errors.contrasenya = "";
+  errorGeneral.value = "";
+}
+
+function assignaErrorsResposta(resposta) {
+  const dades = resposta?.data;
+  const camps = ["correu", "contrasenya"];
+  let errorAssignat = false;
+
+  camps.forEach((camp) => {
+    if (Array.isArray(dades?.[camp])) {
+      errors[camp] = dades[camp].join(" ");
+      errorAssignat = true;
+    }
+  });
+
+  if (!errorAssignat) {
+    errorGeneral.value =
+      dades?.detail ??
+      "No s'ha pogut iniciar sessió. Revisa les dades i torna-ho a provar.";
+  }
+}
+
+function rutaSegonsRol(rol) {
+  const rutes = {
+    usuari: { name: "home" },
+    repartidor: { name: "espai-repartidor" },
+    biblioteca: { name: "cataleg" },
+  };
+
+  return rutes[rol] ?? null;
+}
+
+async function enviaFormulari() {
+  netejaErrors();
+
   if (!formulariComplet.value) {
     return;
   }
-  // La connexió amb l'API i la redirecció segons el rol són la US2-T11.
+
+  enviant.value = true;
+
+  try {
+    const respostaLogin = await api.post("/auth/login/", {
+      correu: formulari.correu.trim(),
+      contrasenya: formulari.contrasenya,
+    });
+
+    sessio.iniciarSessio({
+      accessToken: respostaLogin.data.access,
+      refreshToken: respostaLogin.data.refresh,
+    });
+
+    const respostaUsuari = await api.get("/auth/me/");
+    const usuari = respostaUsuari.data;
+    const ruta = rutaSegonsRol(usuari.rol);
+
+    if (!ruta) {
+      sessio.tancarSessio();
+      errorGeneral.value =
+        "No s'ha pogut determinar l'espai corresponent al teu perfil.";
+      return;
+    }
+
+    sessio.iniciarSessio({
+      accessToken: respostaLogin.data.access,
+      refreshToken: respostaLogin.data.refresh,
+      usuari,
+      rol: usuari.rol,
+    });
+    await router.push(ruta);
+  } catch (error) {
+    sessio.tancarSessio();
+    assignaErrorsResposta(error.response);
+  } finally {
+    enviant.value = false;
+  }
 }
 
 // La caixa també es tanca amb la tecla Escape.
@@ -108,7 +191,12 @@ onUnmounted(() => window.removeEventListener("keydown", tancaAmbEscape));
             type="text"
             autocomplete="username"
             placeholder="nom@exemple.cat"
+            :aria-invalid="Boolean(errors.correu)"
+            aria-describedby="login-correu-error"
           />
+          <p id="login-correu-error" class="login-form__error" aria-live="polite">
+            {{ errors.correu }}
+          </p>
         </div>
 
         <div class="login-form__field">
@@ -121,6 +209,8 @@ onUnmounted(() => window.removeEventListener("keydown", tancaAmbEscape));
               :type="mostraContrasenya ? 'text' : 'password'"
               autocomplete="current-password"
               placeholder="La teva contrasenya"
+              :aria-invalid="Boolean(errors.contrasenya)"
+              aria-describedby="login-contrasenya-error"
             />
             <button
               class="login-form__toggle"
@@ -136,14 +226,26 @@ onUnmounted(() => window.removeEventListener("keydown", tancaAmbEscape));
               {{ mostraContrasenya ? "Amaga" : "Mostra" }}
             </button>
           </div>
+          <p
+            id="login-contrasenya-error"
+            class="login-form__error"
+            aria-live="polite"
+          >
+            {{ errors.contrasenya }}
+          </p>
         </div>
+
+        <p v-if="errorGeneral" class="login-form__general-error" role="alert">
+          {{ errorGeneral }}
+        </p>
 
         <button
           class="login-form__submit"
           type="submit"
-          :disabled="!formulariComplet"
+          :disabled="!formulariComplet || enviant"
+          :aria-busy="enviant"
         >
-          Iniciar Sessió
+          {{ enviant ? "Iniciant sessió..." : "Iniciar Sessió" }}
           <span aria-hidden="true">→</span>
         </button>
 
@@ -311,6 +413,17 @@ onUnmounted(() => window.removeEventListener("keydown", tancaAmbEscape));
 .login-form__field input:focus {
   outline: 2px solid #a00000;
   outline-offset: 1px;
+}
+
+.login-form__error,
+.login-form__general-error {
+  margin: 0;
+  color: #a00000;
+  font-size: 0.55rem;
+}
+
+.login-form__general-error {
+  text-align: center;
 }
 
 .login-form__password {
