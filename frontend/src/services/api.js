@@ -1,7 +1,9 @@
 import axios from "axios";
 import { useSessioStore } from "../stores/sessio.js";
 
-const API_BASE_URL = import.meta.env?.VITE_API_URL ?? "/api";
+// VITE_API_URL és l'adreça del backend sense /api, com a la resta del frontend
+// (docker-compose.yml i Render la defineixen així).
+const API_BASE_URL = `${import.meta.env?.VITE_API_URL ?? "http://localhost:8000"}/api`;
 const REFRESH_ENDPOINT = "/auth/refresh/";
 
 const api = axios.create({
