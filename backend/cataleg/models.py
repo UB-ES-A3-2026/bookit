@@ -1,5 +1,7 @@
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db.models import Avg
 
 
 class Llibre(models.Model):
@@ -10,6 +12,45 @@ class Llibre(models.Model):
 
     def __str__(self):
         return self.titol
+
+    @property
+    def mitjana_valoracions(self):
+        return self.valoracions.aggregate(mitjana=Avg("puntuacio"))["mitjana"]
+
+    @property
+    def nombre_valoracions(self):
+        return self.valoracions.count()
+
+
+class Valoracio(models.Model):
+    llibre = models.ForeignKey(
+        Llibre,
+        on_delete=models.CASCADE,
+        related_name="valoracions",
+    )
+    usuari = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="valoracions",
+    )
+    puntuacio = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["llibre", "usuari"],
+                name="una_valoracio_per_usuari_i_llibre",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(puntuacio__gte=1, puntuacio__lte=5),
+                name="puntuacio_valoracio_entre_1_i_5",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.usuari} - {self.llibre}: {self.puntuacio}"
 
 
 class ExemplarBiblioteca(models.Model):
