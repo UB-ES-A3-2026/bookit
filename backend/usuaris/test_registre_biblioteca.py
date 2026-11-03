@@ -70,12 +70,16 @@ def test_registre_biblioteca_no_requereix_autenticacio(client):
 
 
 @pytest.mark.django_db
-@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+@override_settings(
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+    FRONTEND_URL="https://bookit.example",
+)
 def test_registre_biblioteca_envia_correu_de_verificacio(client):
     resposta = client.post(URL, dades_valides(), content_type="application/json")
 
     assert resposta.status_code == 201
     assert len(mail.outbox) == 1
     assert mail.outbox[0].to == ["biblioteca@example.com"]
-    assert "verify/biblioteca/" in mail.outbox[0].body
+    # L'enllaç porta a la pàgina de verificació del frontend, amb el domini.
+    assert "https://bookit.example/verificacio/biblioteca/" in mail.outbox[0].body
     assert "Aquest enllaç caduca en 24 hores." in mail.outbox[0].body

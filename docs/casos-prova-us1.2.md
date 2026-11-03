@@ -36,6 +36,8 @@ facilitats per al registre de biblioteca.
 | CP-US1.2-07 | Correu ja registrat | CA5 | error | E2E (Playwright) i pytest-django |
 | CP-US1.2-08 | Compte inactiu abans de verificar el correu | CA6 | correcte | pytest-django |
 | CP-US1.2-09 | Verificar el correu i accedir a l'aplicació | CA7 | correcte | E2E (Playwright) i pytest-django |
+| CP-US1.2-10 | Contrasenya no vàlida en verificar el compte | CA7 | error | E2E (Playwright) i pytest-django |
+| CP-US1.2-11 | Enllaç de verificació caducat o ja utilitzat | CA7 | error | E2E (Playwright) i pytest-django |
 
 No es defineixen casos de límit perquè els criteris no especifiquen longituds màximes,
 longituds mínimes ni altres valors límit.
@@ -164,11 +166,35 @@ longituds mínimes ni altres valors límit.
 - **Passos**:
   1. Obrir el correu de verificació rebut.
   2. Clicar l'enllaç de verificació.
-  3. Intentar accedir a l'aplicació amb el compte de biblioteca.
-- **Dades d'entrada**: enllaç de verificació rebut al correu indicat durant el registre.
+  3. Escriure i confirmar una contrasenya vàlida i prémer "Activar el compte".
+  4. Iniciar sessió amb el correu i la contrasenya triada.
+- **Dades d'entrada**: enllaç de verificació rebut al correu indicat durant el registre i una contrasenya vàlida.
 - **Resultat esperat**:
-  - El compte s'activa.
-  - La biblioteca pot accedir a l'aplicació.
+  - L'enllaç porta a la pàgina de verificació, que mostra el correu del compte i demana la contrasenya.
+  - En desar-la, el compte s'activa i es mostra "El compte de biblioteca s'ha verificat correctament.".
+  - La biblioteca pot iniciar sessió i arriba a "El meu catàleg".
+- **Nota**: la contrasenya es tria en verificar el correu i no al formulari de registre, perquè només la pugui
+  triar qui rep el correu.
+
+### CP-US1.2-10 · Contrasenya no vàlida en verificar el compte
+
+- **Criteri d'acceptació**: CA7.
+- **Precondicions**: s'ha obert un enllaç de verificació vàlid.
+- **Passos**:
+  1. Deixar la contrasenya buida, o escriure dues contrasenyes diferents, o una contrasenya massa curta.
+  2. Prémer "Activar el compte".
+- **Resultat esperat**:
+  - Es mostra el motiu sota el camp corresponent i el compte continua inactiu.
+  - Es pot tornar a provar amb el mateix enllaç.
+
+### CP-US1.2-11 · Enllaç de verificació caducat o ja utilitzat
+
+- **Criteri d'acceptació**: CA7.
+- **Precondicions**: un enllaç de més de 24 hores o que ja s'ha fet servir per activar el compte.
+- **Passos**:
+  1. Obrir l'enllaç.
+- **Resultat esperat**:
+  - Es mostra "L'enllaç de verificació no és vàlid o ha caducat." i no es demana la contrasenya.
 
 ## Fora d'abast
 

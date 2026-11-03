@@ -1,42 +1,102 @@
 <script setup>
 import axios from "axios";
-import { onMounted, ref } from "vue";
+import { onMounted, reactive, ref } from "vue";
 import { useRoute } from "vue-router";
 import bibliotecaImage from "../assets/biblioteca.jpg";
 
 const route = useRoute();
 const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
+const ENLLAC_INVALID = "L'enllaç de verificació no és vàlid o ha caducat.";
+const SENSE_CONNEXIO = "No s'ha pogut verificar el compte. Torna-ho a provar més tard.";
+const CAMP_OBLIGATORI = "Aquest camp és obligatori.";
+
+// carregant → formulari → correcte, o error si l'enllaç no és vàlid.
 const estat = ref("carregant");
 const missatge = ref("");
+const correu = ref("");
+const enviant = ref(false);
 
-async function verificaCompte() {
+const formulari = reactive({ contrasenya: "", confirmarContrasenya: "" });
+const errors = reactive({ contrasenya: "", confirmarContrasenya: "" });
+
+function urlVerificacio() {
+  const { uidb64, token } = route.params;
+  return `${apiUrl}/api/auth/verify/biblioteca/${encodeURIComponent(uidb64)}/${encodeURIComponent(token)}/`;
+}
+
+function mostraError(error) {
+  estat.value = "error";
+  missatge.value = error.response
+    ? (error.response.data?.detail ?? ENLLAC_INVALID)
+    : SENSE_CONNEXIO;
+}
+
+// Comprova l'enllaç abans de demanar la contrasenya, perquè si ha caducat
+// la biblioteca ho sàpiga sense haver d'omplir res.
+async function comprovaEnllac() {
   const { uidb64, token } = route.params;
 
   if (!uidb64 || !token) {
     estat.value = "error";
-    missatge.value = "L'enllaç de verificació no és vàlid o ha caducat.";
+    missatge.value = ENLLAC_INVALID;
     return;
   }
 
   try {
-    const resposta = await axios.get(
-      `${apiUrl}/api/auth/verify/biblioteca/${encodeURIComponent(uidb64)}/${encodeURIComponent(token)}/`,
-    );
-    estat.value = "correcte";
-    missatge.value =
-      resposta.data?.detail ??
-      "El compte de biblioteca s'ha verificat correctament.";
+    const resposta = await axios.get(urlVerificacio());
+    correu.value = resposta.data?.correu ?? "";
+    estat.value = "formulari";
   } catch (error) {
-    estat.value = "error";
-    missatge.value = error.response
-      ? (error.response.data?.detail ??
-        "L'enllaç de verificació no és vàlid o ha caducat.")
-      : "No s'ha pogut verificar el compte. Torna-ho a provar més tard.";
+    mostraError(error);
   }
 }
 
-onMounted(verificaCompte);
+function netejaError(camp) {
+  errors[camp] = "";
+}
+
+function validaFormulari() {
+  errors.contrasenya = formulari.contrasenya ? "" : CAMP_OBLIGATORI;
+
+  if (!formulari.confirmarContrasenya) {
+    errors.confirmarContrasenya = CAMP_OBLIGATORI;
+  } else if (formulari.confirmarContrasenya !== formulari.contrasenya) {
+    errors.confirmarContrasenya = "Les contrasenyes no coincideixen.";
+  } else {
+    errors.confirmarContrasenya = "";
+  }
+
+  return !errors.contrasenya && !errors.confirmarContrasenya;
+}
+
+async function activaCompte() {
+  if (!validaFormulari()) {
+    return;
+  }
+
+  enviant.value = true;
+  try {
+    const resposta = await axios.post(urlVerificacio(), {
+      contrasenya: formulari.contrasenya,
+    });
+    estat.value = "correcte";
+    missatge.value =
+      resposta.data?.detail ?? "El compte de biblioteca s'ha verificat correctament.";
+  } catch (error) {
+    const missatgesContrasenya = error.response?.data?.contrasenya;
+    if (error.response?.status === 400 && Array.isArray(missatgesContrasenya)) {
+      // El backend ha rebutjat la contrasenya: es pot tornar a provar amb una altra.
+      errors.contrasenya = missatgesContrasenya.join(" ");
+    } else {
+      mostraError(error);
+    }
+  } finally {
+    enviant.value = false;
+  }
+}
+
+onMounted(comprovaEnllac);
 </script>
 
 <template>
@@ -54,6 +114,61 @@ onMounted(verificaCompte);
         Verificant l'enllaç...
       </p>
 
+      <form
+        v-else-if="estat === 'formulari'"
+        class="verification-form"
+        novalidate
+        @submit.prevent="activaCompte"
+      >
+        <p class="verification-modal__text">
+          Tria la contrasenya per entrar a bookit
+          <template v-if="correu">amb <strong>{{ correu }}</strong></template>.
+          En desar-la, el compte quedarà actiu.
+        </p>
+
+        <div class="verification-form__field">
+          <label for="contrasenya">Contrasenya</label>
+          <input
+            id="contrasenya"
+            v-model="formulari.contrasenya"
+            type="password"
+            autocomplete="new-password"
+            placeholder="Mínim 8 caràcters"
+            :aria-invalid="Boolean(errors.contrasenya)"
+            aria-describedby="contrasenya-error"
+            @input="netejaError('contrasenya')"
+          />
+          <p id="contrasenya-error" class="verification-form__error" aria-live="polite">
+            {{ errors.contrasenya }}
+          </p>
+        </div>
+
+        <div class="verification-form__field">
+          <label for="confirmar-contrasenya">Confirmar contrasenya</label>
+          <input
+            id="confirmar-contrasenya"
+            v-model="formulari.confirmarContrasenya"
+            type="password"
+            autocomplete="new-password"
+            placeholder="Repeteix la contrasenya"
+            :aria-invalid="Boolean(errors.confirmarContrasenya)"
+            aria-describedby="confirmar-contrasenya-error"
+            @input="netejaError('confirmarContrasenya')"
+          />
+          <p
+            id="confirmar-contrasenya-error"
+            class="verification-form__error"
+            aria-live="polite"
+          >
+            {{ errors.confirmarContrasenya }}
+          </p>
+        </div>
+
+        <button class="verification-modal__button" type="submit" :disabled="enviant">
+          Activar el compte <span aria-hidden="true">→</span>
+        </button>
+      </form>
+
       <template v-else-if="estat === 'correcte'">
         <p
           class="verification-modal__message verification-modal__message--success"
@@ -62,8 +177,11 @@ onMounted(verificaCompte);
           {{ missatge }}
         </p>
         <p class="verification-modal__text">
-          Ja pots iniciar sessió amb el teu compte de biblioteca.
+          Ja pots iniciar sessió amb el teu correu i la contrasenya que has triat.
         </p>
+        <RouterLink class="verification-modal__button" :to="{ name: 'inici-sessio' }">
+          Iniciar sessió <span aria-hidden="true">→</span>
+        </RouterLink>
       </template>
 
       <template v-else>
@@ -78,8 +196,8 @@ onMounted(verificaCompte);
         </p>
       </template>
 
-      <RouterLink class="verification-modal__button" to="/">
-        Tornar a l'inici <span aria-hidden="true">→</span>
+      <RouterLink v-if="estat !== 'correcte'" class="verification-modal__link" to="/">
+        Tornar a l'inici
       </RouterLink>
     </section>
   </main>
@@ -163,6 +281,52 @@ onMounted(verificaCompte);
   background: #f8d7da;
 }
 
+.verification-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.verification-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.verification-form__field label {
+  color: #442d2a;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.verification-form__field input {
+  min-height: 1.9rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid #dfd1bd;
+  border-radius: 0.35rem;
+  box-sizing: border-box;
+  color: #241914;
+  background: #fff;
+  font: inherit;
+  font-size: 0.75rem;
+}
+
+.verification-form__field input:focus {
+  outline: 2px solid #a00000;
+  outline-offset: 1px;
+}
+
+.verification-form__field input[aria-invalid="true"] {
+  border-color: #a00000;
+}
+
+.verification-form__error {
+  min-height: 0.9rem;
+  margin: 0;
+  color: #870000;
+  font-size: 0.62rem;
+}
+
 .verification-modal__button {
   display: flex;
   min-height: 1.8rem;
@@ -171,13 +335,16 @@ onMounted(verificaCompte);
   gap: 0.5rem;
   margin-top: 0.2rem;
   padding: 0.3rem 1rem;
+  border: none;
   border-radius: 0.35rem;
   color: #fff;
   background: #a00000;
   box-shadow: 0 0.2rem 0.35rem rgb(91 0 0 / 20%);
+  font-family: inherit;
   font-size: 0.7rem;
   font-weight: 700;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .verification-modal__button:hover,
@@ -190,9 +357,21 @@ onMounted(verificaCompte);
   outline-offset: 2px;
 }
 
+.verification-modal__button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 .verification-modal__button span {
   font-size: 1rem;
   font-weight: 400;
+}
+
+.verification-modal__link {
+  align-self: center;
+  color: #a00000;
+  font-size: 0.68rem;
+  font-weight: 700;
 }
 
 @media (max-width: 500px) {

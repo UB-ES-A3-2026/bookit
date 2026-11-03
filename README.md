@@ -77,6 +77,9 @@ docker compose ps                  # els tres serveis han de sortir "healthy"
 - En arrencar, el contenidor del backend aplica les migracions pendents (`migrate`) abans d'aixecar el servidor.
   Si creeu migracions noves, reinicieu-lo (`docker compose restart backend`) o executeu
   `docker compose exec backend python manage.py migrate`.
+- Per carregar el catàleg de demostració (biblioteques, llibres, exemplars i valoracions), executeu:
+  `docker compose exec backend python manage.py carrega_dades_exemple`.
+  L'ordre és idempotent i es pot repetir sense duplicar dades.
 
 ---
 
@@ -284,8 +287,13 @@ Variables del Render Web Service del backend. `<backend>` i `<frontend>` són el
 | `CORS_ALLOWED_ORIGINS` | `https://<frontend>.onrender.com` |
 | `CSRF_TRUSTED_ORIGINS` | `https://<frontend>.onrender.com` |
 | `DJANGO_PROXY_HTTPS` | `True`, perquè Render acaba l'HTTPS abans d'arribar a Django |
+| `FRONTEND_URL` | `https://<frontend>.onrender.com`, sense `/` al final. És l'adreça dels enllaços dels correus |
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Dades de connexió de Neon |
 | `POSTGRES_HOST` | Host directe de Neon, sense `-pooler` |
+| `EMAIL_HOST`, `EMAIL_PORT` | Servidor SMTP. Amb Brevo: `smtp-relay.brevo.com` i `2525` (el 2525 per si el pla gratuït de Render bloqueja els ports SMTP habituals) |
+| `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` | Login i clau SMTP del proveïdor de correu |
+| `EMAIL_USE_TLS` | `True` |
+| `DEFAULT_FROM_EMAIL` | Remitent verificat al proveïdor, p. ex. `bookit <adreça@exemple.cat>` |
 
 Amb `DJANGO_DEBUG=False`, les cookies segures, la redirecció a HTTPS, HSTS i `POSTGRES_SSLMODE=require` s'activen sols. Si s'afegeix un domini propi, cal afegir-lo a les variables de domini.
 

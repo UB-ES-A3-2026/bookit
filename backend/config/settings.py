@@ -3,6 +3,7 @@
 Referència: https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -118,12 +119,28 @@ INSTALLED_APPS = [
 AUTH_USER_MODEL = "usuaris.Usuari"
 
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
 }
 
+# Tokens JWT: el frontend renova l'accés sol quan caduca i els desa a sessionStorage,
+# que es buida en tancar la pestanya. Sense rotació ni llista negra.
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "TOKEN_OBTAIN_SERIALIZER": "usuaris.serializers.IniciSessioSerializer",
+    "TOKEN_REFRESH_SERIALIZER": "usuaris.serializers.RenovacioTokenSerializer",
+}
+
 PASSWORD_RESET_TIMEOUT = env.int("PASSWORD_RESET_TIMEOUT", default=86400)
+
+# Adreça del frontend, sense / al final. Es fa servir per als enllaços dels correus,
+# com el de verificació del compte de biblioteca.
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173").rstrip("/")
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
