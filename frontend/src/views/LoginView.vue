@@ -101,7 +101,16 @@ async function enviaFormulari() {
       refreshToken: respostaLogin.data.refresh,
     });
 
-    const respostaUsuari = await api.get("/auth/me/");
+    let respostaUsuari;
+    try {
+      respostaUsuari = await api.get("/auth/me/");
+    } catch {
+      sessio.tancarSessio();
+      errorGeneral.value =
+        "No s'ha pogut carregar el perfil. Torna-ho a provar més tard.";
+      return;
+    }
+
     const usuari = respostaUsuari.data;
     const ruta = rutaSegonsRol(usuari.rol);
 
