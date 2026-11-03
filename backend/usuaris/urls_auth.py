@@ -8,7 +8,13 @@ autenticat, a `docs/api-auth.md`.
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from usuaris.views import RegistreRepartidorView, RegistreView, UsuariActualView
+from usuaris.views import (
+    RegistreBibliotecaView,
+    RegistreRepartidorView,
+    RegistreView,
+    UsuariActualView,
+    VerificacioBibliotecaView,
+)
 
 app_name = "auth"
 
@@ -24,4 +30,14 @@ urlpatterns = [
     path("login/", TokenObtainPairView.as_view(), name="login"),
     path("refresh/", TokenRefreshView.as_view(), name="refresh"),
     path("me/", UsuariActualView.as_view(), name="me"),
+    path(
+        "register/biblioteca/",
+        RegistreBibliotecaView.as_view(),
+        name="registre-biblioteca",
+    ),
+    path(
+        "verify/biblioteca/<uidb64>/<token>/",
+        VerificacioBibliotecaView.as_view(),
+        name="verificacio-biblioteca",
+    ),
 ]

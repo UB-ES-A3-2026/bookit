@@ -10,6 +10,9 @@ vi.mock("axios", () => ({
 }));
 
 vi.mock("vue-router", () => ({
+  useRoute: () => ({
+    query: {},
+  }),
   useRouter: () => ({
     push: vi.fn(),
   }),
@@ -51,6 +54,25 @@ function ompleFormulari(element, dades = dadesValides) {
   );
 }
 
+function ompleFormulariBiblioteca(element, dades = {
+  correu: "biblioteca@example.com",
+  nom: "Biblioteca Central",
+  dniNie: "12345678Z",
+}) {
+  element.querySelector("#correu-oficial").value = dades.correu;
+  element.querySelector("#correu-oficial").dispatchEvent(
+    new Event("input", { bubbles: true }),
+  );
+  element.querySelector("#nom-biblioteca").value = dades.nom;
+  element.querySelector("#nom-biblioteca").dispatchEvent(
+    new Event("input", { bubbles: true }),
+  );
+  element.querySelector("#dni-nie-responsable").value = dades.dniNie;
+  element.querySelector("#dni-nie-responsable").dispatchEvent(
+    new Event("input", { bubbles: true }),
+  );
+}
+
 afterEach(() => {
   app?.unmount();
   document.body.innerHTML = "";
@@ -87,16 +109,14 @@ describe("formulari de registre", () => {
     expect(axios.post).not.toHaveBeenCalled();
   });
 
-  it("mostra l'avís i no envia el formulari per als tipus no implementats", async () => {
+  it("mostra el formulari de repartidor en triar-ne el tipus", async () => {
     const element = renderitza();
 
     element.querySelector("button.account-type__option:nth-of-type(2)").click();
     await nextTick();
-    element.querySelector("form").dispatchEvent(new Event("submit"));
-    await nextTick();
 
-    expect(element.textContent).toContain("Funcionalitat no implementada.");
-    expect(axios.post).not.toHaveBeenCalled();
+    expect(element.querySelector("#repartidor-correu")).not.toBeNull();
+    expect(element.textContent).not.toContain("Funcionalitat no implementada.");
   });
 
   it("mostra els errors retornats pel backend", async () => {
@@ -117,5 +137,65 @@ describe("formulari de registre", () => {
 
     expect(element.textContent).toContain("Aquest correu ja està registrat.");
     expect(axios.post).toHaveBeenCalledOnce();
+  });
+
+  it("valida i envia el registre de biblioteca", async () => {
+    axios.post.mockResolvedValue({ status: 201 });
+    const element = renderitza();
+
+    element.querySelector("button.account-type__option:nth-of-type(3)").click();
+    await nextTick();
+    ompleFormulariBiblioteca(element);
+    element.querySelector("form").dispatchEvent(new Event("submit"));
+    await nextTick();
+    await nextTick();
+
+    expect(axios.post).toHaveBeenCalledWith(
+      "http://localhost:8000/api/auth/register/biblioteca/",
+      {
+        nom: "Biblioteca Central",
+        correu: "biblioteca@example.com",
+      },
+    );
+    expect(element.textContent).toContain("Revisa el teu correu");
+  });
+
+  it("no envia el registre de biblioteca si falta un camp", async () => {
+    const element = renderitza();
+
+    element.querySelector("button.account-type__option:nth-of-type(3)").click();
+    await nextTick();
+    ompleFormulariBiblioteca(element, { dniNie: "" });
+    element.querySelector("form").dispatchEvent(new Event("submit"));
+    await nextTick();
+
+    expect(element.textContent).toContain(
+      "Algún dels camps no és vàlid o no s'ha introduït",
+    );
+    expect(axios.post).not.toHaveBeenCalled();
+  });
+
+  it("mostra l'error de correu duplicat de biblioteca", async () => {
+    axios.post.mockRejectedValue({
+      response: {
+        status: 400,
+        data: {
+          correu: ["Aquest correu correspon a un compte existent"],
+        },
+      },
+    });
+    const element = renderitza();
+
+    element.querySelector("button.account-type__option:nth-of-type(3)").click();
+    await nextTick();
+    ompleFormulariBiblioteca(element);
+    element.querySelector("form").dispatchEvent(new Event("submit"));
+    await nextTick();
+    await nextTick();
+
+    expect(element.textContent).toContain(
+      "Aquest correu correspon a un compte existent",
+    );
+    expect(element.textContent).not.toContain("Revisa el teu correu");
   });
 });
