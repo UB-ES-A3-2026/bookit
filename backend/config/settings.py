@@ -138,6 +138,10 @@ SIMPLE_JWT = {
 
 PASSWORD_RESET_TIMEOUT = env.int("PASSWORD_RESET_TIMEOUT", default=86400)
 
+# Adreça del frontend, sense / al final. Es fa servir per als enllaços dels correus,
+# com el de verificació del compte de biblioteca.
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173").rstrip("/")
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
