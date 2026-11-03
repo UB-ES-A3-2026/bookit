@@ -13,6 +13,7 @@ vi.mock("axios", () => ({
 
 vi.mock("vue-router", () => ({
   useRouter: () => ({ push }),
+  useRoute: () => ({ query: {} }),
   RouterLink: {
     template: "<a><slot /></a>",
   },
