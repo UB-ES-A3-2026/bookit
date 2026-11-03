@@ -151,6 +151,14 @@ class CercaLlibresTests(TestCase):
             self.assertEqual(resposta.data["count"], 1)
             self.assertEqual(resposta.data["results"][0]["id"], self.llibre.id)
 
+    def test_cerca_es_publica_i_no_exigeix_autenticacio(self):
+        resposta = self.client.get(
+            "/api/cataleg/llibres/",
+            {"q": "La plaça"},
+        )
+
+        self.assertEqual(resposta.status_code, 200)
+
     def test_resultat_inclou_disponibilitat_i_valoracions(self):
         ExemplarBiblioteca.objects.create(
             llibre=self.llibre,
@@ -168,6 +176,23 @@ class CercaLlibresTests(TestCase):
         self.assertEqual(resultat["mitjana_valoracions"], 4.0)
         self.assertEqual(resultat["nombre_valoracions"], 1)
         self.assertEqual(resultat["portada"], "https://example.com/portada.jpg")
+
+    def test_resultat_sense_valoracions_te_mitjana_nulla_i_nombre_zero(self):
+        llibre = Llibre.objects.create(
+            titol="Llibre sense valoracions",
+            autor="Autor de prova",
+            isbn="9780000000002",
+        )
+
+        resposta = self.client.get(
+            "/api/cataleg/llibres/",
+            {"q": "sense valoracions"},
+        )
+
+        resultat = resposta.data["results"][0]
+        self.assertEqual(resultat["id"], llibre.id)
+        self.assertIsNone(resultat["mitjana_valoracions"])
+        self.assertEqual(resultat["nombre_valoracions"], 0)
 
     def test_resultat_no_disponible_si_no_hi_ha_exemplars(self):
         resposta = self.client.get(
@@ -194,20 +219,68 @@ class CercaLlibresTests(TestCase):
         self.assertEqual(resposta.data["count"], 0)
         self.assertEqual(resposta.data["results"], [])
 
-    def test_resultats_paginats(self):
-        for index in range(10):
-            Llibre.objects.create(
-                titol=f"Llibre de prova {index:02d}",
-                autor="Autor de prova",
-                isbn=f"978842974{index:04d}",
-            )
-
+    def test_cerca_amb_espais_no_retorna_resultats(self):
         resposta = self.client.get(
             "/api/cataleg/llibres/",
-            {"q": "Llibre"},
+            {"q": "   "},
         )
 
         self.assertEqual(resposta.status_code, 200)
-        self.assertEqual(resposta.data["count"], 10)
-        self.assertEqual(len(resposta.data["results"]), 10)
-        self.assertIsNone(resposta.data["next"])
+        self.assertEqual(resposta.data["count"], 0)
+        self.assertEqual(resposta.data["results"], [])
+
+    def test_cerca_retorna_multiples_resultats_ordenats_per_titol(self):
+        Llibre.objects.create(
+            titol="Aventures a la plaça",
+            autor="Autor de prova",
+            isbn="9780000000003",
+        )
+        Llibre.objects.create(
+            titol="Zig-zag a la plaça",
+            autor="Autor de prova",
+            isbn="9780000000004",
+        )
+
+        resposta = self.client.get(
+            "/api/cataleg/llibres/",
+            {"q": "plaça"},
+        )
+
+        self.assertEqual(resposta.data["count"], 3)
+        self.assertEqual(
+            [resultat["titol"] for resultat in resposta.data["results"]],
+            [
+                "Aventures a la plaça",
+                "La plaça del Diamant",
+                "Zig-zag a la plaça",
+            ],
+        )
+
+    def test_resultats_paginats_i_segona_pagina(self):
+        for index in range(20):
+            Llibre.objects.create(
+                titol=f"Llibre de prova {index:02d}",
+                autor="Autor de prova",
+                isbn=f"97800000{index:05d}",
+            )
+
+        primera_pagina = self.client.get(
+            "/api/cataleg/llibres/",
+            {"q": "Llibre"},
+        )
+        segona_pagina = self.client.get(
+            "/api/cataleg/llibres/",
+            {"q": "Llibre", "page": 2},
+        )
+
+        self.assertEqual(primera_pagina.status_code, 200)
+        self.assertEqual(primera_pagina.data["count"], 20)
+        self.assertEqual(len(primera_pagina.data["results"]), 10)
+        self.assertIsNotNone(primera_pagina.data["next"])
+        self.assertEqual(segona_pagina.status_code, 200)
+        self.assertEqual(len(segona_pagina.data["results"]), 10)
+        self.assertIsNone(segona_pagina.data["next"])
+        self.assertNotEqual(
+            primera_pagina.data["results"][0]["id"],
+            segona_pagina.data["results"][0]["id"],
+        )
