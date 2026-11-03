@@ -6,7 +6,8 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
 
 from cataleg.models import ExemplarBiblioteca, Llibre
-from cataleg.serializers import LlibreCercaSerializer
+from cataleg.permisos import EsBibliotecaActiva
+from cataleg.serializers import LlibreCatalegSerializer, LlibreCercaSerializer
 
 
 class CercaLlibresPagination(PageNumberPagination):
@@ -45,4 +46,20 @@ class CercaLlibresView(generics.ListAPIView):
                 ),
             )
             .order_by("titol", "id")
+        )
+
+
+class CatalegBibliotecaView(generics.ListCreateAPIView):
+    """Llista i afegeix els llibres del catàleg de la biblioteca autenticada (US17-T3)."""
+
+    serializer_class = LlibreCatalegSerializer
+    permission_classes = [EsBibliotecaActiva]
+    pagination_class = None
+
+    def get_queryset(self):
+        # Només el catàleg de la biblioteca autenticada (vegeu `EsBibliotecaActiva`).
+        return (
+            ExemplarBiblioteca.objects.filter(biblioteca=self.request.user)
+            .select_related("llibre")
+            .order_by("llibre__titol", "llibre_id")
         )

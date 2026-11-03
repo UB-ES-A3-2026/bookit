@@ -151,7 +151,7 @@ contractes.
 | `exemplars` no és un enter | `exemplars` | `Es requereix un nombre enter vàlid.` |
 | `exemplars` és més petit que 1 | `exemplars` | `Aquest valor ha de ser més gran o igual a 1.` |
 | `titol` o `autor` amb més de 255 caràcters | el camp | Missatge per defecte de Django REST Framework |
-| `portada` no és un enllaç vàlid | `portada` | `Introdueixi una URL vàlida.` |
+| `portada` no és un enllaç vàlid | `portada` | `Introduïu una URL vàlida.` |
 
 Els tres primers missatges són literals dels criteris d'acceptació de la US17 i els tests els comproven exactament
 (US17-T6). Els altres són els de Django REST Framework en català.
@@ -195,7 +195,7 @@ Si s'envien, s'ignoren. Qualsevol altre camp desconegut també s'ignora.
 |---|---|---|
 | `titol` o `autor` enviat buit, només amb espais o `null` | el camp | `Omple tots els camps obligatoris per continuar` |
 | `titol` o `autor` amb més de 255 caràcters | el camp | Missatge per defecte de Django REST Framework |
-| `portada` no és un enllaç vàlid | `portada` | `Introdueixi una URL vàlida.` |
+| `portada` no és un enllaç vàlid | `portada` | `Introduïu una URL vàlida.` |
 
 També hi apliquen el 401, el 403 i el 404 de [Autenticació i permisos](#autenticació-i-permisos).
 
