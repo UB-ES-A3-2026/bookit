@@ -65,6 +65,37 @@ CSRF_COOKIE_SAMESITE = SESSION_COOKIE_SAMESITE
 if env.bool("DJANGO_PROXY_HTTPS", default=False):
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
+# Correu electrònic
+# En desenvolupament els missatges es mostren a la consola.
+# En producció es requereix una configuració SMTP completa.
+if DEBUG:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@localhost")
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = env("EMAIL_HOST", default="")
+    EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+    EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+    EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+    EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+    EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", default=False)
+    DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="")
+
+    if not EMAIL_HOST:
+        raise ImproperlyConfigured(
+            "Cal definir EMAIL_HOST en producció."
+        )
+
+    if not DEFAULT_FROM_EMAIL:
+        raise ImproperlyConfigured(
+            "Cal definir DEFAULT_FROM_EMAIL en producció."
+        )
+
+    if EMAIL_USE_TLS and EMAIL_USE_SSL:
+        raise ImproperlyConfigured(
+            "EMAIL_USE_TLS i EMAIL_USE_SSL no es poden activar alhora."
+        )
+
 
 # Aplicacions
 
@@ -91,6 +122,8 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
 }
+
+PASSWORD_RESET_TIMEOUT = env.int("PASSWORD_RESET_TIMEOUT", default=86400)
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

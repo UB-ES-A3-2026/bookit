@@ -26,7 +26,14 @@ VARIABLES = (
     "DJANGO_COOKIE_SAMESITE",
     "DJANGO_PROXY_HTTPS",
     "POSTGRES_SSLMODE",
+    "EMAIL_USE_TLS",
+    "EMAIL_USE_SSL",
 )
+# En producció també cal el correu (US1.2-T12); aquí n'hi ha prou amb uns valors de prova.
+CORREU_DE_PROVA = {
+    "EMAIL_HOST": "smtp.example.invalid",
+    "DEFAULT_FROM_EMAIL": "no-reply@example.invalid",
+}
 
 
 @pytest.fixture
@@ -34,6 +41,8 @@ def carrega_settings(monkeypatch):
     """Carrega settings.py només amb les variables indicades, sense llegir el .env local."""
     monkeypatch.setattr(environ.Env, "read_env", lambda *args, **kwargs: None)
     monkeypatch.setenv("POSTGRES_PASSWORD", "contrasenya-de-prova")
+    for nom, valor in CORREU_DE_PROVA.items():
+        monkeypatch.setenv(nom, valor)
     for variable in VARIABLES:
         monkeypatch.delenv(variable, raising=False)
 
@@ -214,6 +223,7 @@ def test_check_deploy_no_avisa_de_la_configuracio_de_d2():
         "DJANGO_SESSION_COOKIE_SECURE": "True",
         "DJANGO_CSRF_COOKIE_SECURE": "True",
         "POSTGRES_PASSWORD": "contrasenya-de-prova",
+        **CORREU_DE_PROVA,
     }
 
     resultat = subprocess.run(

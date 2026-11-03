@@ -22,9 +22,12 @@ const CAMPS = {
 
 const titol = (page) => page.getByRole("heading", { name: "Crear un compte" });
 const camp = (page, nom) => page.getByLabel(CAMPS[nom], { exact: true });
-const tipusCompte = (page, nom) => page.getByRole("button", { name: nom, exact: true });
-const termes = (page) => page.getByRole("checkbox", { name: /Accepto els termes d'ús/ });
-const botoEnviar = (page) => page.getByRole("button", { name: "Completar Registre" });
+const tipusCompte = (page, nom) =>
+  page.getByRole("button", { name: nom, exact: true });
+const termes = (page) =>
+  page.getByRole("checkbox", { name: /Accepto els termes d'ús/ });
+const botoEnviar = (page) =>
+  page.getByRole("button", { name: "Completar Registre" });
 
 // Expressió que troba el text dins de la descripció accessible del camp (l'ajuda i el missatge d'error).
 const conte = (text) => new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
@@ -46,7 +49,9 @@ function dadesNoves(canvis = {}) {
 // propi: si diversos workers creen el mateix compte alhora, el backend respon 500 (vegeu docs/prova-manual-us1.md).
 async function crearCompte(request) {
   const dades = dadesNoves();
-  const resposta = await request.post(`${API_URL}${URL_REGISTRE_API}`, { data: dades });
+  const resposta = await request.post(`${API_URL}${URL_REGISTRE_API}`, {
+    data: dades,
+  });
   expect(resposta.status()).toBe(201);
   return dades;
 }
@@ -63,14 +68,17 @@ async function omplir(page, dades) {
     await camp(page, nom).fill(dades[nom]);
   }
   // El formulari (US1-T8) demana repetir la contrasenya; es repeteix la mateixa.
-  await page.getByLabel("Confirmar contrasenya", { exact: true }).fill(dades.contrasenya);
+  await page
+    .getByLabel("Confirmar contrasenya", { exact: true })
+    .fill(dades.contrasenya);
   await termes(page).check();
 }
 
 // Envia el formulari i retorna la resposta del POST al backend.
 async function enviar(page) {
   const resposta = page.waitForResponse(
-    (r) => r.url().endsWith(URL_REGISTRE_API) && r.request().method() === "POST",
+    (r) =>
+      r.url().endsWith(URL_REGISTRE_API) && r.request().method() === "POST",
   );
   await botoEnviar(page).click();
   return resposta;
@@ -80,7 +88,8 @@ async function enviar(page) {
 function peticionsDeRegistre(page) {
   const peticions = [];
   page.on("request", (peticio) => {
-    if (peticio.url().endsWith(URL_REGISTRE_API) && peticio.method() === "POST") peticions.push(peticio);
+    if (peticio.url().endsWith(URL_REGISTRE_API) && peticio.method() === "POST")
+      peticions.push(peticio);
   });
   return peticions;
 }
@@ -91,15 +100,26 @@ async function esperaQueEsMantinguiOberta(page) {
 }
 
 test.describe("caixa de registre (US1-T7)", () => {
-  test("CP-US1-01 · la caixa mostra els camps de CA1 i Lector triat", async ({ page }) => {
+  test("CP-US1-01 · la caixa mostra els camps de CA1 i Lector triat", async ({
+    page,
+  }) => {
     await obrirCaixa(page);
 
     for (const nom of Object.keys(CAMPS)) {
       await expect(camp(page, nom)).toBeVisible();
     }
-    await expect(tipusCompte(page, "Lector")).toHaveAttribute("aria-pressed", "true");
-    await expect(tipusCompte(page, "Repartidor")).toHaveAttribute("aria-pressed", "false");
-    await expect(tipusCompte(page, "Biblioteca")).toHaveAttribute("aria-pressed", "false");
+    await expect(tipusCompte(page, "Lector")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(tipusCompte(page, "Repartidor")).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    await expect(tipusCompte(page, "Biblioteca")).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
     await expect(botoEnviar(page)).toBeVisible();
   });
 
@@ -113,9 +133,15 @@ test.describe("caixa de registre (US1-T7)", () => {
   });
 
   test.describe("en mòbil", () => {
-    test.use({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
+    test.use({
+      viewport: { width: 375, height: 812 },
+      isMobile: true,
+      hasTouch: true,
+    });
 
-    test("CP-US1-02 · tots els elements de la caixa es veuen sencers", async ({ page }) => {
+    test("CP-US1-02 · tots els elements de la caixa es veuen sencers", async ({
+      page,
+    }) => {
       await obrirCaixa(page);
 
       const elements = [
@@ -130,7 +156,9 @@ test.describe("caixa de registre (US1-T7)", () => {
         await element.scrollIntoViewIfNeeded();
         await expect(element).toBeInViewport({ ratio: 1 });
       }
-      const ampladaPagina = await page.evaluate(() => document.documentElement.scrollWidth);
+      const ampladaPagina = await page.evaluate(
+        () => document.documentElement.scrollWidth,
+      );
       expect(ampladaPagina).toBeLessThanOrEqual(375);
     });
   });
@@ -177,15 +205,53 @@ test.describe("registre amb el backend (US1-T9 i US1-T10)", () => {
     expect(errors).toEqual([]);
   });
 
+  test("CP-US1-21 · backend sense resposta", async ({ page }) => {
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    // La petició tallada sempre deixa "Failed to load resource" a la consola; és l'error esperat.
+    page.on("console", (missatge) => {
+      if (missatge.type() === "error" && !missatge.text().startsWith("Failed to load resource")) {
+        errors.push(missatge.text());
+      }
+    });
+
+    await page.route(`**${URL_REGISTRE_API}`, async (route) => {
+      await route.abort("failed");
+    });
+
+    await obrirCaixa(page);
+    await omplir(page, dadesNoves());
+
+    await botoEnviar(page).click();
+
+    await expect(
+      page.getByText(
+        "No s'ha pogut completar el registre. Torna-ho a provar més tard.",
+        { exact: true },
+      ),
+    ).toBeVisible();
+
+    await expect(page).toHaveURL("/registre");
+    await expect(titol(page)).toBeVisible();
+    expect(errors).toEqual([]);
+
+    await expect(botoEnviar(page)).toBeEnabled();
+  });
+
   test.describe("en mòbil", () => {
-    test.use({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
+    test.use({
+      viewport: { width: 375, height: 812 },
+      isMobile: true,
+      hasTouch: true,
+    });
 
     test("CP-US1-02 · registre correcte en mòbil", async ({ page }) => {
       await obrirCaixa(page);
       await omplir(page, dadesNoves());
 
       const resposta = page.waitForResponse(
-        (r) => r.url().endsWith(URL_REGISTRE_API) && r.request().method() === "POST",
+        (r) =>
+          r.url().endsWith(URL_REGISTRE_API) && r.request().method() === "POST",
       );
       await botoEnviar(page).tap();
 
@@ -203,10 +269,15 @@ test.describe("registre amb el backend (US1-T9 i US1-T10)", () => {
 
     expect(resposta.status()).toBe(400);
     await esperaQueEsMantinguiOberta(page);
-    await expect(camp(page, "correu")).toHaveAccessibleDescription("Aquest correu electrònic ja està registrat");
+    await expect(camp(page, "correu")).toHaveAccessibleDescription(
+      "Aquest correu electrònic ja està registrat",
+    );
   });
 
-  test("CP-US1-04 · correu ja registrat amb majúscules diferents", async ({ page, request }) => {
+  test("CP-US1-04 · correu ja registrat amb majúscules diferents", async ({
+    page,
+    request,
+  }) => {
     const existent = await crearCompte(request);
     await obrirCaixa(page);
     await omplir(page, dadesNoves({ correu: existent.correu.toUpperCase() }));
@@ -215,7 +286,9 @@ test.describe("registre amb el backend (US1-T9 i US1-T10)", () => {
 
     expect(resposta.status()).toBe(400);
     await esperaQueEsMantinguiOberta(page);
-    await expect(camp(page, "correu")).toHaveAccessibleDescription("Aquest correu electrònic ja està registrat");
+    await expect(camp(page, "correu")).toHaveAccessibleDescription(
+      "Aquest correu electrònic ja està registrat",
+    );
   });
 
   test("CP-US1-05 · carnet ja registrat", async ({ page, request }) => {
@@ -227,25 +300,43 @@ test.describe("registre amb el backend (US1-T9 i US1-T10)", () => {
 
     expect(resposta.status()).toBe(400);
     await esperaQueEsMantinguiOberta(page);
-    await expect(camp(page, "num_carnet")).toHaveAccessibleDescription(conte("Aquest usuari ja està registrat"));
+    await expect(camp(page, "num_carnet")).toHaveAccessibleDescription(
+      conte("Aquest usuari ja està registrat"),
+    );
   });
 
-  test("CP-US1-06 · correu i carnet ja registrats alhora", async ({ page, request }) => {
+  test("CP-US1-06 · correu i carnet ja registrats alhora", async ({
+    page,
+    request,
+  }) => {
     const existent = await crearCompte(request);
     await obrirCaixa(page);
-    await omplir(page, dadesNoves({ correu: existent.correu, num_carnet: existent.num_carnet }));
+    await omplir(
+      page,
+      dadesNoves({ correu: existent.correu, num_carnet: existent.num_carnet }),
+    );
 
     await enviar(page);
 
     await esperaQueEsMantinguiOberta(page);
-    await expect(camp(page, "correu")).toHaveAccessibleDescription("Aquest correu electrònic ja està registrat");
-    await expect(camp(page, "num_carnet")).toHaveAccessibleDescription(conte("Aquest usuari ja està registrat"));
+    await expect(camp(page, "correu")).toHaveAccessibleDescription(
+      "Aquest correu electrònic ja està registrat",
+    );
+    await expect(camp(page, "num_carnet")).toHaveAccessibleDescription(
+      conte("Aquest usuari ja està registrat"),
+    );
   });
 
   test("CP-US1-07 · format de carnet incorrecte", async ({ page }) => {
     await obrirCaixa(page);
 
-    for (const carnet of ["123456789", "12345678901", "123456789A", "BIB-12345678", " 1234567890"]) {
+    for (const carnet of [
+      "123456789",
+      "12345678901",
+      "123456789A",
+      "BIB-12345678",
+      " 1234567890",
+    ]) {
       await omplir(page, dadesNoves({ num_carnet: carnet }));
 
       const resposta = await enviar(page);
@@ -261,13 +352,21 @@ test.describe("registre amb el backend (US1-T9 i US1-T10)", () => {
   test("CP-US1-13 · correu amb format incorrecte", async ({ page }) => {
     await obrirCaixa(page);
 
-    for (const correu of ["anna.example.com", "anna@", "anna@example", "anna puig@example.com"]) {
+    for (const correu of [
+      "anna.example.com",
+      "anna@",
+      "anna@example",
+      "anna puig@example.com",
+    ]) {
       await omplir(page, dadesNoves({ correu }));
 
       await botoEnviar(page).click();
 
       await esperaQueEsMantinguiOberta(page);
-      await expect(camp(page, "correu"), `correu "${correu}"`).not.toHaveAccessibleDescription("");
+      await expect(
+        camp(page, "correu"),
+        `correu "${correu}"`,
+      ).not.toHaveAccessibleDescription("");
     }
   });
 
@@ -279,7 +378,10 @@ test.describe("registre amb el backend (US1-T9 i US1-T10)", () => {
     const intents = [
       dadesNoves({ contrasenya: "curta1" }),
       dadesNoves({ contrasenya: "12345678" }),
-      dadesNoves({ correu: correuJordi, contrasenya: correuJordi.split("@")[0] }),
+      dadesNoves({
+        correu: correuJordi,
+        contrasenya: correuJordi.split("@")[0],
+      }),
     ];
 
     for (const dades of intents) {
@@ -289,8 +391,12 @@ test.describe("registre amb el backend (US1-T9 i US1-T10)", () => {
 
       expect(resposta.status(), `contrasenya "${dades.contrasenya}"`).toBe(400);
       await esperaQueEsMantinguiOberta(page);
-      await expect(camp(page, "contrasenya")).not.toHaveAccessibleDescription("");
-      await expect(camp(page, "contrasenya")).not.toHaveAccessibleDescription(/password/i);
+      await expect(camp(page, "contrasenya")).not.toHaveAccessibleDescription(
+        "",
+      );
+      await expect(camp(page, "contrasenya")).not.toHaveAccessibleDescription(
+        /password/i,
+      );
     }
   });
 });
@@ -303,59 +409,87 @@ test.describe("camps obligatoris (US1-T8 o US1-T9)", () => {
 
     await esperaQueEsMantinguiOberta(page);
     for (const nom of Object.keys(CAMPS)) {
-      await expect(camp(page, nom), CAMPS[nom]).toHaveAccessibleDescription(conte("obligatori"));
+      await expect(camp(page, nom), CAMPS[nom]).toHaveAccessibleDescription(
+        conte("obligatori"),
+      );
     }
 
     await omplir(page, { ...dadesNoves(), adreca: "" });
     await botoEnviar(page).click();
 
     await esperaQueEsMantinguiOberta(page);
-    await expect(camp(page, "adreca")).toHaveAccessibleDescription(conte("obligatori"));
+    await expect(camp(page, "adreca")).toHaveAccessibleDescription(
+      conte("obligatori"),
+    );
     for (const nom of ["correu", "nom", "contrasenya"]) {
       await expect(camp(page, nom), CAMPS[nom]).toHaveAccessibleDescription("");
     }
   });
 });
 
-// Des de la US1.1-T8, "Repartidor" té el seu formulari (vegeu e2e/registre-repartidor.spec.js) i el CP-US1-10 ja
-// no s'aplica. Només queda "Biblioteca" com a tipus no disponible.
-test.describe("tipus de compte no disponibles (US1-T11)", () => {
-  test('CP-US1-11 · tipus de compte "Biblioteca"', async ({ page }) => {
-    const peticions = peticionsDeRegistre(page);
+// Des de la US1.1 i la US1.2, "Repartidor" i "Biblioteca" tenen el seu formulari i els CP-US1-10, 11 i 12 (avís de
+// funcionalitat no implementada) ja no s'apliquen. El formulari de repartidor es prova a e2e/registre-repartidor.spec.js.
+test.describe("formulari de biblioteca (US1.2)", () => {
+  test("US1.2-T8 · Biblioteca mostra el formulari específic", async ({
+    page,
+  }) => {
     await obrirCaixa(page);
 
     await tipusCompte(page, "Biblioteca").click();
-
-    await expect(page.getByText("Funcionalitat no implementada")).toBeVisible();
-
-    await omplir(page, dadesNoves());
-    if (await botoEnviar(page).isEnabled()) {
-      await botoEnviar(page).click();
-    }
-
-    await expect(page).toHaveURL("/registre");
-    expect(peticions).toEqual([]);
-  });
-
-  test("CP-US1-12 · tornar a Lector després de l'avís", async ({ page }) => {
-    await obrirCaixa(page);
-    await tipusCompte(page, "Biblioteca").click();
-    await expect(page.getByText("Funcionalitat no implementada")).toBeVisible();
-
-    await tipusCompte(page, "Lector").click();
 
     await expect(page.getByText("Funcionalitat no implementada")).toBeHidden();
-    await omplir(page, dadesNoves());
-    const resposta = await enviar(page);
-    expect(resposta.status()).toBe(201);
-    expect((await resposta.json()).rol).toBe("usuari");
-    await expect(page).toHaveURL("/");
+    await expect(
+      page.getByLabel("Correu electrònic oficial", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByLabel("Nom de la biblioteca", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByLabel("DNI / NIE del responsable", { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByLabel("Nom complet", { exact: true })).toBeHidden();
+    await expect(termes(page)).toBeVisible();
+    await expect(botoEnviar(page)).toBeVisible();
+  });
+
+  test("US1.2-T9 · valida els camps de Biblioteca", async ({ page }) => {
+    const peticions = peticionsDeRegistre(page);
+    await obrirCaixa(page);
+    await tipusCompte(page, "Biblioteca").click();
+
+    await botoEnviar(page).click();
+
+    await expect(
+      page.getByText(
+        "Algún dels camps no és vàlid o no s'ha introduït, torna a intentar-ho",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(page).toHaveURL("/registre");
+    expect(peticions).toEqual([]);
+
+    await page
+      .getByLabel("Correu electrònic oficial", { exact: true })
+      .fill("correu-invalid");
+    await page
+      .getByLabel("Nom de la biblioteca", { exact: true })
+      .fill("Biblioteca Central");
+    await page
+      .getByLabel("DNI / NIE del responsable", { exact: true })
+      .fill("12345678Z");
+    await botoEnviar(page).click();
+
+    await expect(
+      page.getByText(
+        "Algún dels camps no és vàlid o no s'ha introduït, torna a intentar-ho",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    expect(peticions).toEqual([]);
   });
 });
 
 test.describe("clicar fora de la caixa (CA6)", () => {
-  test.fixme(true, "Cap tasca de frontend no implementa encara CA6 (vegeu docs/casos-prova-us1.md).");
-
   test("CP-US1-09 · clicar fora de la caixa la tanca", async ({ page }) => {
     await obrirCaixa(page);
     const caixa = page.getByRole("region", { name: "Crear un compte" });
@@ -370,12 +504,18 @@ test.describe("clicar fora de la caixa (CA6)", () => {
     const campNom = await camp(page, "nom").boundingBox();
     await page.mouse.move(campNom.x + 5, campNom.y + campNom.height / 2);
     await page.mouse.down();
-    await page.mouse.move(requadre.x + requadre.width + 40, campNom.y + campNom.height / 2);
+    await page.mouse.move(
+      requadre.x + requadre.width + 40,
+      campNom.y + campNom.height / 2,
+    );
     await page.mouse.up();
     await esperaQueEsMantinguiOberta(page);
 
     // Clic al fons enfosquit, fora de la caixa.
-    await page.mouse.click(Math.max(requadre.x / 2, 5), requadre.y + requadre.height / 2);
+    await page.mouse.click(
+      Math.max(requadre.x / 2, 5),
+      requadre.y + requadre.height / 2,
+    );
 
     await expect(page).toHaveURL("/");
     await expect(titol(page)).toBeHidden();
