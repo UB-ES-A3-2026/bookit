@@ -7,7 +7,12 @@ from rest_framework.permissions import AllowAny
 
 from cataleg.models import ExemplarBiblioteca, Llibre
 from cataleg.permisos import EsBibliotecaActiva
-from cataleg.serializers import LlibreCatalegSerializer, LlibreCercaSerializer
+from cataleg.serializers import (
+    EdicioLlibreCatalegSerializer,
+    ExemplarsCatalegSerializer,
+    LlibreCatalegSerializer,
+    LlibreCercaSerializer,
+)
 
 
 class CercaLlibresPagination(PageNumberPagination):
@@ -63,3 +68,44 @@ class CatalegBibliotecaView(generics.ListCreateAPIView):
             .select_related("llibre")
             .order_by("llibre__titol", "llibre_id")
         )
+
+
+class LlibreCatalegBibliotecaMixin:
+    """Troba l'entrada del catàleg de la biblioteca autenticada per l'`id` del llibre (US17-T4).
+
+    Un llibre que no és al catàleg de la biblioteca, encara que el tingui una altra,
+    rep el mateix 404 que un llibre inexistent.
+    """
+
+    permission_classes = [EsBibliotecaActiva]
+    lookup_field = "llibre_id"
+    lookup_url_kwarg = "id"
+
+    def get_queryset(self):
+        return ExemplarBiblioteca.objects.filter(
+            biblioteca=self.request.user
+        ).select_related("llibre")
+
+
+class LlibreCatalegBibliotecaView(
+    LlibreCatalegBibliotecaMixin, generics.UpdateAPIView, generics.DestroyAPIView
+):
+    """Edita les dades d'un llibre del catàleg o el retira (US17-T4).
+
+    Retirar-lo esborra la fila d'exemplars de la biblioteca i manté el `Llibre`,
+    que poden tenir altres biblioteques (P4 del contracte).
+    """
+
+    serializer_class = EdicioLlibreCatalegSerializer
+    http_method_names = ["patch", "delete", "options"]
+
+
+class ExemplarsCatalegBibliotecaView(LlibreCatalegBibliotecaMixin, generics.UpdateAPIView):
+    """Canvia el nombre d'exemplars d'un llibre del catàleg (US17-T4)."""
+
+    serializer_class = ExemplarsCatalegSerializer
+    http_method_names = ["patch", "options"]
+
+    def patch(self, request, *args, **kwargs):
+        # No és parcial: `exemplars` és l'únic camp i és obligatori.
+        return self.update(request, *args, **kwargs)

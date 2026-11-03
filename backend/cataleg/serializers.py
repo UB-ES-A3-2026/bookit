@@ -121,3 +121,40 @@ class LlibreCatalegSerializer(serializers.Serializer):
         except IntegrityError:
             # Dues peticions iguals alhora: la segona topa amb la restricció única.
             raise serializers.ValidationError({"isbn": [LLIBRE_JA_AL_CATALEG]})
+
+
+class EdicioLlibreCatalegSerializer(LlibreCatalegSerializer):
+    """Edita les dades d'un llibre del catàleg (US17-T4). Contracte a `docs/api-cataleg.md`.
+
+    Rep la fila `ExemplarBiblioteca` de la biblioteca i canvia el `Llibre`, que és
+    compartit entre biblioteques (P2). L'ISBN (P3) i els exemplars no s'editen aquí:
+    si s'envien, s'ignoren.
+    """
+
+    isbn = None
+    exemplars = None
+
+    def update(self, exemplar, validated_data):
+        llibre = exemplar.llibre
+        for camp, valor in validated_data.items():
+            setattr(llibre, camp, valor)
+        llibre.save(update_fields=list(validated_data))
+        return exemplar
+
+
+class ExemplarsCatalegSerializer(LlibreCatalegSerializer):
+    """Canvia el nombre total d'exemplars d'un llibre del catàleg (US17-T4).
+
+    Amb 0 el llibre continua al catàleg, però sense cap exemplar disponible.
+    """
+
+    titol = None
+    autor = None
+    isbn = None
+    portada = None
+    exemplars = EnterObligatori(min_value=0, error_messages=ERRORS_OBLIGATORI)
+
+    def update(self, exemplar, validated_data):
+        exemplar.quantitat = validated_data["exemplars"]
+        exemplar.save(update_fields=["quantitat"])
+        return exemplar
