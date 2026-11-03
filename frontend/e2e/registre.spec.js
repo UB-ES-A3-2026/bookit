@@ -427,28 +427,9 @@ test.describe("camps obligatoris (US1-T8 o US1-T9)", () => {
   });
 });
 
-test.describe("tipus de compte no disponibles (US1-T11)", () => {
-  for (const [cas, tipus] of [["CP-US1-10", "Repartidor"]]) {
-    test(`${cas} · tipus de compte "${tipus}"`, async ({ page }) => {
-      const peticions = peticionsDeRegistre(page);
-      await obrirCaixa(page);
-
-      await tipusCompte(page, tipus).click();
-
-      await expect(
-        page.getByText("Funcionalitat no implementada"),
-      ).toBeVisible();
-
-      await omplir(page, dadesNoves());
-      if (await botoEnviar(page).isEnabled()) {
-        await botoEnviar(page).click();
-      }
-
-      await expect(page).toHaveURL("/registre");
-      expect(peticions).toEqual([]);
-    });
-  }
-
+// Des de la US1.1 i la US1.2, "Repartidor" i "Biblioteca" tenen el seu formulari i els CP-US1-10, 11 i 12 (avís de
+// funcionalitat no implementada) ja no s'apliquen. El formulari de repartidor es prova a e2e/registre-repartidor.spec.js.
+test.describe("formulari de biblioteca (US1.2)", () => {
   test("US1.2-T8 · Biblioteca mostra el formulari específic", async ({
     page,
   }) => {
@@ -505,21 +486,6 @@ test.describe("tipus de compte no disponibles (US1-T11)", () => {
       ),
     ).toBeVisible();
     expect(peticions).toEqual([]);
-  });
-
-  test("CP-US1-12 · tornar a Lector després de l'avís", async ({ page }) => {
-    await obrirCaixa(page);
-    await tipusCompte(page, "Repartidor").click();
-    await expect(page.getByText("Funcionalitat no implementada")).toBeVisible();
-
-    await tipusCompte(page, "Lector").click();
-
-    await expect(page.getByText("Funcionalitat no implementada")).toBeHidden();
-    await omplir(page, dadesNoves());
-    const resposta = await enviar(page);
-    expect(resposta.status()).toBe(201);
-    expect((await resposta.json()).rol).toBe("usuari");
-    await expect(page).toHaveURL("/");
   });
 });
 

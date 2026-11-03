@@ -13,6 +13,7 @@ from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 from usuaris.models import Usuari
 from usuaris.serializers import (
     BibliotecaRegistreSerializer,
+    RepartidorRegistreSerializer,
     UsuariRegistreSerializer,
     enviar_correu_verificacio,
 )
@@ -30,6 +31,19 @@ class RegistreView(generics.CreateAPIView):
     permission_classes = [AllowAny]
     # Sense autenticació: així una sessió oberta (p. ex. de l'admin)
     # no obliga a enviar el token CSRF.
+    authentication_classes = []
+
+
+class RegistreRepartidorView(generics.CreateAPIView):
+    """Registra un repartidor nou (US1.1). Contracte a `docs/api-registre-repartidor.md`.
+
+    Retorna 201 amb les dades del repartidor i l'estat del perfil (sense la
+    contrasenya) o 400 amb els errors agrupats per camp.
+    """
+
+    serializer_class = RepartidorRegistreSerializer
+    # Endpoint públic, com el registre d'usuaris: mateixos motius que a RegistreView.
+    permission_classes = [AllowAny]
     authentication_classes = []
 
 
