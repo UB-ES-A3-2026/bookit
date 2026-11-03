@@ -1,11 +1,19 @@
 <script setup>
 import axios from "axios";
 
-import { reactive, ref } from "vue";
-import { useRouter } from "vue-router";
+import { computed, reactive, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import bibliotecaImage from "../assets/biblioteca.jpg";
+import {
+  esCorreuValid,
+  esDniNieValid,
+  esMatriculaValida,
+  esNumSeguretatSocialValid,
+  esTelefonValid,
+} from "../utils/validacions";
 
 const router = useRouter();
+const route = useRoute();
 // Adreça del backend. Amb Docker la defineix el docker-compose.yml; amb
 // `npm run dev` es pot canviar en un fitxer frontend/.env.local.
 const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
@@ -21,11 +29,113 @@ const avisTipus = ref("");
 
 const AVIS_NO_IMPLEMENTAT = "Funcionalitat no implementada.";
 
-// Només "Lector" està implementat. Amb els altres tipus es marca l'opció triada
-// i es mostra l'avís; el formulari no s'envia fins que es torna a "Lector".
+// "Lector" i "Repartidor" tenen formulari. Amb "Biblioteca" es marca l'opció
+// i es mostra l'avís; el formulari no s'envia fins que es canvia de tipus.
 function seleccionaTipus(valor) {
   tipusCompte.value = valor;
-  avisTipus.value = valor === "lector" ? "" : AVIS_NO_IMPLEMENTAT;
+  avisTipus.value = valor === "biblioteca" ? AVIS_NO_IMPLEMENTAT : "";
+}
+
+const tipusVehicles = [
+  { valor: "bici", etiqueta: "Bicicleta" },
+  { valor: "moto", etiqueta: "Moto" },
+  { valor: "cotxe", etiqueta: "Cotxe" },
+];
+
+const formulariRepartidor = reactive({
+  correu: "",
+  nom: "",
+  cognoms: "",
+  dni: "",
+  telefon: "",
+  vehicle: "",
+  matricula: "",
+  numSeguretatSocial: "",
+  contrasenya: "",
+  confirmarContrasenya: "",
+});
+
+// La matrícula només es demana per a moto i cotxe. Si es canvia a bicicleta,
+// s'esborra la que s'hagués escrit perquè no s'enviï.
+const demanaMatricula = computed(() =>
+  ["moto", "cotxe"].includes(formulariRepartidor.vehicle),
+);
+
+watch(demanaMatricula, (calMatricula) => {
+  if (!calMatricula) {
+    formulariRepartidor.matricula = "";
+    errorsRepartidor.matricula = "";
+  }
+});
+
+const errorsRepartidor = reactive({
+  correu: "",
+  nom: "",
+  cognoms: "",
+  dni: "",
+  telefon: "",
+  vehicle: "",
+  matricula: "",
+  numSeguretatSocial: "",
+  contrasenya: "",
+  confirmarContrasenya: "",
+});
+
+// Comprovacions de format dels camps que en tenen. Cada una retorna el
+// missatge d'error, o un text buit si el valor és correcte.
+const formatsRepartidor = {
+  correu: (valor) =>
+    esCorreuValid(valor)
+      ? ""
+      : "El correu ha de ser una adreça vàlida (ex. usuari@exemple.cat).",
+  dni: (valor) =>
+    esDniNieValid(valor)
+      ? ""
+      : "El DNI/NIE no és vàlid. Revisa el número i la lletra (ex. 12345678Z).",
+  telefon: (valor) =>
+    esTelefonValid(valor)
+      ? ""
+      : "El telèfon ha de tenir 9 xifres (ex. 600 000 000).",
+  matricula: (valor) =>
+    esMatriculaValida(valor)
+      ? ""
+      : "La matrícula ha de tenir 4 xifres i 3 lletres (ex. 1234 BCD).",
+  numSeguretatSocial: (valor) =>
+    esNumSeguretatSocialValid(valor)
+      ? ""
+      : "El número de la Seguretat Social ha de tenir 12 xifres.",
+  confirmarContrasenya: (valor) =>
+    valor === formulariRepartidor.contrasenya
+      ? ""
+      : "Les contrasenyes no coincideixen.",
+};
+
+function netejaErrorRepartidor(camp) {
+  errorsRepartidor[camp] = "";
+  errorGeneral.value = "";
+}
+
+function validaCampRepartidor(camp) {
+  const valor = formulariRepartidor[camp];
+
+  if (!valor.trim()) {
+    errorsRepartidor[camp] = "Aquest camp és obligatori.";
+    return false;
+  }
+
+  const comprovaFormat = formatsRepartidor[camp];
+  errorsRepartidor[camp] = comprovaFormat ? comprovaFormat(valor) : "";
+  return errorsRepartidor[camp] === "";
+}
+
+// Es validen tots els camps perquè es vegin tots els errors alhora. La
+// matrícula només es valida quan es demana (moto i cotxe).
+function validaFormulariRepartidor() {
+  const camps = Object.keys(formulariRepartidor).filter(
+    (camp) => camp !== "matricula" || demanaMatricula.value,
+  );
+  const resultats = camps.map((camp) => validaCampRepartidor(camp));
+  return resultats.every(Boolean);
 }
 
 const formulari = reactive({
@@ -49,12 +159,26 @@ const errors = reactive({
 const errorGeneral = ref("");
 const enviant = ref(false);
 
+if (route.query.missatge === "Validació incompleta") {
+  errorGeneral.value = route.query.missatge;
+}
+
 function tornaInici() {
   router.push({ name: "home" });
 }
 
-// Registre correcte: sense tokens ni inici de sessió automàtic.
+// Registre correcte: sense tokens ni inici de sessió automàtic. El lector
+// torna a l'inici. El repartidor va a la pantalla de confirmació, perquè el
+// seu compte queda pendent de validació.
 function registreCorrecte() {
+  if (tipusCompte.value === "repartidor") {
+    router.push({
+      name: "registre-confirmacio",
+      state: { nom: formulariRepartidor.nom.trim() },
+    });
+    return;
+  }
+
   router.push({ name: "home" });
 }
 
@@ -118,15 +242,30 @@ function validaFormulari() {
   return resultats.every(Boolean);
 }
 
-function assignaErrorsBackend(errorsBackend) {
-  const mapatgeCamps = {
-    correu: "correu",
-    nom: "nom",
-    adreca: "adreca",
-    num_carnet: "numCarnet",
-    contrasenya: "contrasenya",
-  };
+// Correspondència entre els camps de l'API i els del formulari de cada tipus.
+const campsApiLector = {
+  correu: "correu",
+  nom: "nom",
+  adreca: "adreca",
+  num_carnet: "numCarnet",
+  contrasenya: "contrasenya",
+};
 
+const campsApiRepartidor = {
+  correu: "correu",
+  nom: "nom",
+  cognoms: "cognoms",
+  dni: "dni",
+  telefon: "telefon",
+  vehicle: "vehicle",
+  matricula: "matricula",
+  num_seguretat_social: "numSeguretatSocial",
+  contrasenya: "contrasenya",
+};
+
+// Posa cada missatge del backend sota el seu camp. Si cap missatge correspon a
+// un camp del formulari, es mostra un error general.
+function assignaErrorsBackend(errorsBackend, mapatgeCamps, errorsFormulari) {
   let errorAssignat = false;
 
   Object.entries(errorsBackend).forEach(([camp, missatges]) => {
@@ -136,7 +275,7 @@ function assignaErrorsBackend(errorsBackend) {
       return;
     }
 
-    errors[campFormulari] = missatges.join(" ");
+    errorsFormulari[campFormulari] = missatges.join(" ");
     errorAssignat = true;
   });
 
@@ -146,35 +285,17 @@ function assignaErrorsBackend(errorsBackend) {
   }
 }
 
-async function enviaFormulari() {
-  netejaErrors();
-
-  // Amb un tipus de compte no implementat no es crea cap compte (US1-T11).
-  if (tipusCompte.value !== "lector") {
-    avisTipus.value = AVIS_NO_IMPLEMENTAT;
-    return;
-  }
-
-  if (!validaFormulari()) {
-    return;
-  }
-
+// Envia les dades a l'API. Si el backend respon amb errors de validació (400),
+// es mostren sota cada camp; qualsevol altre error es mostra com a general.
+async function enviaRegistre(url, dades, mapatgeCamps, errorsFormulari) {
   enviant.value = true;
 
-  const dadesRegistre = {
-    nom: formulari.nom,
-    correu: formulari.correu,
-    adreca: formulari.adreca,
-    num_carnet: formulari.numCarnet,
-    contrasenya: formulari.contrasenya,
-  };
-
   try {
-    await axios.post(`${apiUrl}/api/auth/register/`, dadesRegistre);
+    await axios.post(url, dades);
     registreCorrecte();
   } catch (error) {
     if (error.response?.status === 400 && error.response.data) {
-      assignaErrorsBackend(error.response.data);
+      assignaErrorsBackend(error.response.data, mapatgeCamps, errorsFormulari);
     } else {
       errorGeneral.value =
         "No s'ha pogut completar el registre. Torna-ho a provar més tard.";
@@ -182,6 +303,69 @@ async function enviaFormulari() {
   } finally {
     enviant.value = false;
   }
+}
+
+// Dades del repartidor tal com les espera l'API (docs/api-registre-repartidor.md).
+// La confirmació de la contrasenya només es comprova aquí, i la matrícula
+// només s'envia amb moto o cotxe.
+function dadesRegistreRepartidor() {
+  const dades = {
+    nom: formulariRepartidor.nom,
+    cognoms: formulariRepartidor.cognoms,
+    correu: formulariRepartidor.correu,
+    dni: formulariRepartidor.dni,
+    telefon: formulariRepartidor.telefon,
+    vehicle: formulariRepartidor.vehicle,
+    num_seguretat_social: formulariRepartidor.numSeguretatSocial,
+    contrasenya: formulariRepartidor.contrasenya,
+  };
+
+  if (demanaMatricula.value) {
+    dades.matricula = formulariRepartidor.matricula;
+  }
+
+  return dades;
+}
+
+async function enviaFormulari() {
+  netejaErrors();
+
+  // Amb un tipus de compte no implementat no es crea cap compte (US1-T11).
+  if (tipusCompte.value === "biblioteca") {
+    avisTipus.value = AVIS_NO_IMPLEMENTAT;
+    return;
+  }
+
+  if (tipusCompte.value === "repartidor") {
+    if (!validaFormulariRepartidor()) {
+      return;
+    }
+
+    await enviaRegistre(
+      `${apiUrl}/api/auth/register/repartidor/`,
+      dadesRegistreRepartidor(),
+      campsApiRepartidor,
+      errorsRepartidor,
+    );
+    return;
+  }
+
+  if (!validaFormulari()) {
+    return;
+  }
+
+  await enviaRegistre(
+    `${apiUrl}/api/auth/register/`,
+    {
+      nom: formulari.nom,
+      correu: formulari.correu,
+      adreca: formulari.adreca,
+      num_carnet: formulari.numCarnet,
+      contrasenya: formulari.contrasenya,
+    },
+    campsApiLector,
+    errors,
+  );
 }
 </script>
 
@@ -210,7 +394,9 @@ async function enviaFormulari() {
       </header>
 
       <nav class="register-tabs" aria-label="Autenticació">
-        <button class="register-tabs__tab" type="button">Inicia Sessió</button>
+        <RouterLink class="register-tabs__tab" to="/inicia-sessio">
+          Inicia Sessió
+        </RouterLink>
         <button
           class="register-tabs__tab register-tabs__tab--active"
           type="button"
@@ -250,126 +436,370 @@ async function enviaFormulari() {
           </p>
         </fieldset>
 
-        <div class="register-form__field">
-          <label for="correu">Correu electrònic</label>
-          <input
-            id="correu"
-            v-model="formulari.correu"
-            name="correu"
-            type="email"
-            autocomplete="email"
-            placeholder="nom@exemple.cat"
-            :aria-invalid="Boolean(errors.correu)"
-            aria-describedby="correu-error"
-            @input="netejaError('correu')"
-          />
-          <p id="correu-error" class="register-form__error" aria-live="polite">
-            {{ errors.correu }}
-          </p>
-        </div>
+        <template v-if="tipusCompte === 'repartidor'">
+          <div class="register-form__field">
+            <label for="repartidor-correu">Correu electrònic</label>
+            <input
+              id="repartidor-correu"
+              v-model="formulariRepartidor.correu"
+              name="correu"
+              type="email"
+              autocomplete="email"
+              placeholder="nom@exemple.cat"
+              :aria-invalid="Boolean(errorsRepartidor.correu)"
+              aria-describedby="repartidor-correu-error"
+              @input="netejaErrorRepartidor('correu')"
+            />
+            <p
+              id="repartidor-correu-error"
+              class="register-form__error"
+              aria-live="polite"
+            >
+              {{ errorsRepartidor.correu }}
+            </p>
+          </div>
 
-        <div class="register-form__field">
-          <label for="nom">Nom complet</label>
-          <input
-            id="nom"
-            v-model="formulari.nom"
-            name="nom"
-            type="text"
-            autocomplete="name"
-            placeholder="p. ex. Laia Vidal Serra"
-            :aria-invalid="Boolean(errors.nom)"
-            aria-describedby="nom-error"
-            @input="netejaError('nom')"
-          />
-          <p id="nom-error" class="register-form__error" aria-live="polite">
-            {{ errors.nom }}
-          </p>
-        </div>
+          <div class="register-form__row">
+            <div class="register-form__field">
+              <label for="repartidor-nom">Nom</label>
+              <input
+                id="repartidor-nom"
+                v-model="formulariRepartidor.nom"
+                name="nom"
+                type="text"
+                autocomplete="given-name"
+                placeholder="p. ex. Laia"
+                :aria-invalid="Boolean(errorsRepartidor.nom)"
+                aria-describedby="repartidor-nom-error"
+                @input="netejaErrorRepartidor('nom')"
+              />
+              <p
+                id="repartidor-nom-error"
+                class="register-form__error"
+                aria-live="polite"
+              >
+                {{ errorsRepartidor.nom }}
+              </p>
+            </div>
 
-        <div class="register-form__field">
-          <label for="adreca">Adreça física</label>
-          <input
-            id="adreca"
-            v-model="formulari.adreca"
-            name="adreca"
-            type="text"
-            autocomplete="street-address"
-            placeholder="Carrer, número, pis i porta"
-            :aria-invalid="Boolean(errors.adreca)"
-            aria-describedby="adreca-error"
-            @input="netejaError('adreca')"
-          />
-          <p id="adreca-error" class="register-form__error" aria-live="polite">
-            {{ errors.adreca }}
-          </p>
-        </div>
+            <div class="register-form__field">
+              <label for="repartidor-cognoms">Cognoms</label>
+              <input
+                id="repartidor-cognoms"
+                v-model="formulariRepartidor.cognoms"
+                name="cognoms"
+                type="text"
+                autocomplete="family-name"
+                placeholder="p. ex. Vidal Serra"
+                :aria-invalid="Boolean(errorsRepartidor.cognoms)"
+                aria-describedby="repartidor-cognoms-error"
+                @input="netejaErrorRepartidor('cognoms')"
+              />
+              <p
+                id="repartidor-cognoms-error"
+                class="register-form__error"
+                aria-live="polite"
+              >
+                {{ errorsRepartidor.cognoms }}
+              </p>
+            </div>
+          </div>
 
-        <div class="register-form__field">
-          <label for="num-carnet">Número de carnet de biblioteca</label>
-          <input
-            id="num-carnet"
-            v-model="formulari.numCarnet"
-            name="num_carnet"
-            type="text"
-            inputmode="numeric"
-            autocomplete="off"
-            placeholder="0000000000"
-            :aria-invalid="Boolean(errors.numCarnet)"
-            aria-describedby="num-carnet-help num-carnet-error"
-            @input="netejaError('numCarnet')"
-          />
-          <p
-            id="num-carnet-error"
-            class="register-form__error"
-            aria-live="polite"
-          >
-            {{ errors.numCarnet }}
-          </p>
-        </div>
+          <div class="register-form__row">
+            <div class="register-form__field">
+              <label for="repartidor-dni">DNI / NIE</label>
+              <input
+                id="repartidor-dni"
+                v-model="formulariRepartidor.dni"
+                name="dni"
+                type="text"
+                autocomplete="off"
+                placeholder="00000000X"
+                :aria-invalid="Boolean(errorsRepartidor.dni)"
+                aria-describedby="repartidor-dni-error"
+                @input="netejaErrorRepartidor('dni')"
+              />
+              <p
+                id="repartidor-dni-error"
+                class="register-form__error"
+                aria-live="polite"
+              >
+                {{ errorsRepartidor.dni }}
+              </p>
+            </div>
 
-        <div class="register-form__field">
-          <label for="contrasenya">Contrasenya</label>
-          <input
-            id="contrasenya"
-            v-model="formulari.contrasenya"
-            name="contrasenya"
-            type="password"
-            autocomplete="new-password"
-            placeholder="Mínim 8 caràcters"
-            :aria-invalid="Boolean(errors.contrasenya)"
-            aria-describedby="contrasenya-error"
-            @input="netejaError('contrasenya')"
-          />
-          <p
-            id="contrasenya-error"
-            class="register-form__error"
-            aria-live="polite"
-          >
-            {{ errors.contrasenya }}
-          </p>
-        </div>
+            <div class="register-form__field">
+              <label for="repartidor-telefon">Telèfon</label>
+              <input
+                id="repartidor-telefon"
+                v-model="formulariRepartidor.telefon"
+                name="telefon"
+                type="tel"
+                autocomplete="tel"
+                placeholder="+34 600 000 000"
+                :aria-invalid="Boolean(errorsRepartidor.telefon)"
+                aria-describedby="repartidor-telefon-error"
+                @input="netejaErrorRepartidor('telefon')"
+              />
+              <p
+                id="repartidor-telefon-error"
+                class="register-form__error"
+                aria-live="polite"
+              >
+                {{ errorsRepartidor.telefon }}
+              </p>
+            </div>
+          </div>
 
-        <div class="register-form__field">
-          <label for="confirmar-contrasenya">Confirmar contrasenya</label>
-          <input
-            id="confirmar-contrasenya"
-            v-model="formulari.confirmarContrasenya"
-            name="confirmar_contrasenya"
-            type="password"
-            autocomplete="new-password"
-            placeholder="Repeteix la contrasenya"
-            :aria-invalid="Boolean(errors.confirmarContrasenya)"
-            aria-describedby="confirmar-contrasenya-error"
-            @input="netejaError('confirmarContrasenya')"
-          />
-          <p
-            id="confirmar-contrasenya-error"
-            class="register-form__error"
-            aria-live="polite"
-          >
-            {{ errors.confirmarContrasenya }}
-          </p>
-        </div>
+          <div class="register-form__field">
+            <label for="repartidor-vehicle">Tipus de vehicle</label>
+            <select
+              id="repartidor-vehicle"
+              v-model="formulariRepartidor.vehicle"
+              name="vehicle"
+              :aria-invalid="Boolean(errorsRepartidor.vehicle)"
+              aria-describedby="repartidor-vehicle-error"
+              @change="netejaErrorRepartidor('vehicle')"
+            >
+              <option value="" disabled>Selecciona una opció</option>
+              <option
+                v-for="vehicle in tipusVehicles"
+                :key="vehicle.valor"
+                :value="vehicle.valor"
+              >
+                {{ vehicle.etiqueta }}
+              </option>
+            </select>
+            <p
+              id="repartidor-vehicle-error"
+              class="register-form__error"
+              aria-live="polite"
+            >
+              {{ errorsRepartidor.vehicle }}
+            </p>
+          </div>
+
+          <div class="register-form__row">
+            <div v-if="demanaMatricula" class="register-form__field">
+              <label for="repartidor-matricula">Matrícula</label>
+              <input
+                id="repartidor-matricula"
+                v-model="formulariRepartidor.matricula"
+                name="matricula"
+                type="text"
+                autocomplete="off"
+                placeholder="0000 XXX"
+                :aria-invalid="Boolean(errorsRepartidor.matricula)"
+                aria-describedby="repartidor-matricula-error"
+                @input="netejaErrorRepartidor('matricula')"
+              />
+              <p
+                id="repartidor-matricula-error"
+                class="register-form__error"
+                aria-live="polite"
+              >
+                {{ errorsRepartidor.matricula }}
+              </p>
+            </div>
+
+            <div
+              class="register-form__field"
+              :class="{ 'register-form__field--wide': !demanaMatricula }"
+            >
+              <label for="repartidor-seguretat-social">
+                Número de la Seguretat Social
+              </label>
+              <input
+                id="repartidor-seguretat-social"
+                v-model="formulariRepartidor.numSeguretatSocial"
+                name="num_seguretat_social"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                placeholder="00/00000000/00"
+                :aria-invalid="Boolean(errorsRepartidor.numSeguretatSocial)"
+                aria-describedby="repartidor-seguretat-social-error"
+                @input="netejaErrorRepartidor('numSeguretatSocial')"
+              />
+              <p
+                id="repartidor-seguretat-social-error"
+                class="register-form__error"
+                aria-live="polite"
+              >
+                {{ errorsRepartidor.numSeguretatSocial }}
+              </p>
+            </div>
+          </div>
+
+          <div class="register-form__field">
+            <label for="repartidor-contrasenya">Contrasenya</label>
+            <input
+              id="repartidor-contrasenya"
+              v-model="formulariRepartidor.contrasenya"
+              name="contrasenya"
+              type="password"
+              autocomplete="new-password"
+              placeholder="Mínim 8 caràcters"
+              :aria-invalid="Boolean(errorsRepartidor.contrasenya)"
+              aria-describedby="repartidor-contrasenya-error"
+              @input="netejaErrorRepartidor('contrasenya')"
+            />
+            <p
+              id="repartidor-contrasenya-error"
+              class="register-form__error"
+              aria-live="polite"
+            >
+              {{ errorsRepartidor.contrasenya }}
+            </p>
+          </div>
+
+          <div class="register-form__field">
+            <label for="repartidor-confirmar-contrasenya">
+              Confirmar contrasenya
+            </label>
+            <input
+              id="repartidor-confirmar-contrasenya"
+              v-model="formulariRepartidor.confirmarContrasenya"
+              name="confirmar_contrasenya"
+              type="password"
+              autocomplete="new-password"
+              placeholder="Repeteix la contrasenya"
+              :aria-invalid="Boolean(errorsRepartidor.confirmarContrasenya)"
+              aria-describedby="repartidor-confirmar-contrasenya-error"
+              @input="netejaErrorRepartidor('confirmarContrasenya')"
+            />
+            <p
+              id="repartidor-confirmar-contrasenya-error"
+              class="register-form__error"
+              aria-live="polite"
+            >
+              {{ errorsRepartidor.confirmarContrasenya }}
+            </p>
+          </div>
+        </template>
+
+        <template v-else>
+          <div class="register-form__field">
+            <label for="correu">Correu electrònic</label>
+            <input
+              id="correu"
+              v-model="formulari.correu"
+              name="correu"
+              type="email"
+              autocomplete="email"
+              placeholder="nom@exemple.cat"
+              :aria-invalid="Boolean(errors.correu)"
+              aria-describedby="correu-error"
+              @input="netejaError('correu')"
+            />
+            <p id="correu-error" class="register-form__error" aria-live="polite">
+              {{ errors.correu }}
+            </p>
+          </div>
+
+          <div class="register-form__field">
+            <label for="nom">Nom complet</label>
+            <input
+              id="nom"
+              v-model="formulari.nom"
+              name="nom"
+              type="text"
+              autocomplete="name"
+              placeholder="p. ex. Laia Vidal Serra"
+              :aria-invalid="Boolean(errors.nom)"
+              aria-describedby="nom-error"
+              @input="netejaError('nom')"
+            />
+            <p id="nom-error" class="register-form__error" aria-live="polite">
+              {{ errors.nom }}
+            </p>
+          </div>
+
+          <div class="register-form__field">
+            <label for="adreca">Adreça física</label>
+            <input
+              id="adreca"
+              v-model="formulari.adreca"
+              name="adreca"
+              type="text"
+              autocomplete="street-address"
+              placeholder="Carrer, número, pis i porta"
+              :aria-invalid="Boolean(errors.adreca)"
+              aria-describedby="adreca-error"
+              @input="netejaError('adreca')"
+            />
+            <p id="adreca-error" class="register-form__error" aria-live="polite">
+              {{ errors.adreca }}
+            </p>
+          </div>
+
+          <div class="register-form__field">
+            <label for="num-carnet">Número de carnet de biblioteca</label>
+            <input
+              id="num-carnet"
+              v-model="formulari.numCarnet"
+              name="num_carnet"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              placeholder="0000000000"
+              :aria-invalid="Boolean(errors.numCarnet)"
+              aria-describedby="num-carnet-help num-carnet-error"
+              @input="netejaError('numCarnet')"
+            />
+            <p
+              id="num-carnet-error"
+              class="register-form__error"
+              aria-live="polite"
+            >
+              {{ errors.numCarnet }}
+            </p>
+          </div>
+
+          <div class="register-form__field">
+            <label for="contrasenya">Contrasenya</label>
+            <input
+              id="contrasenya"
+              v-model="formulari.contrasenya"
+              name="contrasenya"
+              type="password"
+              autocomplete="new-password"
+              placeholder="Mínim 8 caràcters"
+              :aria-invalid="Boolean(errors.contrasenya)"
+              aria-describedby="contrasenya-error"
+              @input="netejaError('contrasenya')"
+            />
+            <p
+              id="contrasenya-error"
+              class="register-form__error"
+              aria-live="polite"
+            >
+              {{ errors.contrasenya }}
+            </p>
+          </div>
+
+          <div class="register-form__field">
+            <label for="confirmar-contrasenya">Confirmar contrasenya</label>
+            <input
+              id="confirmar-contrasenya"
+              v-model="formulari.confirmarContrasenya"
+              name="confirmar_contrasenya"
+              type="password"
+              autocomplete="new-password"
+              placeholder="Repeteix la contrasenya"
+              :aria-invalid="Boolean(errors.confirmarContrasenya)"
+              aria-describedby="confirmar-contrasenya-error"
+              @input="netejaError('confirmarContrasenya')"
+            />
+            <p
+              id="confirmar-contrasenya-error"
+              class="register-form__error"
+              aria-live="polite"
+            >
+              {{ errors.confirmarContrasenya }}
+            </p>
+          </div>
+        </template>
 
         <label class="register-form__terms" for="accepta-termes">
           <input id="accepta-termes" name="accepta_termes" type="checkbox" />
@@ -498,6 +928,8 @@ async function enviaFormulari() {
 }
 
 .register-tabs__tab {
+  display: grid;
+  place-items: center;
   min-height: 2.1rem;
   padding: 0.45rem 0.35rem;
   border: 0;
@@ -508,6 +940,7 @@ async function enviaFormulari() {
   font: inherit;
   font-size: 0.7rem;
   font-weight: 700;
+  text-decoration: none;
 }
 
 .register-tabs__tab--active {
@@ -581,7 +1014,18 @@ async function enviaFormulari() {
   font-weight: 700;
 }
 
-.register-form__field input {
+.register-form__row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.register-form__field--wide {
+  grid-column: 1 / -1;
+}
+
+.register-form__field input,
+.register-form__field select {
   box-sizing: border-box;
   width: 100%;
   min-height: 0.5 rem;
@@ -598,7 +1042,13 @@ async function enviaFormulari() {
   color: #aea7a0;
 }
 
-.register-form__field input:focus {
+.register-form__field select {
+  min-height: 1.6rem;
+  cursor: pointer;
+}
+
+.register-form__field input:focus,
+.register-form__field select:focus {
   outline: 2px solid #a00000;
   outline-offset: 1px;
 }
