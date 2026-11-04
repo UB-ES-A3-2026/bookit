@@ -24,39 +24,78 @@ export function nomesBiblioteques() {
   return true;
 }
 
-export default createRouter({
+export const NOM_APLICACIO = "bookit";
+
+// Text de la pestanya del navegador: el títol de la vista seguit del nom de l'aplicació.
+export function titolPestanya(ruta) {
+  const titol = ruta.meta?.titol;
+  return titol ? `${titol} · ${NOM_APLICACIO}` : NOM_APLICACIO;
+}
+
+const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: "/", name: "home", component: HomeView },
-    { path: "/registre", name: "registre", component: RegisterView },
+    {
+      path: "/",
+      name: "home",
+      component: HomeView,
+      meta: { titol: "Inici" },
+    },
+    {
+      path: "/registre",
+      name: "registre",
+      component: RegisterView,
+      meta: { titol: "Crear un compte" },
+    },
     {
       path: "/registre/confirmacio",
       name: "registre-confirmacio",
       component: RegisterConfirmationView,
+      meta: { titol: "Confirmació del registre" },
     },
-    { path: "/inicia-sessio", name: "inici-sessio", component: LoginView },
+    {
+      path: "/inicia-sessio",
+      name: "inici-sessio",
+      component: LoginView,
+      meta: { titol: "Inicia sessió" },
+    },
     {
       path: "/repartidor",
       name: "espai-repartidor",
       component: RoleHomeView,
+      meta: { titol: "Espai del repartidor" },
     },
     {
       path: "/cataleg",
       name: "cataleg",
       component: CatalegView,
+      meta: { titol: "El meu catàleg" },
       beforeEnter: nomesBiblioteques,
     },
     {
       path: "/cataleg/afegir",
       name: "cataleg-afegir",
       component: AfegirLlibreView,
+      meta: { titol: "Afegir un llibre" },
       beforeEnter: nomesBiblioteques,
     },
     {
       path: "/verificacio/biblioteca/:uidb64/:token",
       name: "verificacio-biblioteca",
       component: VerifyLibraryView,
+      meta: { titol: "Verificació del compte" },
     },
-    { path: "/cerca", name: "cerca", component: SearchView },
+    {
+      path: "/cerca",
+      name: "cerca",
+      component: SearchView,
+      meta: { titol: "Resultats de la cerca" },
+    },
   ],
 });
+
+router.afterEach((ruta) => {
+  document.title = titolPestanya(ruta);
+});
+
+export default router;
