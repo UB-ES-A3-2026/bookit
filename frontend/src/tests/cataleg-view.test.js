@@ -59,6 +59,7 @@ async function renderitza() {
   const element = document.createElement("div");
   document.body.appendChild(element);
   app = createApp(CatalegView);
+  app.use(createPinia());
   app.use(router);
   app.mount(element);
   await esperaRenderitzat();
