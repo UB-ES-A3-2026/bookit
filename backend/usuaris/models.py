@@ -23,7 +23,9 @@ class GestorUsuari(BaseUserManager):
         return usuari
 
     def create_superuser(self, email, *args, **extra_fields):
-        password_args = args[:1]
+        # La contrasenya pot arribar com a primer argument o amb el nom, que és com
+        # la passa l'ordre createsuperuser de Django.
+        secret = args[0] if args else extra_fields.pop("password", None)
         field_values = args[1] if len(args) > 1 else {}
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
@@ -34,9 +36,7 @@ class GestorUsuari(BaseUserManager):
         if not extra_fields["is_superuser"]:
             raise ValueError("Un superusuari ha de tenir is_superuser=True.")
 
-        if password_args:
-            return self.create_user(email, *password_args, field_values, **extra_fields)
-        return self.create_user(email, None, field_values, **extra_fields)
+        return self.create_user(email, secret, field_values, **extra_fields)
 
 
 class Usuari(AbstractUser):
