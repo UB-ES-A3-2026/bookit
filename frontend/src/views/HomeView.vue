@@ -47,6 +47,13 @@ function cercaLlibres() {
 
       <nav class="header-actions" aria-label="Compte">
         <template v-if="sessio.autenticat">
+          <RouterLink
+            v-if="sessio.rol === 'biblioteca'"
+            class="catalog-link"
+            :to="{ name: 'cataleg' }"
+          >
+            El meu catàleg
+          </RouterLink>
           <span class="user-name">{{ nomUsuari }}</span>
           <button class="logout-button" type="button" @click="sessio.tancarSessio">
             Tancar sessió
@@ -219,6 +226,22 @@ function cercaLlibres() {
 .login-link:hover,
 .login-link:focus-visible {
   color: #980000;
+}
+
+.catalog-link {
+  padding: 0.65rem 1.2rem;
+  border-radius: 0.55rem;
+  color: #fff;
+  background: #980000;
+  box-shadow: 0 0.2rem 0.35rem rgb(72 0 0 / 20%);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.catalog-link:hover,
+.catalog-link:focus-visible {
+  background: #720000;
 }
 
 .user-name {

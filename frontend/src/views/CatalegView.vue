@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import logoImage from "../assets/bookit-logo.jpg";
+import { useSessioStore } from "../stores/sessio.js";
 import {
   actualitzaExemplars,
   editaLlibre,
@@ -10,6 +11,7 @@ import {
 } from "../services/cataleg.js";
 
 const router = useRouter();
+const sessio = useSessioStore();
 
 const llibres = ref([]);
 const carregant = ref(true);
@@ -26,6 +28,11 @@ const formulariEdicio = reactive({
 
 function textExemplars(quantitat) {
   return quantitat === 1 ? "1 exemplar" : `${quantitat} exemplars`;
+}
+
+function tancaSessio() {
+  sessio.tancarSessio();
+  router.push({ name: "home" });
 }
 
 function iniciaEdicio(llibre) {
@@ -160,6 +167,9 @@ onMounted(carregaCataleg);
         <RouterLink class="afegir-link" :to="{ name: 'cataleg-afegir' }">
           Afegir un llibre
         </RouterLink>
+        <button type="button" class="logout-button" @click="tancaSessio">
+          Tancar sessió
+        </button>
       </div>
     </header>
 
@@ -321,6 +331,23 @@ onMounted(carregaCataleg);
 .afegir-link:hover,
 .afegir-link:focus-visible {
   background: #720000;
+}
+
+.logout-button {
+  padding: 0.55rem 1rem;
+  border: 0;
+  border-radius: 0.55rem;
+  color: #fff;
+  background: #980000;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.logout-button:hover,
+.logout-button:focus-visible {
+  background: #740000;
 }
 
 .header-link {
