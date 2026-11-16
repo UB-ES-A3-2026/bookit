@@ -119,7 +119,7 @@ contractes.
 | `llibres` és una llista buida | `llibres` | `Afegeix almenys un llibre a la comanda.` |
 | Un llibre surt més d'una vegada | `llibres` | `Un llibre no pot sortir dues vegades a la mateixa comanda.` |
 | `biblioteca` no és una biblioteca activa | `biblioteca` | `La biblioteca no existeix.` |
-| Un `id` de llibre no existeix | `llibres` | `Algun dels llibres no existeix.` |
+| Un `id` de llibre no existeix o no és un número | `llibres` | `Algun dels llibres no existeix.` |
 | Més llibres que el límit per comanda | `llibres` | `Has superat el límit de llibres per aquesta comanda, elimina un per continuar` |
 | Algun llibre no té exemplars disponibles a la biblioteca | `llibres` | `Aquest llibre no te estoc en aquest moment. Pots apuntar-te a la llista d'espera` |
 
