@@ -15,23 +15,36 @@ class LlibresSenseEstoc(Exception):
 
 
 def confirma_comanda(usuari, biblioteca, llibres):
-    """Crea la comanda amb els llibres si la biblioteca en té tots en estoc.
+    """Crea la comanda i reserva un exemplar de cada llibre a la biblioteca.
 
-    Si en falta algun, no es crea res i es llança `LlibresSenseEstoc` amb els
-    llibres que no en tenen, perquè l'usuari s'hi pugui apuntar a la llista
-    d'espera. La reserva dels exemplars s'afegeix a la US6-T3.
+    Si algun llibre no té exemplars disponibles, no es crea res i es llança
+    `LlibresSenseEstoc` amb els llibres que no en tenen, perquè l'usuari s'hi
+    pugui apuntar a la llista d'espera.
+
+    Les files d'exemplars es bloquegen (`select_for_update`) fins que acaba la
+    transacció. Així, si dues comandes demanen alhora l'últim exemplar d'un
+    llibre, la segona espera que acabi la primera i ja el troba esgotat.
     """
     with transaction.atomic():
-        amb_estoc = set(
-            ExemplarBiblioteca.objects.filter(
-                biblioteca=biblioteca,
-                llibre__in=llibres,
-                quantitat__gt=0,
-            ).values_list("llibre_id", flat=True)
-        )
-        sense_estoc = [llibre.pk for llibre in llibres if llibre.pk not in amb_estoc]
+        # Sempre en el mateix ordre, perquè dues comandes amb els mateixos llibres
+        # no es bloquegin l'una a l'altra esperant-se mútuament.
+        exemplars = {
+            exemplar.llibre_id: exemplar
+            for exemplar in ExemplarBiblioteca.objects.select_for_update()
+            .filter(biblioteca=biblioteca, llibre__in=llibres)
+            .order_by("llibre_id")
+        }
+        sense_estoc = [
+            llibre.pk
+            for llibre in llibres
+            if llibre.pk not in exemplars or exemplars[llibre.pk].quantitat == 0
+        ]
         if sense_estoc:
             raise LlibresSenseEstoc(sense_estoc)
+
+        for exemplar in exemplars.values():
+            exemplar.quantitat -= 1
+        ExemplarBiblioteca.objects.bulk_update(exemplars.values(), ["quantitat"])
 
         comanda = Comanda.objects.create(usuari=usuari, biblioteca=biblioteca)
         LiniaComanda.objects.bulk_create(
