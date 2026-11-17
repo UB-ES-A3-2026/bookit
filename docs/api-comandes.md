@@ -42,7 +42,19 @@ Tots els endpoints requereixen la capçalera `Authorization: Bearer <access>` (v
 | `lliurada` | Lliurada | Quan el repartidor marca el lliurament com a completat (US13). |
 | `cancellada` | Cancel·lada | Quan l'usuari la cancel·la abans que surti (US20). |
 
-Els canvis d'estat permesos i les notificacions que generen es defineixen a la US8.
+### Canvis d'estat permesos
+
+| Des de | Pot passar a |
+|---|---|
+| `rebuda` | `preparada`, `cancellada` |
+| `preparada` | `en_cami`, `cancellada` |
+| `en_cami` | `lliurada`, o tornar a `preparada` si la parada falla i cal tornar-la a planificar (US13) |
+| `lliurada` | Cap: és un estat final. |
+| `cancellada` | Cap: és un estat final. |
+
+Qualsevol altre canvi es rebutja i la comanda es queda com estava. Cada canvi es guarda a l'historial de la
+comanda amb el moment en què es fa, començant per `rebuda` en confirmar-la. Les notificacions que genera cada
+canvi es defineixen a la US8-T2.
 
 ## Comanda
 
@@ -163,3 +175,5 @@ s'actualitzen aquí i al model abans d'implementar la resta d'endpoints.
   la comanda, un altre la pot avançar.
 - **P4. "Llesta per a recollida".** És l'estat `preparada` de la US8, no un estat a part (US15).
 - **P5. Un exemplar per llibre.** Cada llibre de la comanda és un exemplar; no se'n poden demanar dos del mateix.
+- **P6. Parada fallida.** Quan una parada falla (US13), la comanda torna de `en_cami` a `preparada` per tornar-la
+  a planificar. Falta confirmar amb el Product Owner que tornar a planificar vol dir això.
