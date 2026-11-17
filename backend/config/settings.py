@@ -142,6 +142,9 @@ PASSWORD_RESET_TIMEOUT = env.int("PASSWORD_RESET_TIMEOUT", default=86400)
 # com el de verificació del compte de biblioteca.
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173").rstrip("/")
 
+# Nombre màxim de llibres d'una comanda (US6). Pendent de confirmar amb el Product Owner.
+LIMIT_LLIBRES_COMANDA = env.int("LIMIT_LLIBRES_COMANDA", default=5)
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
