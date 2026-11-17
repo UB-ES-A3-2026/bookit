@@ -3,7 +3,16 @@
 from django.db import transaction
 
 from cataleg.models import ExemplarBiblioteca
-from prestecs.models import Comanda, LiniaComanda
+from prestecs.models import CanviEstat, Comanda, LiniaComanda
+
+
+class TransicioNoPermesa(Exception):
+    """La comanda no pot passar de l'estat actual al que es demana."""
+
+    def __init__(self, estat_actual, nou_estat):
+        super().__init__(f"Una comanda {estat_actual} no pot passar a {nou_estat}.")
+        self.estat_actual = estat_actual
+        self.nou_estat = nou_estat
 
 
 class LlibresSenseEstoc(Exception):
@@ -50,4 +59,27 @@ def confirma_comanda(usuari, biblioteca, llibres):
         LiniaComanda.objects.bulk_create(
             LiniaComanda(comanda=comanda, llibre=llibre) for llibre in llibres
         )
+        CanviEstat.objects.create(comanda=comanda, estat=comanda.estat)
+    return comanda
+
+
+def canvia_estat(comanda, nou_estat):
+    """Canvia l'estat de la comanda i en guarda el canvi a l'historial (US8).
+
+    Si el canvi no està permès (vegeu `TRANSICIONS`), no es toca res i es llança
+    `TransicioNoPermesa`. La comanda es bloqueja mentre es canvia, perquè dues
+    accions alhora (per exemple, cancel·lar-la i recollir-la) no la deixin en un
+    estat incoherent: la segona veu l'estat que ha deixat la primera.
+    """
+    with transaction.atomic():
+        actual = Comanda.objects.select_for_update().get(pk=comanda.pk)
+        if not actual.pot_passar_a(nou_estat):
+            raise TransicioNoPermesa(actual.estat, nou_estat)
+
+        actual.estat = nou_estat
+        actual.save(update_fields=["estat", "actualitzada"])
+        CanviEstat.objects.create(comanda=actual, estat=nou_estat)
+
+    comanda.estat = actual.estat
+    comanda.actualitzada = actual.actualitzada
     return comanda
