@@ -53,8 +53,27 @@ Tots els endpoints requereixen la capçalera `Authorization: Bearer <access>` (v
 | `cancellada` | Cap: és un estat final. |
 
 Qualsevol altre canvi es rebutja i la comanda es queda com estava. Cada canvi es guarda a l'historial de la
-comanda amb el moment en què es fa, començant per `rebuda` en confirmar-la. Les notificacions que genera cada
-canvi es defineixen a la US8-T2.
+comanda amb el moment en què es fa, començant per `rebuda` en confirmar-la.
+
+### Notificacions
+
+Cada canvi d'estat, inclosa la confirmació de la comanda, crea una notificació per a l'usuari de la comanda dins de
+l'aplicació. La notificació depèn de l'estat al qual passa la comanda:
+
+| Estat nou | Text de la notificació |
+|---|---|
+| `rebuda` | `La teva comanda s'ha rebut correctament. La biblioteca ja l'està preparant` |
+| `preparada` | `La teva comanda ja està preparada i aviat sortirà cap a casa teva` |
+| `en_cami` | `En/Na {nom del repartidor} ja porta la teva comanda. Està en camí!` |
+| `lliurada` | `La teva comanda s'ha lliurat correctament. Gaudeix del teu llibre!` |
+| `cancellada` | `La teva comanda s'ha cancel·lat.` |
+
+Els textos de `rebuda`, `preparada`, `en_cami` i `lliurada` són literals dels criteris de la US8. Mentre la comanda
+no tingui repartidor assignat (US12), el text de `en_cami` és `El repartidor ja porta la teva comanda. Està en camí!`.
+Si una parada falla i la comanda torna a `preparada` (P6), l'usuari rep un altre cop el text de `preparada`.
+
+Cada notificació té el text, si l'usuari l'ha llegida i quan es va crear. L'endpoint per llistar-les i marcar-les
+com a llegides es defineix a la US8-T3.
 
 ## Comanda
 
@@ -177,3 +196,6 @@ s'actualitzen aquí i al model abans d'implementar la resta d'endpoints.
 - **P5. Un exemplar per llibre.** Cada llibre de la comanda és un exemplar; no se'n poden demanar dos del mateix.
 - **P6. Parada fallida.** Quan una parada falla (US13), la comanda torna de `en_cami` a `preparada` per tornar-la
   a planificar. Falta confirmar amb el Product Owner que tornar a planificar vol dir això.
+- **P9. Notificacions.** De moment les notificacions només es veuen dins de l'aplicació, no s'envien per correu. El
+  text de la cancel·lació i el de les comandes que es recullen a la biblioteca (US7) els ha de confirmar el Product
+  Owner; ara la recollida rep els mateixos textos que el lliurament a domicili.
