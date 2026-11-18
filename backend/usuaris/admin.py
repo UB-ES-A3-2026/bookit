@@ -1,6 +1,6 @@
 from django.contrib import admin, messages
 
-from usuaris.models import PerfilRepartidor
+from usuaris.models import FranjaDisponibilitat, PerfilRepartidor
 
 
 class FiltreEstat(admin.SimpleListFilter):
@@ -27,6 +27,11 @@ class FiltreEstat(admin.SimpleListFilter):
         yield from opcions
 
 
+class FranjaDisponibilitatInline(admin.TabularInline):
+    model = FranjaDisponibilitat
+    extra = 0
+
+
 @admin.register(PerfilRepartidor)
 class PerfilRepartidorAdmin(admin.ModelAdmin):
     list_display = ["usuari", "cognoms", "dni", "telefon", "vehicle", "estat"]
@@ -34,6 +39,7 @@ class PerfilRepartidorAdmin(admin.ModelAdmin):
     list_select_related = ["usuari"]
     search_fields = ["usuari__name", "usuari__email", "cognoms", "dni"]
     actions = ["validar", "rebutjar"]
+    inlines = [FranjaDisponibilitatInline]
 
     @admin.action(description="Validar", permissions=["change"])
     def validar(self, request, queryset):
