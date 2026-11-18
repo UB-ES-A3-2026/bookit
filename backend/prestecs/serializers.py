@@ -14,6 +14,8 @@ BIBLIOTECA_INEXISTENT = "La biblioteca no existeix."
 LLIBRE_INEXISTENT = "Algun dels llibres no existeix."
 LIMIT_SUPERAT = "Has superat el límit de llibres per aquesta comanda, elimina un per continuar"
 SENSE_ESTOC = "Aquest llibre no te estoc en aquest moment. Pots apuntar-te a la llista d'espera"
+TIPUS_LLIURAMENT_INVALID = "Tria lliurament a domicili o recollida a la biblioteca."
+ADRECA_OBLIGATORIA = "Indica l'adreça de lliurament."
 
 ERRORS_OBLIGATORI = {"required": CAMP_OBLIGATORI, "null": CAMP_OBLIGATORI}
 
@@ -32,7 +34,17 @@ class ComandaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comanda
-        fields = ("id", "estat", "biblioteca", "llibres", "data_lliurament", "creada")
+        fields = (
+            "id",
+            "estat",
+            "biblioteca",
+            "llibres",
+            "tipus_lliurament",
+            "adreca_lliurament",
+            "cost_enviament",
+            "data_lliurament",
+            "creada",
+        )
 
     def get_biblioteca(self, comanda):
         return {"id": comanda.biblioteca_id, "nom": comanda.biblioteca.biblioteca.nom}
@@ -43,7 +55,7 @@ class ComandaSerializer(serializers.ModelSerializer):
 
 
 class ConfirmacioComandaSerializer(serializers.Serializer):
-    """Dades per confirmar una comanda: la biblioteca i els llibres.
+    """Dades per confirmar una comanda: la biblioteca, els llibres i com es lliura.
 
     Aquí es comprova el format de la petició. L'estoc es comprova en crear la
     comanda (`prestecs.serveis.confirma_comanda`), dins de la mateixa transacció.
@@ -57,6 +69,13 @@ class ConfirmacioComandaSerializer(serializers.Serializer):
     llibres = serializers.ListField(
         error_messages={**ERRORS_OBLIGATORI, "not_a_list": LLIBRE_INEXISTENT},
     )
+    tipus_lliurament = serializers.ChoiceField(
+        choices=Comanda.TipusLliurament.choices,
+        default=Comanda.TipusLliurament.DOMICILI,
+        error_messages={"invalid_choice": TIPUS_LLIURAMENT_INVALID, "null": TIPUS_LLIURAMENT_INVALID},
+    )
+    # Si no s'envia, es porta a l'adreça del perfil de l'usuari.
+    adreca_lliurament = serializers.CharField(required=False, allow_blank=True, default="")
 
     def validate_biblioteca(self, id_biblioteca):
         biblioteca = Usuari.objects.filter(
@@ -85,3 +104,14 @@ class ConfirmacioComandaSerializer(serializers.Serializer):
         if len(ids) > settings.LIMIT_LLIBRES_COMANDA:
             raise serializers.ValidationError(LIMIT_SUPERAT)
         return [llibres[id_llibre] for id_llibre in ids]
+
+    def validate(self, dades):
+        if dades["tipus_lliurament"] == Comanda.TipusLliurament.RECOLLIDA:
+            dades["adreca_lliurament"] = ""
+            return dades
+
+        adreca = dades["adreca_lliurament"] or self.context["request"].user.address
+        if not adreca.strip():
+            raise serializers.ValidationError({"adreca_lliurament": [ADRECA_OBLIGATORIA]})
+        dades["adreca_lliurament"] = adreca.strip()
+        return dades
