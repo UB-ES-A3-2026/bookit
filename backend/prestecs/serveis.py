@@ -63,8 +63,12 @@ def confirma_comanda(usuari, biblioteca, llibres):
     return comanda
 
 
-def canvia_estat(comanda, nou_estat):
+def canvia_estat(comanda, nou_estat, des_de=None):
     """Canvia l'estat de la comanda i en guarda el canvi a l'historial (US8).
+
+    `des_de` limita encara més els estats des dels quals es pot fer el canvi. Per
+    exemple, la biblioteca només pot marcar com a preparada una comanda rebuda,
+    encara que una comanda en camí també hi pugui tornar si falla la parada.
 
     Si el canvi no està permès (vegeu `TRANSICIONS`), no es toca res i es llança
     `TransicioNoPermesa`. La comanda es bloqueja mentre es canvia, perquè dues
@@ -73,7 +77,8 @@ def canvia_estat(comanda, nou_estat):
     """
     with transaction.atomic():
         actual = Comanda.objects.select_for_update().get(pk=comanda.pk)
-        if not actual.pot_passar_a(nou_estat):
+        permes_aqui = des_de is None or actual.estat in des_de
+        if not (permes_aqui and actual.pot_passar_a(nou_estat)):
             raise TransicioNoPermesa(actual.estat, nou_estat)
 
         actual.estat = nou_estat
