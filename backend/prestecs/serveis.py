@@ -1,9 +1,13 @@
 """Operacions de les comandes que van més enllà d'un sol model."""
 
+from datetime import timedelta
+
+from django.conf import settings
 from django.db import transaction
+from django.utils import timezone
 
 from cataleg.models import ExemplarBiblioteca
-from prestecs.models import Comanda, LiniaComanda
+from prestecs.models import Comanda, LiniaComanda, Prestec
 
 
 class LlibresSenseEstoc(Exception):
@@ -51,3 +55,25 @@ def confirma_comanda(usuari, biblioteca, llibres):
             LiniaComanda(comanda=comanda, llibre=llibre) for llibre in llibres
         )
     return comanda
+
+
+def crea_prestecs(comanda, data_inici=None):
+    """Crea un préstec per cada llibre d'una comanda que s'acaba de lliurar (US19).
+
+    El préstec comença el dia del lliurament i dura `DURADA_PRESTEC_DIES`. Si la
+    comanda ja tenia els préstecs creats, no en crea de nous i retorna els que hi ha.
+    """
+    data_inici = data_inici or timezone.localdate()
+    data_limit = data_inici + timedelta(days=settings.DURADA_PRESTEC_DIES)
+
+    with transaction.atomic():
+        for linia in comanda.linies.filter(prestec__isnull=True):
+            Prestec.objects.create(
+                linia=linia,
+                usuari=comanda.usuari,
+                llibre=linia.llibre,
+                biblioteca=comanda.biblioteca,
+                data_inici=data_inici,
+                data_limit=data_limit,
+            )
+    return list(Prestec.objects.filter(linia__comanda=comanda))
