@@ -4,6 +4,7 @@ Referència: https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from datetime import timedelta
+from decimal import Decimal
 from pathlib import Path
 
 import environ
@@ -144,6 +145,10 @@ FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173").rstrip("/")
 
 # Nombre màxim de llibres d'una comanda (US6). Pendent de confirmar amb el Product Owner.
 LIMIT_LLIBRES_COMANDA = env.int("LIMIT_LLIBRES_COMANDA", default=5)
+
+# Cost en euros de portar una comanda a domicili (US7). La recollida a la biblioteca
+# és gratuïta. Pendent de confirmar amb el Product Owner.
+COST_ENVIAMENT_DOMICILI = Decimal(env.str("COST_ENVIAMENT_DOMICILI", default="2.50"))
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
