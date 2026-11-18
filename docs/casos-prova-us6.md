@@ -191,20 +191,29 @@ request.
 - **Precondicions**: la llista inclou un llibre sense exemplars disponibles i,
   opcionalment, llibres amb estoc.
 - **Passos**:
-  1. Confirmar una comanda que inclou el llibre sense estoc.
-  2. Si hi ha llibres amb estoc a la mateixa petició, comprovar també que no es
-     confirmen parcialment.
+  1. Des dels resultats de cerca o el detall del llibre, intentar afegir a la
+     comanda un llibre sense exemplars disponibles.
+  2. Comprovar si el llibre queda a la selecció i si es mostra l'opció de llista
+     d'espera.
+  3. Per comprovar la protecció del servidor davant d'un canvi d'estoc, afegir
+     un llibre quan encara està disponible i esgotar-ne l'estoc abans de
+     confirmar la comanda.
+  4. Confirmar la comanda. Si la petició inclou altres llibres amb estoc,
+     comprovar que tampoc no es confirmen parcialment.
 - **Resultat esperat**:
-  - La resposta és `400 Bad Request` i el camp `llibres` conté exactament
-    `Aquest llibre no te estoc en aquest moment. Pots apuntar-te a la llista d'espera`.
-  - La resposta inclou `sense_estoc` amb l'identificador del llibre sense estoc.
-  - No es crea cap comanda ni es reserva cap exemplar, inclosos els llibres que
-    sí que tenien estoc.
+  - Un llibre que ja no té estoc no queda afegit a la selecció de la comanda.
+  - Es mostra exactament el missatge `Aquest llibre no te estoc en aquest moment. Pots apuntar-te a la llista d'espera`.
   - La interfície ofereix l'opció d'apuntar-se a la llista d'espera per al
     llibre indicat.
+  - Si l'estoc s'esgota després d'afegir el llibre a la selecció, la confirmació
+    retorna `400 Bad Request`; `llibres` conté el mateix missatge i
+    `sense_estoc` identifica el llibre.
+  - No es crea cap comanda ni es reserva cap exemplar, inclosos els llibres que
+    sí que tenien estoc.
 - **Tipus**: error.
-- **Automatització**: API per a la resposta i l'absència de reserves; Playwright
-  per a l'opció de llista d'espera.
+- **Automatització**: Playwright per a l'intent d'afegir, el missatge i l'opció
+  de llista d'espera; API per a la resposta quan l'estoc s'esgota abans de
+  confirmar i per comprovar que no hi ha reserves parcials.
 - **Abast**: aquest cas comprova que s'ofereix l'opció. La subscripció efectiva a
   la llista d'espera queda fora del contracte de T5.
 
@@ -236,6 +245,8 @@ request.
 - El contracte de T5 continua marcat com a esborrany. Si el Product Owner canvia
   les decisions de biblioteca única o el límit, cal actualitzar les dades i els
   casos afectats.
+- La selecció del frontend és provisional: l'estoc es torna a validar en
+  confirmar la comanda, ja que pot canviar mentre l'usuari l'està preparant.
 - El contracte defineix l'opció d'oferir la llista d'espera, però no l'endpoint
   ni el flux per completar-hi la subscripció. Aquest document no pressuposa
   aquest comportament.
