@@ -14,6 +14,7 @@ Aquest document és la base de les comandes. Les US7 (tipus de lliurament), US8 
 | Mètode i ruta | Per a què serveix | Es defineix a |
 |---|---|---|
 | `POST /api/prestecs/comandes/` | Confirma una comanda amb un o més llibres. | US6 (aquest document) |
+| `GET /api/prestecs/comandes/cost-enviament/` | Cost de cada tipus de lliurament. | US7-T1 |
 | `GET /api/prestecs/comandes/` | Llista les comandes de l'usuari amb el seu estat. | US8-T3 |
 | `POST /api/prestecs/comandes/<id>/cancellar/` | Cancel·la una comanda que encara no ha sortit. | US20-T1 |
 | `GET /api/prestecs/biblioteca/comandes/` | Llista les comandes pendents de la biblioteca. | US10-T1 |
@@ -54,6 +55,9 @@ Totes les respostes amb una comanda fan servir aquest format.
 | `estat` | text | Un dels valors de [Estats de la comanda](#estats-de-la-comanda). |
 | `biblioteca` | objecte | La biblioteca que prepara la comanda: `id` i `nom`. |
 | `llibres` | llista | Els llibres de la comanda: `id`, `titol`, `autor` i `portada` (`""` si no en té). |
+| `tipus_lliurament` | text | `domicili` o `recollida` (US7). |
+| `adreca_lliurament` | text | On es porta la comanda. `""` si és una recollida. |
+| `cost_enviament` | text | Cost del lliurament en euros, amb dos decimals (`"2.50"`). `"0.00"` si és una recollida. |
 | `data_lliurament` | text o `null` | Data prevista de lliurament (`AAAA-MM-DD`). És `null` fins que es planifica. |
 | `creada` | text | Data i hora en què es va confirmar (ISO 8601). |
 
@@ -71,12 +75,16 @@ Totes les respostes amb una comanda fan servir aquest format.
     },
     { "id": 9, "titol": "Solitud", "autor": "Víctor Català", "portada": "" }
   ],
+  "tipus_lliurament": "domicili",
+  "adreca_lliurament": "C/ de la Muntanya 12, 08035 Barcelona",
+  "cost_enviament": "2.50",
   "data_lliurament": null,
   "creada": "2026-11-16T16:20:00Z"
 }
 ```
 
-La US7 hi afegirà el tipus de lliurament i el cost d'enviament.
+El cost es desa en confirmar la comanda: si després canvia la tarifa, les comandes que ja estan fetes mantenen el
+cost que l'usuari va veure.
 
 ## Confirmar una comanda
 
@@ -93,13 +101,19 @@ Les biblioteques que tenen cada llibre en estoc les dona l'endpoint de la US5.
 |---|---|---|---|
 | `biblioteca` | enter | Sí | `id` d'una biblioteca activa. |
 | `llibres` | llista d'enters | Sí | `id` dels llibres, entre 1 i el límit de llibres per comanda, sense repetir. |
+| `tipus_lliurament` | text | No | `domicili` (per defecte) o `recollida`. |
+| `adreca_lliurament` | text | No | Només per a `domicili`. Si no s'envia o és buida, s'usa l'adreça del perfil de l'usuari. Amb `recollida` s'ignora. |
 
 ```json
 {
   "biblioteca": 3,
-  "llibres": [7, 9]
+  "llibres": [7, 9],
+  "tipus_lliurament": "domicili",
+  "adreca_lliurament": "C/ de la Muntanya 12, 08035 Barcelona"
 }
 ```
+
+La recollida es fa a la mateixa biblioteca de la comanda, la que té els llibres.
 
 ### Resposta correcta
 
@@ -122,6 +136,8 @@ contractes.
 | Un `id` de llibre no existeix o no és un número | `llibres` | `Algun dels llibres no existeix.` |
 | Més llibres que el límit per comanda | `llibres` | `Has superat el límit de llibres per aquesta comanda, elimina un per continuar` |
 | Algun llibre no té exemplars disponibles a la biblioteca | `llibres` | `Aquest llibre no te estoc en aquest moment. Pots apuntar-te a la llista d'espera` |
+| `tipus_lliurament` no és `domicili` ni `recollida` | `tipus_lliurament` | `Tria lliurament a domicili o recollida a la biblioteca.` |
+| `domicili` sense adreça, ni a la petició ni al perfil | `adreca_lliurament` | `Indica l'adreça de lliurament.` |
 
 Els missatges del límit i de l'estoc són literals dels criteris d'acceptació de la US6 i els tests els comproven
 exactament (US6-T4). Es mantenen tal com els va escriure el Product Owner.
@@ -139,13 +155,30 @@ llibres que sí que tenen estoc.
 
 Les validacions es fan en aquest ordre i s'aturen al primer error de cada camp: camps obligatoris, llista buida,
 llibres repetits, llibres inexistents, límit i estoc. Així, una comanda que supera el límit no rep també l'error
-d'estoc.
+d'estoc. L'error de l'adreça només surt quan la resta de camps són correctes, i l'estoc es comprova al final de tot.
+
+## Cost d'enviament
+
+`GET /api/prestecs/comandes/cost-enviament/`
+
+Retorna el cost de cada tipus de lliurament, perquè el frontend el mostri abans de confirmar la comanda (US7).
+Requereix un usuari amb el rol `usuari`, igual que confirmar la comanda.
+
+**200 OK**
+
+```json
+{
+  "domicili": "2.50",
+  "recollida": "0.00"
+}
+```
 
 ## Flux del frontend
 
 1. L'usuari afegeix llibres a la comanda des dels resultats de la cerca o del detall del llibre (US6-T6). Cada llibre
    s'afegeix amb la biblioteca que l'ofereix; si n'hi ha de biblioteques diferents, es fan comandes diferents.
-2. Abans d'enviar, el frontend avisa si se supera el límit amb el mateix missatge.
+2. Abans d'enviar, el frontend avisa si se supera el límit amb el mateix missatge. L'usuari tria domicili (amb
+   l'adreça del perfil o una altra) o recollida, i veu el cost de cada opció (US7-T3).
 3. En confirmar, envia el `POST`. Si rep un 400, mostra els missatges i marca els llibres de `sense_estoc` amb l'opció
    d'apuntar-se a la llista d'espera (US6-T7).
 
@@ -163,3 +196,6 @@ s'actualitzen aquí i al model abans d'implementar la resta d'endpoints.
   la comanda, un altre la pot avançar.
 - **P4. "Llesta per a recollida".** És l'estat `preparada` de la US8, no un estat a part (US15).
 - **P5. Un exemplar per llibre.** Cada llibre de la comanda és un exemplar; no se'n poden demanar dos del mateix.
+- **P8. Cost d'enviament.** Mentre el Product Owner no ho decideixi, l'enviament a domicili costa 2,50 € per comanda,
+  sigui quina sigui la distància o el nombre de llibres, configurable amb la variable d'entorn
+  `COST_ENVIAMENT_DOMICILI`. La recollida és gratuïta i es fa a la biblioteca de la comanda.
