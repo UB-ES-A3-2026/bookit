@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from prestecs.models import CanviEstat, Comanda, LiniaComanda
+from prestecs.models import CanviEstat, Comanda, LiniaComanda, Notificacio
 
 
 class LiniaComandaInline(admin.TabularInline):
@@ -24,3 +24,11 @@ class ComandaAdmin(admin.ModelAdmin):
     list_display = ("id", "usuari", "biblioteca", "estat", "data_lliurament", "creada")
     list_filter = ("estat",)
     inlines = [LiniaComandaInline, CanviEstatInline]
+
+
+@admin.register(Notificacio)
+class NotificacioAdmin(admin.ModelAdmin):
+    list_display = ("usuari", "comanda", "text", "llegida", "creada")
+    list_filter = ("llegida",)
+    search_fields = ("usuari__name", "usuari__email", "text")
+    readonly_fields = ("usuari", "comanda", "text", "creada")
