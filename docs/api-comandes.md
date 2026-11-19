@@ -19,6 +19,8 @@ Aquest document és la base de les comandes. Les US7 (tipus de lliurament), US8 
 | `GET /api/prestecs/biblioteca/comandes/` | Llista les comandes pendents de la biblioteca. | US10-T1 |
 | `POST /api/prestecs/biblioteca/comandes/<id>/preparada/` | Marca una comanda com a llesta per a recollida. | US15-T1 |
 | `GET /api/prestecs/notificacions/` | Llista les notificacions de l'usuari. | US8-T3 |
+| `POST /api/prestecs/notificacions/<id>/llegida/` | Marca una notificació com a llegida. | US8-T3 |
+| `POST /api/prestecs/notificacions/llegides/` | Marca totes les notificacions com a llegides. | US8-T3 |
 
 Peticions i respostes en JSON (`Content-Type: application/json`). Les rutes que es defineixen en altres tasques poden
 canviar fins que la tasca les especifiqui en aquest document.
@@ -30,7 +32,7 @@ Tots els endpoints requereixen la capçalera `Authorization: Bearer <access>` (v
 | Cas | Estat | Resposta |
 |---|---|---|
 | Sense la capçalera `Authorization`, o amb un token invàlid o caducat | 401 | La de `docs/api-auth.md`. |
-| Crear una comanda amb un usuari que no té el rol `usuari` (biblioteca o repartidor) | 403 | `{"detail": "No té permisos per realitzar aquesta acció."}` |
+| Fer servir les rutes de comandes o de notificacions de l'usuari sense el rol `usuari` (biblioteca o repartidor) | 403 | `{"detail": "No té permisos per realitzar aquesta acció."}` |
 
 ## Estats de la comanda
 
@@ -72,8 +74,7 @@ Els textos de `rebuda`, `preparada`, `en_cami` i `lliurada` són literals dels c
 no tingui repartidor assignat (US12), el text de `en_cami` és `El repartidor ja porta la teva comanda. Està en camí!`.
 Si una parada falla i la comanda torna a `preparada` (P6), l'usuari rep un altre cop el text de `preparada`.
 
-Cada notificació té el text, si l'usuari l'ha llegida i quan es va crear. L'endpoint per llistar-les i marcar-les
-com a llegides es defineix a la US8-T3.
+Per llistar-les i marcar-les com a llegides, vegeu [Notificacions de l'usuari](#notificacions-de-lusuari).
 
 ## Comanda
 
@@ -171,6 +172,80 @@ llibres que sí que tenen estoc.
 Les validacions es fan en aquest ordre i s'aturen al primer error de cada camp: camps obligatoris, llista buida,
 llibres repetits, llibres inexistents, límit i estoc. Així, una comanda que supera el límit no rep també l'error
 d'estoc.
+
+## Les meves comandes
+
+`GET /api/prestecs/comandes/`
+
+**200 OK**. Una llista amb totes les comandes de l'usuari, de la més nova a la més antiga, amb el format de
+[Comanda](#comanda). Hi surten totes, també les lliurades i les cancel·lades, perquè l'usuari en vegi l'estat. Si no
+en té cap, la llista és buida.
+
+```json
+[
+  {
+    "id": 12,
+    "estat": "en_cami",
+    "biblioteca": { "id": 3, "nom": "Biblioteca Montbau" },
+    "llibres": [{ "id": 9, "titol": "Solitud", "autor": "Víctor Català", "portada": "" }],
+    "data_lliurament": "2026-11-20",
+    "creada": "2026-11-16T16:20:00Z"
+  }
+]
+```
+
+## Notificacions de l'usuari
+
+### Llistar les notificacions
+
+`GET /api/prestecs/notificacions/`
+
+**200 OK**. Les notificacions de l'usuari, de la més nova a la més antiga. Si no en té cap, la llista és buida. Per
+mostrar quantes n'hi ha de noves a la capçalera, el frontend compta les que tenen `llegida` a `false`.
+
+| Camp | Tipus | Descripció |
+|---|---|---|
+| `id` | enter | Identificador de la notificació. |
+| `comanda` | enter | `id` de la comanda a la qual fa referència. |
+| `text` | text | El text de la notificació (vegeu [Notificacions](#notificacions)). |
+| `llegida` | booleà | Si l'usuari ja l'ha llegida. |
+| `creada` | text | Data i hora en què es va crear (ISO 8601). |
+
+```json
+[
+  {
+    "id": 31,
+    "comanda": 12,
+    "text": "La teva comanda ja està preparada i aviat sortirà cap a casa teva",
+    "llegida": false,
+    "creada": "2026-11-17T09:05:00Z"
+  },
+  {
+    "id": 30,
+    "comanda": 12,
+    "text": "La teva comanda s'ha rebut correctament. La biblioteca ja l'està preparant",
+    "llegida": true,
+    "creada": "2026-11-16T16:20:00Z"
+  }
+]
+```
+
+### Marcar una notificació com a llegida
+
+`POST /api/prestecs/notificacions/<id>/llegida/`
+
+La petició no porta cos. **200 OK** amb la notificació, ja amb `llegida` a `true`. Si ja estava llegida, la resposta
+és la mateixa. Una notificació que no existeix o que és d'un altre usuari rep un **404**.
+
+### Marcar totes les notificacions com a llegides
+
+`POST /api/prestecs/notificacions/llegides/`
+
+La petició no porta cos. **200 OK** amb el nombre de notificacions que s'han marcat ara:
+
+```json
+{ "marcades": 3 }
+```
 
 ## Flux del frontend
 
