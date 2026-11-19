@@ -74,8 +74,10 @@ class ConfirmacioComandaSerializer(serializers.Serializer):
         default=Comanda.TipusLliurament.DOMICILI,
         error_messages={"invalid_choice": TIPUS_LLIURAMENT_INVALID, "null": TIPUS_LLIURAMENT_INVALID},
     )
-    # Si no s'envia, es porta a l'adreça del perfil de l'usuari.
-    adreca_lliurament = serializers.CharField(required=False, allow_blank=True, default="")
+    # Si no s'envia, és null o és buida, es porta a l'adreça del perfil de l'usuari.
+    adreca_lliurament = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True, default=""
+    )
 
     def validate_biblioteca(self, id_biblioteca):
         biblioteca = Usuari.objects.filter(

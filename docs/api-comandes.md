@@ -102,7 +102,7 @@ Les biblioteques que tenen cada llibre en estoc les dona l'endpoint de la US5.
 | `biblioteca` | enter | Sí | `id` d'una biblioteca activa. |
 | `llibres` | llista d'enters | Sí | `id` dels llibres, entre 1 i el límit de llibres per comanda, sense repetir. |
 | `tipus_lliurament` | text | No | `domicili` (per defecte) o `recollida`. |
-| `adreca_lliurament` | text | No | Només per a `domicili`. Si no s'envia o és buida, s'usa l'adreça del perfil de l'usuari. Amb `recollida` s'ignora. |
+| `adreca_lliurament` | text | No | Només per a `domicili`. Si no s'envia, és `null` o és buida, s'usa l'adreça del perfil de l'usuari. Amb `recollida` s'ignora. |
 
 ```json
 {
