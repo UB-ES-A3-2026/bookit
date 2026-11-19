@@ -1,6 +1,7 @@
 """Operacions de les comandes que van més enllà d'un sol model."""
 
 from django.db import transaction
+from django.db.models import F
 
 from cataleg.models import ExemplarBiblioteca
 from prestecs.models import CanviEstat, Comanda, LiniaComanda
@@ -82,4 +83,30 @@ def canvia_estat(comanda, nou_estat):
 
     comanda.estat = actual.estat
     comanda.actualitzada = actual.actualitzada
+    return comanda
+
+
+def cancella_comanda(comanda):
+    """Cancel·la la comanda i torna els seus exemplars a la biblioteca (US20).
+
+    Només es pot cancel·lar una comanda que encara no ha sortit (rebuda o
+    preparada); si no, es llança `TransicioNoPermesa` i no es toca res. El canvi
+    d'estat i la devolució dels exemplars van junts: o es fan tots dos o cap.
+
+    Si la biblioteca ha tret el llibre del seu catàleg mentrestant, no se li torna
+    l'exemplar, perquè ja no l'ofereix.
+    """
+    with transaction.atomic():
+        canvia_estat(comanda, Comanda.Estat.CANCELLADA)
+
+        llibres = comanda.linies.values_list("llibre_id", flat=True)
+        # Bloquejats en el mateix ordre que en confirmar una comanda (per llibre),
+        # perquè una cancel·lació i una confirmació alhora no s'esperin mútuament.
+        exemplars = list(
+            ExemplarBiblioteca.objects.select_for_update()
+            .filter(biblioteca_id=comanda.biblioteca_id, llibre_id__in=llibres)
+            .order_by("llibre_id")
+            .values_list("pk", flat=True)
+        )
+        ExemplarBiblioteca.objects.filter(pk__in=exemplars).update(quantitat=F("quantitat") + 1)
     return comanda
