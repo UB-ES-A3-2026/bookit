@@ -89,6 +89,36 @@ class CanviEstat(models.Model):
         return f"Comanda {self.comanda_id}: {self.get_estat_display()}"
 
 
+class Notificacio(models.Model):
+    """Avís a l'usuari quan la seva comanda canvia d'estat (US8).
+
+    Es crea a cada canvi d'estat, inclosa la confirmació de la comanda. El text
+    es desa ja escrit, amb el nom del repartidor si n'hi ha.
+    """
+
+    usuari = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="notificacions",
+    )
+    comanda = models.ForeignKey(
+        Comanda,
+        on_delete=models.CASCADE,
+        related_name="notificacions",
+    )
+    text = models.TextField()
+    llegida = models.BooleanField(default=False)
+    creada = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-creada", "-id"]
+        verbose_name = "notificació"
+        verbose_name_plural = "notificacions"
+
+    def __str__(self):
+        return f"{self.usuari}: {self.text}"
+
+
 class LiniaComanda(models.Model):
     """Un llibre d'una comanda. Cada línia correspon a un exemplar."""
 
