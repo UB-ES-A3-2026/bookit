@@ -1,15 +1,18 @@
 """Tests de l'endpoint dels meus préstecs (US19-T2)."""
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from datetime import timezone as tz
 
 import pytest
 from django.db import connection
+from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from rest_framework.test import APIClient
 
 from cataleg.models import Llibre
 from prestecs.models import Comanda, LiniaComanda, Prestec
+from prestecs.serveis import crea_prestecs
 from usuaris.models import Biblioteca, Usuari
 
 URL = "/api/prestecs/prestecs/"
@@ -189,3 +192,78 @@ def test_un_usuari_desactivat_rep_403(client, lector):
 @pytest.mark.django_db
 def test_nomes_es_pot_consultar(client):
     assert client.post(URL, {}, format="json").status_code == 405
+
+
+@pytest.mark.django_db
+def test_el_termini_es_compta_amb_el_dia_de_barcelona_i_no_amb_el_d_utc(client, lector, biblioteca, monkeypatch):
+    # Les 23:30 UTC del 18 de novembre ja són les 0:30 del 19 a Barcelona.
+    monkeypatch.setattr("django.utils.timezone.now", lambda: datetime(2026, 11, 18, 23, 30, tzinfo=tz.utc))
+    crea_prestec(lector, biblioteca, date(2026, 11, 18))
+
+    assert client.get(URL).json()[0]["termini_superat"] is True
+
+
+@pytest.mark.django_db
+def test_l_ultim_dia_encara_no_esta_superat_fins_a_mitjanit_a_barcelona(client, lector, biblioteca, monkeypatch):
+    # Les 22:30 UTC del 18 de novembre són les 23:30 del 18 a Barcelona.
+    monkeypatch.setattr("django.utils.timezone.now", lambda: datetime(2026, 11, 18, 22, 30, tzinfo=tz.utc))
+    crea_prestec(lector, biblioteca, date(2026, 11, 18))
+
+    assert client.get(URL).json()[0]["termini_superat"] is False
+
+
+@pytest.mark.django_db
+@override_settings(DURADA_PRESTEC_DIES=21)
+def test_els_prestecs_d_una_comanda_lliurada_surten_a_la_llista(client, lector, biblioteca):
+    mirall = Llibre.objects.create(titol="Mirall trencat", autor="Mercè Rodoreda", isbn="9788475881355")
+    solitud = Llibre.objects.create(titol="Solitud", autor="Víctor Català", isbn="9788475882574")
+    comanda = Comanda.objects.create(usuari=lector, biblioteca=biblioteca, estat=Comanda.Estat.LLIURADA)
+    for llibre in (mirall, solitud):
+        LiniaComanda.objects.create(comanda=comanda, llibre=llibre)
+
+    crea_prestecs(comanda, data_inici=avui())
+    prestecs = client.get(URL).json()
+
+    assert [prestec["llibre"]["titol"] for prestec in prestecs] == ["Mirall trencat", "Solitud"]
+    for prestec in prestecs:
+        assert prestec["data_inici"] == avui().isoformat()
+        assert prestec["data_limit"] == (avui() + timedelta(days=21)).isoformat()
+        assert prestec["termini_superat"] is False
+
+
+@pytest.mark.django_db
+def test_cada_prestec_diu_la_biblioteca_a_la_qual_pertany(client, lector, biblioteca):
+    altra = crea_biblioteca("altra@example.com", "Biblioteca Sant Gervasi")
+    crea_prestec(lector, biblioteca, avui() + timedelta(days=1))
+    crea_prestec(lector, altra, avui() + timedelta(days=2))
+
+    biblioteques = [prestec["biblioteca"]["nom"] for prestec in client.get(URL).json()]
+
+    assert biblioteques == ["Biblioteca Montbau", "Biblioteca Sant Gervasi"]
+
+
+@pytest.mark.django_db
+def test_si_ho_ha_tornat_tot_la_llista_es_buida(client, lector, biblioteca):
+    crea_prestec(lector, biblioteca, avui() - timedelta(days=2), data_devolucio=avui() - timedelta(days=3))
+    crea_prestec(lector, biblioteca, avui() + timedelta(days=5), data_devolucio=avui())
+
+    assert client.get(URL).json() == []
+
+
+@pytest.mark.django_db
+def test_un_llibre_tornat_tard_no_surt_com_a_superat(client, lector, biblioteca):
+    """Un llibre tornat després de la data límit ja no és a la llista: no se'l marca com a pendent."""
+    crea_prestec(lector, biblioteca, avui() - timedelta(days=10), data_devolucio=avui() - timedelta(days=1))
+    pendent = crea_prestec(lector, biblioteca, avui() + timedelta(days=3))
+
+    prestecs = client.get(URL).json()
+
+    assert [(prestec["id"], prestec["termini_superat"]) for prestec in prestecs] == [(pendent.pk, False)]
+
+
+@pytest.mark.django_db
+def test_una_biblioteca_rep_el_missatge_de_sense_permisos():
+    client = APIClient()
+    client.force_authenticate(crea_usuari("biblio@example.com", Usuari.Role.BIBLIOTECA))
+
+    assert client.get(URL).json() == {"detail": "No té permisos per realitzar aquesta acció."}
