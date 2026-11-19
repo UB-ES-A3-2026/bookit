@@ -3,8 +3,14 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
 
+from prestecs.models import Prestec
 from prestecs.permisos import EsUsuariActiu
-from prestecs.serializers import SENSE_ESTOC, ComandaSerializer, ConfirmacioComandaSerializer
+from prestecs.serializers import (
+    SENSE_ESTOC,
+    ComandaSerializer,
+    ConfirmacioComandaSerializer,
+    PrestecSerializer,
+)
 from prestecs.serveis import LlibresSenseEstoc, confirma_comanda
 
 
@@ -33,3 +39,22 @@ class ComandesView(generics.GenericAPIView):
             )
 
         return Response(ComandaSerializer(comanda).data, status=status.HTTP_201_CREATED)
+
+
+class PrestecsView(generics.ListAPIView):
+    """Llibres que l'usuari autenticat té en préstec (US19-T2).
+
+    Només surten els que encara no ha tornat, ordenats per data límit, del més
+    proper al més llunyà. Contracte a `docs/api-prestecs.md`.
+    """
+
+    serializer_class = PrestecSerializer
+    permission_classes = [EsUsuariActiu]
+    pagination_class = None
+
+    def get_queryset(self):
+        return (
+            Prestec.objects.filter(usuari=self.request.user, data_devolucio__isnull=True)
+            .select_related("llibre", "biblioteca__biblioteca")
+            .order_by("data_limit", "id")
+        )
