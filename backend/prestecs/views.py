@@ -4,6 +4,7 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 
 from cataleg.permisos import EsBibliotecaActiva
+from prestecs.assignacio import assigna_comanda
 from prestecs.models import Comanda
 from prestecs.permisos import EsUsuariActiu
 from prestecs.serializers import SENSE_ESTOC, ComandaSerializer, ConfirmacioComandaSerializer
@@ -40,8 +41,10 @@ class ComandesView(generics.GenericAPIView):
 class ComandaLlestaView(generics.GenericAPIView):
     """La biblioteca marca una comanda seva com a llesta per a recollida (US15-T1).
 
-    "Llesta per a recollida" és l'estat `preparada` (US8). A partir d'aquí la
-    comanda es pot assignar a un repartidor (US14).
+    "Llesta per a recollida" és l'estat `preparada` (US8). En aquest moment
+    s'assigna a un repartidor si n'hi ha cap amb un forat a les seves franges
+    (US14). Si no, es queda preparada fins que l'ordre `assigna_comandes` la pugui
+    assignar.
     """
 
     permission_classes = [EsBibliotecaActiva]
@@ -56,6 +59,7 @@ class ComandaLlestaView(generics.GenericAPIView):
             canvia_estat(comanda, Comanda.Estat.PREPARADA, des_de=[Comanda.Estat.REBUDA])
         except TransicioNoPermesa as error:
             return Response({"detail": missatge_no_llesta(error.estat_actual)}, status=status.HTTP_409_CONFLICT)
+        assigna_comanda(comanda)
         return Response(ComandaSerializer(comanda).data)
 
 
