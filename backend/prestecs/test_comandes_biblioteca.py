@@ -7,7 +7,7 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 
-from cataleg.models import Llibre
+from cataleg.models import ExemplarBiblioteca, Llibre
 from prestecs.models import Comanda, LiniaComanda
 from usuaris.models import Biblioteca, Usuari
 
@@ -168,3 +168,91 @@ def test_el_nombre_de_consultes_no_creix_amb_les_comandes(client, biblioteca, le
         client.get(URL)
 
     assert len(amb_sis) == len(amb_una)
+
+
+@pytest.mark.django_db
+def test_les_que_no_tenen_data_surten_de_la_mes_antiga_a_la_mes_nova(client, biblioteca, lector, llibre):
+    primera = crea_comanda(lector, biblioteca, [llibre])
+    segona = crea_comanda(lector, biblioteca, [llibre])
+    amb_data = crea_comanda(lector, biblioteca, [llibre], data_lliurament=date(2026, 12, 1))
+
+    ids = [comanda["id"] for comanda in client.get(URL).json()]
+
+    assert ids == [amb_data.pk, primera.pk, segona.pk]
+
+
+@pytest.mark.django_db
+def test_les_cancellades_s_ordenen_amb_les_altres_per_data(client, biblioteca, lector, llibre):
+    preparada = crea_comanda(lector, biblioteca, [llibre], estat=Estat.PREPARADA, data_lliurament=date(2026, 11, 30))
+    cancellada = crea_comanda(lector, biblioteca, [llibre], estat=Estat.CANCELLADA, data_lliurament=date(2026, 11, 22))
+    rebuda = crea_comanda(lector, biblioteca, [llibre], data_lliurament=date(2026, 11, 25))
+
+    comandes = client.get(URL).json()
+
+    assert [(comanda["id"], comanda["estat"]) for comanda in comandes] == [
+        (cancellada.pk, "cancellada"),
+        (rebuda.pk, "rebuda"),
+        (preparada.pk, "preparada"),
+    ]
+
+
+@pytest.mark.django_db
+def test_els_llibres_surten_en_l_ordre_de_la_comanda(client, biblioteca, lector, llibre):
+    mirall = Llibre.objects.create(titol="Mirall trencat", autor="Mercè Rodoreda", isbn="9788475881355")
+    crea_comanda(lector, biblioteca, [mirall, llibre])
+
+    titols = [del_llistat["titol"] for del_llistat in client.get(URL).json()[0]["llibres"]]
+
+    assert titols == ["Mirall trencat", "Solitud"]
+
+
+@pytest.mark.django_db
+def test_cada_comanda_diu_de_quin_usuari_es(client, biblioteca, lector, llibre):
+    altre = crea_usuari("pere@example.com", nom="Pere Vila")
+    de_l_anna = crea_comanda(lector, biblioteca, [llibre], data_lliurament=date(2026, 11, 20))
+    d_en_pere = crea_comanda(altre, biblioteca, [llibre], data_lliurament=date(2026, 11, 21))
+
+    usuaris = {comanda["id"]: comanda["usuari"] for comanda in client.get(URL).json()}
+
+    assert usuaris == {
+        de_l_anna.pk: {"id": lector.pk, "nom": "Anna Puig"},
+        d_en_pere.pk: {"id": altre.pk, "nom": "Pere Vila"},
+    }
+
+
+@pytest.mark.django_db
+def test_una_comanda_confirmada_surt_a_la_llista_de_la_seva_biblioteca(client, biblioteca, lector, llibre):
+    altra = crea_biblioteca("altra@example.com", "Biblioteca Sant Gervasi")
+    ExemplarBiblioteca.objects.create(llibre=llibre, biblioteca=biblioteca, quantitat=1)
+    usuari = APIClient()
+    usuari.force_authenticate(lector)
+
+    confirmada = usuari.post(
+        "/api/prestecs/comandes/", {"biblioteca": biblioteca.pk, "llibres": [llibre.pk]}, format="json"
+    )
+
+    assert confirmada.status_code == 201
+    assert [comanda["id"] for comanda in client.get(URL).json()] == [confirmada.json()["id"]]
+    de_l_altra = APIClient()
+    de_l_altra.force_authenticate(altra)
+    assert de_l_altra.get(URL).json() == []
+
+
+@pytest.mark.django_db
+def test_una_biblioteca_desactivada_rep_403(client, biblioteca):
+    biblioteca.is_active = False
+    biblioteca.save(update_fields=["is_active"])
+
+    resposta = client.get(URL)
+
+    assert resposta.status_code == 403
+    assert resposta.json() == {"detail": "No té permisos per realitzar aquesta acció."}
+
+
+@pytest.mark.django_db
+def test_un_compte_de_biblioteca_sense_perfil_rep_403():
+    client = APIClient()
+    sense_perfil = crea_usuari("sense-perfil@example.com", Usuari.Role.BIBLIOTECA)
+    client.force_authenticate(sense_perfil)
+
+    assert client.get(URL).status_code == 403
