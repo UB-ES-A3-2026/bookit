@@ -67,7 +67,8 @@ def crea_prestecs(comanda, data_inici=None):
     data_limit = data_inici + timedelta(days=settings.DURADA_PRESTEC_DIES)
 
     with transaction.atomic():
-        for linia in comanda.linies.filter(prestec__isnull=True):
+        # En l'ordre de la comanda, perquè els préstecs surtin en el mateix ordre.
+        for linia in comanda.linies.filter(prestec__isnull=True).order_by("pk"):
             Prestec.objects.create(
                 linia=linia,
                 usuari=comanda.usuari,
