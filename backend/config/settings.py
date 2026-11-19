@@ -145,6 +145,10 @@ FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173").rstrip("/")
 # Nombre màxim de llibres d'una comanda (US6). Pendent de confirmar amb el Product Owner.
 LIMIT_LLIBRES_COMANDA = env.int("LIMIT_LLIBRES_COMANDA", default=5)
 
+# Minuts que es reserven a un repartidor per cada lliurament (US14). Pendent de
+# confirmar amb el Product Owner.
+DURADA_LLIURAMENT_MINUTS = env.int("DURADA_LLIURAMENT_MINUTS", default=30)
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
