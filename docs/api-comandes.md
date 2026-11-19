@@ -30,7 +30,7 @@ Tots els endpoints requereixen la capçalera `Authorization: Bearer <access>` (v
 | Cas | Estat | Resposta |
 |---|---|---|
 | Sense la capçalera `Authorization`, o amb un token invàlid o caducat | 401 | La de `docs/api-auth.md`. |
-| Crear una comanda amb un usuari que no té el rol `usuari` (biblioteca o repartidor) | 403 | `{"detail": "No té permisos per realitzar aquesta acció."}` |
+| Crear o cancel·lar una comanda amb un usuari que no té el rol `usuari` (biblioteca o repartidor) | 403 | `{"detail": "No té permisos per realitzar aquesta acció."}` |
 
 ## Estats de la comanda
 
@@ -152,6 +152,31 @@ llibres que sí que tenen estoc.
 Les validacions es fan en aquest ordre i s'aturen al primer error de cada camp: camps obligatoris, llista buida,
 llibres repetits, llibres inexistents, límit i estoc. Així, una comanda que supera el límit no rep també l'error
 d'estoc.
+
+## Cancel·lar una comanda
+
+`POST /api/prestecs/comandes/<id>/cancellar/`
+
+L'usuari cancel·la una comanda seva mentre encara no ha sortit, és a dir, mentre és `rebuda` o `preparada` (US20). La
+petició no porta cos. El frontend demana confirmació abans d'enviar-la: "Segur que vols cancel·lar aquesta comanda?".
+
+### Resposta correcta
+
+**200 OK**. La comanda amb el format de [Comanda](#comanda) i l'estat `cancellada`.
+
+En cancel·lar-la, la biblioteca torna a tenir un exemplar més de cada llibre de la comanda, i la comanda li surt com
+a cancel·lada a la llista de comandes pendents (US10). Si la biblioteca ha tret algun llibre del seu catàleg
+mentrestant, aquell exemplar no s'hi torna.
+
+### Errors
+
+| Cas | Estat | Resposta |
+|---|---|---|
+| La comanda no existeix o és d'un altre usuari | 404 | Cos sense contingut rellevant. |
+| La comanda és `en_cami` o `lliurada` | 409 | `{"detail": "Aquesta comanda ja ha sortit i no es pot cancel·lar"}` |
+| La comanda ja és `cancellada` | 409 | `{"detail": "Aquesta comanda ja està cancel·lada."}` |
+
+El missatge de quan la comanda ja ha sortit és literal dels criteris d'acceptació de la US20.
 
 ## Flux del frontend
 
