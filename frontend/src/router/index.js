@@ -4,6 +4,7 @@ import AfegirLlibreView from "../views/AfegirLlibreView.vue";
 import CatalegView from "../views/CatalegView.vue";
 import HomeView from "../views/HomeView.vue";
 import LoginView from "../views/LoginView.vue";
+import PrestecsView from "../views/PrestecsView.vue";
 import RegisterConfirmationView from "../views/RegisterConfirmationView.vue";
 import RegisterView from "../views/RegisterView.vue";
 import RoleHomeView from "../views/RoleHomeView.vue";
@@ -18,7 +19,19 @@ export function nomesBiblioteques() {
   if (!sessio.autenticat) {
     return { name: "inici-sessio" };
   }
+
   if (sessio.rol !== "biblioteca") {
+    return { name: "home" };
+  }
+  return true;
+}
+
+export function nomsUsuaris() {
+  const sessio = useSessioStore();
+  if (!sessio.autenticat) {
+    return { name: "inici-sessio" };
+  }
+  if (sessio.rol !== "usuari") {
     return { name: "home" };
   }
   return true;
@@ -90,6 +103,13 @@ const router = createRouter({
       name: "cerca",
       component: SearchView,
       meta: { titol: "Resultats de la cerca" },
+    },
+    {
+      path: "/prestecs",
+      name: "prestecs",
+      component: PrestecsView,
+      meta: { titol: "Els meus préstecs" },
+      beforeEnter: nomsUsuaris,
     },
   ],
 });

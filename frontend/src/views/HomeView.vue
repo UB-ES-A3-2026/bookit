@@ -48,6 +48,13 @@ function cercaLlibres() {
       <nav class="header-actions" aria-label="Compte">
         <template v-if="sessio.autenticat">
           <RouterLink
+            v-if="sessio.rol === 'usuari'"
+            class="loans-link"
+            :to="{ name: 'prestecs' }"
+          >
+            Els meus préstecs
+          </RouterLink>
+          <RouterLink
             v-if="sessio.rol === 'biblioteca'"
             class="catalog-link"
             :to="{ name: 'cataleg' }"
@@ -228,7 +235,8 @@ function cercaLlibres() {
   color: #980000;
 }
 
-.catalog-link {
+.catalog-link,
+.loans-link {
   padding: 0.65rem 1.2rem;
   border-radius: 0.55rem;
   color: #fff;
@@ -240,7 +248,9 @@ function cercaLlibres() {
 }
 
 .catalog-link:hover,
-.catalog-link:focus-visible {
+.catalog-link:focus-visible,
+.loans-link:hover,
+.loans-link:focus-visible {
   background: #720000;
 }
 
