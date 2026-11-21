@@ -1,5 +1,6 @@
 import axios from "axios";
 import { mount } from "@vue/test-utils";
+import { createPinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SearchView from "../views/SearchView.vue";
 
@@ -24,6 +25,7 @@ function muntaCerca(query = {}) {
   route.query = query;
   return mount(SearchView, {
     global: {
+      plugins: [createPinia()],
       components: {
         RouterLink: {
           template: "<a><slot /></a>",
@@ -84,6 +86,7 @@ describe("pàgina de resultats de la cerca", () => {
     expect(wrapper.text()).toContain("Mercè Rodoreda");
     expect(wrapper.text()).toContain("Disponible");
     expect(wrapper.text()).toContain("4,3 de 5 · 12 valoracions");
+    expect(wrapper.get(".add-button").text()).toBe("Afegir a la comanda");
   });
 
   it("mostra el missatge quan no hi ha resultats", async () => {
