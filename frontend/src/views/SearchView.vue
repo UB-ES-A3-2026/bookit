@@ -23,6 +23,7 @@ const hiHaSeguent = ref(false);
 const hiHaAnterior = ref(false);
 const carregant = ref(false);
 const error = ref("");
+const apuntatsEspera = ref([]);
 
 const textTotal = computed(() =>
   total.value === 1 ? "1 resultat" : `${total.value} resultats`,
@@ -80,6 +81,12 @@ function afegeixALaComanda(llibre) {
   }
 
   comanda.afegirLlibre(llibre);
+}
+
+function apuntaAEspera(llibre) {
+  if (!apuntatsEspera.value.includes(llibre.id)) {
+    apuntatsEspera.value.push(llibre.id);
+  }
 }
 
 // Torna a cercar quan canvia el text o la pàgina de l'adreça.
@@ -149,6 +156,21 @@ watch(() => [textCercat.value, pagina.value], cerca, { immediate: true });
                 {{ llibre.disponible ? "Disponible" : "No disponible" }}
               </p>
               <p class="valoracions">{{ textValoracions(llibre) }}</p>
+              <p v-if="!llibre.disponible" class="stock-warning" role="alert">
+                Aquest llibre no te estoc en aquest moment. Pots apuntar-te a la llista d'espera
+                <button
+                  type="button"
+                  class="wait-button"
+                  :disabled="apuntatsEspera.includes(llibre.id)"
+                  @click="apuntaAEspera(llibre)"
+                >
+                  {{
+                    apuntatsEspera.includes(llibre.id)
+                      ? "Apuntat a la llista d'espera"
+                      : "Apuntar-me a la llista d'espera"
+                  }}
+                </button>
+              </p>
               <button
                 type="button"
                 class="add-button"
@@ -400,6 +422,37 @@ h1 {
 
 .valoracions {
   color: #92867c;
+}
+
+.stock-warning {
+  margin: 0.7rem 0 0;
+  padding: 0.55rem;
+  border: 1px solid #dfc0b0;
+  border-radius: 0.45rem;
+  color: #870000;
+  background: #fff1e8;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.wait-button {
+  display: block;
+  margin-top: 0.5rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid #870000;
+  border-radius: 0.45rem;
+  color: #870000;
+  background: #fff;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wait-button:disabled {
+  color: #68705f;
+  border-color: #9da48f;
+  cursor: default;
 }
 
 .add-button {

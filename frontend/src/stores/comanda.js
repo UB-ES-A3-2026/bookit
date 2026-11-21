@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 
 const ORDER_STORAGE_KEY = "bookit.comanda";
+export const LIMIT_LLIBRES_COMANDA = 5;
 
 function llegirComanda() {
   const comandaDesada = sessionStorage.getItem(ORDER_STORAGE_KEY);
@@ -29,6 +30,7 @@ export const useComandaStore = defineStore("comanda", {
 
   getters: {
     nombreLlibres: (state) => state.llibres.length,
+    superaLimit: (state) => state.llibres.length > LIMIT_LLIBRES_COMANDA,
     teLlibre: (state) => (id) =>
       state.llibres.some((llibre) => llibre.id === id),
   },
