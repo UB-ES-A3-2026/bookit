@@ -42,4 +42,26 @@ describe("comanda", () => {
     expect(comanda.llibres).toEqual([]);
     expect(sessionStorage.getItem("bookit.comanda")).toBe("[]");
   });
+
+  it("detecta quan se supera el límit de cinc llibres", () => {
+    const comanda = useComandaStore();
+
+    for (let id = 1; id <= 6; id += 1) {
+      comanda.afegirLlibre({ id, titol: `Llibre ${id}`, autor: "Autor" });
+    }
+
+    expect(comanda.nombreLlibres).toBe(6);
+    expect(comanda.superaLimit).toBe(true);
+  });
+
+  it("buidar elimina tots els llibres i la persistència", () => {
+    const comanda = useComandaStore();
+    comanda.afegirLlibre({ id: 7, titol: "Solitud", autor: "Víctor Català" });
+
+    comanda.buidar();
+
+    expect(comanda.llibres).toEqual([]);
+    expect(comanda.superaLimit).toBe(false);
+    expect(sessionStorage.getItem("bookit.comanda")).toBeNull();
+  });
 });
