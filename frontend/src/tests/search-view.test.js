@@ -89,6 +89,37 @@ describe("pàgina de resultats de la cerca", () => {
     expect(wrapper.get(".add-button").text()).toBe("Afegir a la comanda");
   });
 
+  it("no permet afegir un llibre sense estoc i mostra el missatge exacte", async () => {
+    axios.get.mockResolvedValue({
+      data: {
+        count: 1,
+        next: null,
+        previous: null,
+        results: [
+          {
+            id: 9,
+            titol: "Solitud",
+            autor: "Víctor Català",
+            disponible: false,
+            portada: "",
+            mitjana_valoracions: null,
+            nombre_valoracions: 0,
+          },
+        ],
+      },
+    });
+    const wrapper = muntaCerca({ q: "Solitud" });
+    await vi.waitFor(() => expect(wrapper.find(".llibre").exists()).toBe(true));
+
+    expect(wrapper.find(".stock-warning").text()).toContain(
+      "Aquest llibre no te estoc en aquest moment. Pots apuntar-te a la llista d'espera",
+    );
+    expect(wrapper.get(".add-button").attributes("disabled")).toBeDefined();
+    const waitButton = wrapper.get(".wait-button");
+    await waitButton.trigger("click");
+    expect(waitButton.text()).toBe("Apuntat a la llista d'espera");
+  });
+
   it("mostra el missatge quan no hi ha resultats", async () => {
     const wrapper = muntaCerca({ q: "llibre inexistent" });
     await vi.waitFor(() =>

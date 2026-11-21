@@ -1,15 +1,24 @@
 <script setup>
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import logoImage from "../assets/bookit-logo.jpg";
 import { useComandaStore } from "../stores/comanda.js";
 import { useSessioStore } from "../stores/sessio.js";
+import { confirmaComanda } from "../services/prestecs.js";
 
 const router = useRouter();
 const comanda = useComandaStore();
 const sessio = useSessioStore();
 
 const teLlibres = computed(() => comanda.llibres.length > 0);
+const missatgeLimit =
+  "Has superat el límit de llibres per aquesta comanda, elimina un per continuar";
+const missatgeEstoc =
+  "Aquest llibre no te estoc en aquest moment. Pots apuntar-te a la llista d'espera";
+const enviant = ref(false);
+const missatgeError = ref("");
+const idsSenseEstoc = ref([]);
+const apuntatsEspera = ref([]);
 
 function eliminaLlibre(id) {
   comanda.eliminarLlibre(id);
@@ -22,6 +31,52 @@ function tornaACercar() {
 function tancaSessio() {
   sessio.tancarSessio();
   router.push({ name: "home" });
+}
+
+async function confirma() {
+  if (comanda.superaLimit) {
+    missatgeError.value = missatgeLimit;
+    return;
+  }
+
+  const biblioteques = new Set(
+    comanda.llibres
+      .map((llibre) => llibre.biblioteca?.id)
+      .filter((id) => id !== undefined && id !== null),
+  );
+
+  if (biblioteques.size !== 1) {
+    missatgeError.value =
+      "No s'ha pogut determinar la biblioteca d'aquesta comanda.";
+    return;
+  }
+
+  enviant.value = true;
+  missatgeError.value = "";
+  idsSenseEstoc.value = [];
+
+  try {
+    await confirmaComanda({
+      biblioteca: [...biblioteques][0],
+      llibres: comanda.llibres.map((llibre) => llibre.id),
+    });
+    comanda.buidar();
+  } catch (error) {
+    const dades = error.response?.data;
+    idsSenseEstoc.value = dades?.sense_estoc ?? [];
+    missatgeError.value =
+      dades?.llibres?.[0] ??
+      dades?.biblioteca?.[0] ??
+      "No s'ha pogut confirmar la comanda. Torna-ho a provar.";
+  } finally {
+    enviant.value = false;
+  }
+}
+
+function apuntaAEspera(llibre) {
+  if (!apuntatsEspera.value.includes(llibre.id)) {
+    apuntatsEspera.value.push(llibre.id);
+  }
 }
 </script>
 
@@ -60,6 +115,13 @@ function tancaSessio() {
       </div>
 
       <template v-else>
+        <p v-if="comanda.superaLimit" class="avis avis-limit" role="alert">
+          {{ missatgeLimit }}
+        </p>
+        <p v-if="missatgeError" class="avis avis-error" role="alert">
+          {{ missatgeError }}
+        </p>
+
         <ul class="llista-comanda" aria-label="Llibres de la comanda">
           <li v-for="llibre in comanda.llibres" :key="llibre.id" class="llibre">
             <img
@@ -78,6 +140,21 @@ function tancaSessio() {
               <p v-if="llibre.biblioteca" class="biblioteca">
                 {{ llibre.biblioteca.nom }}
               </p>
+              <div v-if="idsSenseEstoc.includes(llibre.id)" class="estoc-error">
+                <p>{{ missatgeEstoc }}</p>
+                <button
+                  type="button"
+                  class="wait-button"
+                  :disabled="apuntatsEspera.includes(llibre.id)"
+                  @click="apuntaAEspera(llibre)"
+                >
+                  {{
+                    apuntatsEspera.includes(llibre.id)
+                      ? "Apuntat a la llista d'espera"
+                      : "Apuntar-me a la llista d'espera"
+                  }}
+                </button>
+              </div>
             </div>
 
             <button
@@ -93,8 +170,13 @@ function tancaSessio() {
 
         <div class="resum-comanda">
           <strong>{{ comanda.nombreLlibres }} llibres</strong>
-          <button type="button" class="primary-button" disabled>
-            Confirmar comanda
+          <button
+            type="button"
+            class="primary-button"
+            :disabled="comanda.superaLimit || enviant"
+            @click="confirma"
+          >
+            {{ enviant ? "Confirmant..." : "Confirmar comanda" }}
           </button>
         </div>
       </template>
@@ -231,6 +313,48 @@ h1 {
   border: 1px solid #dfd1bd;
   border-radius: 0.75rem;
   background: #fffdf8;
+}
+
+.avis {
+  margin: 0 0 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.55rem;
+  font-weight: 700;
+}
+
+.avis-limit,
+.avis-error,
+.estoc-error {
+  border: 1px solid #dfc0b0;
+  color: #870000;
+  background: #fff1e8;
+}
+
+.estoc-error {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 0.55rem;
+}
+
+.estoc-error p {
+  margin: 0 0 0.6rem;
+}
+
+.wait-button {
+  padding: 0.45rem 0.7rem;
+  border: 1px solid #870000;
+  border-radius: 0.45rem;
+  color: #870000;
+  background: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wait-button:disabled {
+  color: #68705f;
+  border-color: #9da48f;
+  cursor: default;
 }
 
 .llista-comanda {
