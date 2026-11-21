@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import { useSessioStore } from "../stores/sessio.js";
 import AfegirLlibreView from "../views/AfegirLlibreView.vue";
 import CatalegView from "../views/CatalegView.vue";
+import ComandaView from "../views/ComandaView.vue";
 import HomeView from "../views/HomeView.vue";
 import LoginView from "../views/LoginView.vue";
 import RegisterConfirmationView from "../views/RegisterConfirmationView.vue";
@@ -18,12 +19,23 @@ export function nomesBiblioteques() {
   if (!sessio.autenticat) {
     return { name: "inici-sessio" };
   }
+
   if (sessio.rol !== "biblioteca") {
     return { name: "home" };
   }
   return true;
 }
 
+export function nomesUsuaris() {
+  const sessio = useSessioStore();
+  if (!sessio.autenticat) {
+    return { name: "inici-sessio" };
+  }
+  if (sessio.rol !== "usuari") {
+    return { name: "home" };
+  }
+  return true;
+}
 export const NOM_APLICACIO = "bookit";
 
 // Text de la pestanya del navegador: el títol de la vista seguit del nom de l'aplicació.
@@ -78,6 +90,13 @@ const router = createRouter({
       component: AfegirLlibreView,
       meta: { titol: "Afegir un llibre" },
       beforeEnter: nomesBiblioteques,
+    },
+    {
+      path: "/comanda",
+      name: "comanda",
+      component: ComandaView,
+      meta: { titol: "Tipus de lliurament" },
+      beforeEnter: nomesUsuaris,
     },
     {
       path: "/verificacio/biblioteca/:uidb64/:token",
