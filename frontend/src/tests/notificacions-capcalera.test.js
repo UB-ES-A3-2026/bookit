@@ -112,6 +112,16 @@ describe("notificacions de la capçalera", () => {
     expect(wrapper.find(".comptador").exists()).toBe(false);
   });
 
+  it("les dona per llegides encara que falli la recàrrega posterior", async () => {
+    servei.marcaTotesLlegides.mockResolvedValue({ marcades: 2 });
+    await renderitza();
+    await clica(".notificacions-boto");
+    servei.llistaNotificacions.mockRejectedValue(new Error("Network Error"));
+    await clica(".llegeix-totes");
+
+    expect(wrapper.find(".comptador").exists()).toBe(false);
+  });
+
   it("no dona per llegida una notificació si el desament falla", async () => {
     servei.marcaLlegida.mockRejectedValue(new Error("Network Error"));
     await renderitza();

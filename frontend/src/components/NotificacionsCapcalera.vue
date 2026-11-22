@@ -79,9 +79,15 @@ function llegeix(notificacio) {
 }
 
 // Després de marcar-les totes es torna a demanar la llista: el servidor també
-// marca les que hagin arribat des de l'última càrrega.
+// marca les que hagin arribat des de l'última càrrega. Abans es marquen aquí,
+// perquè ja estan desades encara que la recàrrega falli.
 function llegeixTotes() {
-  return desaLectura(marcaTotesLlegides, carrega);
+  return desaLectura(marcaTotesLlegides, () => {
+    notificacions.value.forEach((notificacio) => {
+      notificacio.llegida = true;
+    });
+    carrega();
+  });
 }
 
 function commuta() {
