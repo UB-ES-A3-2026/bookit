@@ -1,5 +1,6 @@
 import axios from "axios";
 import { mount } from "@vue/test-utils";
+import { createPinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SearchView from "../views/SearchView.vue";
 
@@ -11,6 +12,9 @@ vi.mock("axios", () => ({
     get: vi.fn(),
   },
 }));
+
+// Les notificacions tenen els seus tests: aquí no fa falta el client de l'API.
+vi.mock("../services/notificacions.js", () => ({}));
 
 vi.mock("vue-router", () => ({
   useRoute: () => route,
@@ -24,6 +28,7 @@ function muntaCerca(query = {}) {
   route.query = query;
   return mount(SearchView, {
     global: {
+      plugins: [createPinia()],
       components: {
         RouterLink: {
           template: "<a><slot /></a>",
