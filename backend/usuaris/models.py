@@ -1,6 +1,7 @@
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.conf import settings
 
 from usuaris.validacions import (
     valida_dni_nie,
@@ -121,3 +122,31 @@ class PerfilRepartidor(models.Model):
 
     def __str__(self):
         return f"{self.usuari} {self.cognoms}"
+
+class Adreca(models.Model):
+    usuari = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="adreces",
+    )
+    municipi = models.CharField(max_length=100, verbose_name="municipi")
+    carrer = models.CharField(max_length=255, verbose_name="carrer")
+    pis = models.CharField(max_length=20, verbose_name="pis")
+    predeterminada = models.BooleanField(
+        default=False,
+        verbose_name="predeterminada",
+    )
+
+    class Meta:
+        verbose_name = "adreça"
+        verbose_name_plural = "adreces"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["usuari"],
+                condition=models.Q(predeterminada=True),
+                name="una_adreca_predeterminada_per_usuari",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.carrer}, pis {self.pis}, {self.municipi}"
