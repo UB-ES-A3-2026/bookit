@@ -38,8 +38,21 @@ class ComandaSerializer(serializers.ModelSerializer):
         return {"id": comanda.biblioteca_id, "nom": comanda.biblioteca.biblioteca.nom}
 
     def get_llibres(self, comanda):
-        linies = comanda.linies.select_related("llibre").order_by("id")
+        # `all()` aprofita les línies ja carregades amb `prefetch_related` a les llistes.
+        linies = sorted(comanda.linies.all(), key=lambda linia: linia.pk)
         return LlibreComandaSerializer([linia.llibre for linia in linies], many=True).data
+
+
+class ComandaBibliotecaSerializer(ComandaSerializer):
+    """Comanda tal com la veu la biblioteca: també diu de quin usuari és (US10)."""
+
+    usuari = serializers.SerializerMethodField()
+
+    class Meta(ComandaSerializer.Meta):
+        fields = ("id", "estat", "usuari", "biblioteca", "llibres", "data_lliurament", "creada")
+
+    def get_usuari(self, comanda):
+        return {"id": comanda.usuari_id, "nom": comanda.usuari.name}
 
 
 class ConfirmacioComandaSerializer(serializers.Serializer):
