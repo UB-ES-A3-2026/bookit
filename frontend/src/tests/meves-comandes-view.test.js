@@ -12,6 +12,12 @@ const servei = vi.hoisted(() => ({
 
 vi.mock("../services/comandesUsuari.js", () => servei);
 
+const notificacions = vi.hoisted(() => ({
+  llistaNotificacions: vi.fn(),
+}));
+
+vi.mock("../services/notificacions.js", () => notificacions);
+
 let wrapper;
 let pinia;
 
@@ -94,6 +100,15 @@ describe("Les meves comandes", () => {
     expect(files[1].get(".data-lliurament").text()).toBe("24/11/2026");
     expect(files[3].text()).toContain("Data de lliurament");
     expect(files[4].find(".data-lliurament").exists()).toBe(false);
+  });
+
+  it("té les notificacions a la capçalera", async () => {
+    useSessioStore().iniciarSessio({ accessToken: "token-de-prova", rol: "usuari" });
+    servei.llistaMevesComandes.mockResolvedValue(comandes);
+    notificacions.llistaNotificacions.mockResolvedValue([]);
+    await renderitza();
+
+    expect(wrapper.find("header .notificacions-boto").exists()).toBe(true);
   });
 
   it("mostra que està carregant", async () => {

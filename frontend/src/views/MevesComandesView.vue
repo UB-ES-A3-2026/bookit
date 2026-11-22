@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import NotificacionsCapcalera from "../components/NotificacionsCapcalera.vue";
 import logoImage from "../assets/bookit-logo.jpg";
 import { useSessioStore } from "../stores/sessio.js";
 import { llistaMevesComandes } from "../services/comandesUsuari.js";
@@ -53,6 +54,7 @@ onMounted(carregaComandes);
 
       <div class="header-accions">
         <span class="header-link">Les meves comandes</span>
+        <NotificacionsCapcalera />
         <button type="button" class="logout-button" @click="tancaSessio">
           Tancar sessió
         </button>
