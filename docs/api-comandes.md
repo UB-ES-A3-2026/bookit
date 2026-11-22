@@ -16,7 +16,7 @@ Aquest document és la base de les comandes. Les US7 (tipus de lliurament), US8 
 | `POST /api/prestecs/comandes/` | Confirma una comanda amb un o més llibres. | US6 (aquest document) |
 | `GET /api/prestecs/comandes/` | Llista les comandes de l'usuari amb el seu estat. | US8-T3 |
 | `POST /api/prestecs/comandes/<id>/cancellar/` | Cancel·la una comanda que encara no ha sortit. | US20-T1 |
-| `GET /api/prestecs/biblioteca/comandes/` | Llista les comandes pendents de la biblioteca. | US10-T1 |
+| `GET /api/prestecs/biblioteca/comandes/` | Llista les comandes pendents de la biblioteca. | US10 (aquest document) |
 | `POST /api/prestecs/biblioteca/comandes/<id>/preparada/` | Marca una comanda com a llesta per a recollida. | US15-T1 |
 | `GET /api/prestecs/notificacions/` | Llista les notificacions de l'usuari. | US8-T3 |
 
@@ -154,6 +154,42 @@ Les validacions es fan en aquest ordre i s'aturen al primer error de cada camp: 
 llibres repetits, llibres inexistents, límit i estoc. Així, una comanda que supera el límit no rep també l'error
 d'estoc.
 
+## Comandes pendents de la biblioteca
+
+`GET /api/prestecs/biblioteca/comandes/`
+
+Només per a biblioteques. No té cos.
+
+### Resposta correcta
+
+**200 OK**. Una llista amb les comandes de la biblioteca autenticada que estan en estat `rebuda`, `preparada` o
+`cancellada`. Les cancel·lades hi surten perquè la biblioteca sàpiga que ja no les ha de preparar (US20). Les que ja
+han sortit (`en_cami`) o s'han lliurat no hi surten. Sense paginació. Si no n'hi ha cap, retorna `[]`.
+
+Ordre: per `data_lliurament`, de la més propera a la més llunyana. Les que encara no tenen data surten al final. Amb
+la mateixa data, primer la més antiga.
+
+Cada comanda té el format de [Comanda](#comanda) més el camp `usuari` (`id` i `nom`), perquè la biblioteca sàpiga de
+qui és.
+
+```json
+[
+  {
+    "id": 12,
+    "estat": "rebuda",
+    "usuari": { "id": 25, "nom": "Anna Puig" },
+    "biblioteca": { "id": 3, "nom": "Biblioteca Montbau" },
+    "llibres": [
+      { "id": 9, "titol": "Solitud", "autor": "Víctor Català", "portada": "" }
+    ],
+    "data_lliurament": "2026-11-20",
+    "creada": "2026-11-16T16:20:00Z"
+  }
+]
+```
+
+Una biblioteca només veu les seves comandes.
+
 ## Marcar una comanda com a llesta per a recollida
 
 `POST /api/prestecs/biblioteca/comandes/<id>/preparada/`
@@ -203,3 +239,5 @@ s'actualitzen aquí i al model abans d'implementar la resta d'endpoints.
 - **P5. Un exemplar per llibre.** Cada llibre de la comanda és un exemplar; no se'n poden demanar dos del mateix.
 - **P6. Parada fallida.** Quan una parada falla (US13), la comanda torna de `en_cami` a `preparada` per tornar-la
   a planificar. Falta confirmar amb el Product Owner que tornar a planificar vol dir això.
+- **P7. Comandes pendents.** La llista de la biblioteca inclou les rebudes, les preparades i les cancel·lades. Falta
+  confirmar amb el Product Owner si les preparades hi han de sortir.
