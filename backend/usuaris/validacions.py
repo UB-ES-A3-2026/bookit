@@ -18,6 +18,9 @@ RE_DNI_NIE = re.compile(r"\A[XYZ0-9][0-9]{7}[A-Z]\Z")
 RE_TELEFON = re.compile(r"\A(?:\+34)?[6-9][0-9]{8}\Z")
 RE_MATRICULA = re.compile(r"\A[0-9]{4}[BCDFGHJKLMNPRSTVWXYZ]{3}\Z")
 RE_SEGURETAT_SOCIAL = re.compile(r"\A[0-9]{12}\Z")
+ADRECA_FORA_ZONA_SERVEI = ("Aquesta adreça està fora de la zona de servei, introdueix una adreça vàlida")
+PREFIXOS_CP_CATALUNYA = ("08", "17", "25", "43")
+RE_CODI_POSTAL = re.compile(r"\A[0-9]{5}\Z")
 
 
 def normalitza(text):
@@ -105,3 +108,26 @@ def valida_num_seguretat_social(valor):
     """Validador de Django per al número de la Seguretat Social."""
     if not es_num_seguretat_social_valid(valor):
         raise ValidationError(SEGURETAT_SOCIAL_INVALIDA, code="invalid")
+
+def normalitza_codi_postal(valor):
+    """Elimina espais sobrants i interns d'un codi postal."""
+    if not isinstance(valor, str):
+        return ""
+    return re.sub(r"\s", "", valor.strip())
+
+
+def es_codi_postal_catalunya(valor):
+    """Comprova que el valor té cinc dígits i comença per un prefix català."""
+    codi_postal = normalitza_codi_postal(valor)
+    if not RE_CODI_POSTAL.match(codi_postal):
+        return False
+    return codi_postal.startswith(PREFIXOS_CP_CATALUNYA)
+
+
+def valida_codi_postal_zona(valor):
+    """Validador de Django per a codis postals dins de la zona de servei."""
+    if not es_codi_postal_catalunya(valor):
+        raise ValidationError(
+            ADRECA_FORA_ZONA_SERVEI,
+            code="fora_zona_servei",
+        )

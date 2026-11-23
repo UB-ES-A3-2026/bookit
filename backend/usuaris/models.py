@@ -8,6 +8,7 @@ from usuaris.validacions import (
     valida_matricula,
     valida_num_seguretat_social,
     valida_telefon,
+    valida_codi_postal_zona,
 )
 
 
@@ -132,6 +133,7 @@ class Adreca(models.Model):
     municipi = models.CharField(max_length=100, verbose_name="municipi")
     carrer = models.CharField(max_length=255, verbose_name="carrer")
     pis = models.CharField(max_length=20, verbose_name="pis")
+    codi_postal = models.CharField(max_length=5, verbose_name="codi postal", validators=[valida_codi_postal_zona])
     predeterminada = models.BooleanField(
         default=False,
         verbose_name="predeterminada",
