@@ -205,3 +205,135 @@ def test_predeterminada_no_es_pot_enviar():
     assert resposta.status_code == status.HTTP_200_OK
     adreca.refresh_from_db()
     assert adreca.predeterminada is False
+
+
+@pytest.mark.django_db
+def test_sense_token_marcar_predeterminada_retorna_401():
+    usuari = crear_usuari()
+    adreca = Adreca.objects.create(usuari=usuari, **dades_adreca())
+
+    resposta = APIClient().post(
+        f"{COLLECCIO}{adreca.id}/predeterminada/",
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+def test_marcar_adreca_predeterminada():
+    usuari = crear_usuari()
+    adreca = Adreca.objects.create(usuari=usuari, **dades_adreca())
+
+    resposta = client_de(usuari).post(
+        f"{COLLECCIO}{adreca.id}/predeterminada/",
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_200_OK
+    assert resposta.data["predeterminada"] is True
+    adreca.refresh_from_db()
+    assert adreca.predeterminada is True
+
+
+@pytest.mark.django_db
+def test_marcar_segona_adreca_desmarca_la_primera():
+    usuari = crear_usuari()
+    primera = Adreca.objects.create(
+        usuari=usuari,
+        **dades_adreca(predeterminada=True),
+    )
+    segona = Adreca.objects.create(usuari=usuari, **dades_adreca())
+
+    resposta = client_de(usuari).post(
+        f"{COLLECCIO}{segona.id}/predeterminada/",
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_200_OK
+    primera.refresh_from_db()
+    segona.refresh_from_db()
+    assert primera.predeterminada is False
+    assert segona.predeterminada is True
+    assert Adreca.objects.filter(
+        usuari=usuari,
+        predeterminada=True,
+    ).count() == 1
+
+
+@pytest.mark.django_db
+def test_marcar_predeterminada_no_afecta_altre_usuari():
+    usuari = crear_usuari()
+    altra = crear_usuari(
+        email="pere@example.com",
+        carnet="0987654321",
+        name="Pere Vila",
+    )
+    adreca_usuari = Adreca.objects.create(usuari=usuari, **dades_adreca())
+    adreca_altra = Adreca.objects.create(
+        usuari=altra,
+        **dades_adreca(predeterminada=True),
+    )
+
+    resposta = client_de(usuari).post(
+        f"{COLLECCIO}{adreca_usuari.id}/predeterminada/",
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_200_OK
+    adreca_altra.refresh_from_db()
+    assert adreca_altra.predeterminada is True
+
+
+@pytest.mark.django_db
+def test_adreca_aliena_no_es_pot_marcar_predeterminada():
+    usuari = crear_usuari()
+    altra = crear_usuari(
+        email="pere@example.com",
+        carnet="0987654321",
+        name="Pere Vila",
+    )
+    aliena = Adreca.objects.create(usuari=altra, **dades_adreca())
+
+    resposta = client_de(usuari).post(
+        f"{COLLECCIO}{aliena.id}/predeterminada/",
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_404_NOT_FOUND
+    aliena.refresh_from_db()
+    assert aliena.predeterminada is False
+
+
+@pytest.mark.django_db
+def test_marcar_un_id_inexistent_retorna_404():
+    usuari = crear_usuari()
+
+    resposta = client_de(usuari).post(
+        f"{COLLECCIO}999999/predeterminada/",
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_marcar_ja_predeterminada_es_idempotent():
+    usuari = crear_usuari()
+    adreca = Adreca.objects.create(
+        usuari=usuari,
+        **dades_adreca(predeterminada=True),
+    )
+
+    resposta = client_de(usuari).post(
+        f"{COLLECCIO}{adreca.id}/predeterminada/",
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_200_OK
+    adreca.refresh_from_db()
+    assert adreca.predeterminada is True
+    assert Adreca.objects.filter(
+        usuari=usuari,
+        predeterminada=True,
+    ).count() == 1
