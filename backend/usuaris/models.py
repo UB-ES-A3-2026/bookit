@@ -1,6 +1,7 @@
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.core.validators import MaxValueValidator, MinValueValidator
 
 from usuaris.validacions import (
     valida_dni_nie,
@@ -74,6 +75,39 @@ class Biblioteca(models.Model):
         related_name="biblioteca",
     )
     nom = models.CharField(max_length=150)
+    carrer = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+    )
+    numero_porta = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+    )
+    latitud = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(-90),
+            MaxValueValidator(90),
+        ],
+    )
+    longitud = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(-180),
+            MaxValueValidator(180),
+        ],
+    )
+
+    def __str__(self):
+        return self.nom
 
     def save(self, *args, **kwargs):
         if self._state.adding:
