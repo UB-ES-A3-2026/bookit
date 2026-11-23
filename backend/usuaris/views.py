@@ -10,10 +10,14 @@ from django.utils.http import urlsafe_base64_decode
 from rest_framework import generics
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
+from django.db import IntegrityError, transaction
+from django.http import Http404
+from rest_framework.status import (HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_409_CONFLICT)
 
-from usuaris.models import Usuari
+
+from usuaris.models import Adreca, Usuari
 from usuaris.serializers import (
+    AdrecaSerializer,
     CAMP_OBLIGATORI,
     BibliotecaRegistreSerializer,
     RepartidorRegistreSerializer,
@@ -145,5 +149,78 @@ class VerificacioBibliotecaView(generics.GenericAPIView):
         usuari.save(update_fields=["password", "is_active"])
         return Response(
             {"detail": "El compte de biblioteca s'ha verificat correctament."},
+            status=HTTP_200_OK,
+        )
+
+class AdrecaListCreateView(generics.ListCreateAPIView):
+    """Llista i crea les adreces de l'usuari autenticat."""
+
+    serializer_class = AdrecaSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None
+
+    def get_queryset(self):
+        return Adreca.objects.filter(usuari=self.request.user).order_by("id")
+
+    def perform_create(self, serializer):
+        serializer.save(usuari=self.request.user)
+
+
+class AdrecaDetailView(
+    generics.RetrieveAPIView,
+    generics.UpdateAPIView,
+    generics.DestroyAPIView,
+):
+    """Consulta, edita i suprimeix una adreça pròpia."""
+
+    serializer_class = AdrecaSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = "id"
+
+    def get_queryset(self):
+        return Adreca.objects.filter(usuari=self.request.user).order_by("id")
+
+
+class AdrecaPredeterminadaView(generics.GenericAPIView):
+    """Marca una adreça com a predeterminada i desmarca l'anterior."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = AdrecaSerializer
+
+    def get_queryset(self):
+        return Adreca.objects.filter(
+            usuari=self.request.user
+        ).order_by("id")
+
+    def post(self, request, id):
+        try:
+            with transaction.atomic():
+                adreces = self.get_queryset().select_for_update()
+
+                adreca = adreces.filter(id=id).first()
+                if adreca is None:
+                    raise Http404
+
+                if adreca.predeterminada:
+                    return Response(
+                        AdrecaSerializer(adreca).data,
+                        status=HTTP_200_OK,
+                    )
+
+                adreces.filter(predeterminada=True).update(
+                    predeterminada=False
+                )
+
+                adreca.predeterminada = True
+                adreca.save(update_fields=["predeterminada"])
+
+        except IntegrityError:
+            return Response(
+                {"detail": "No s'ha pogut actualitzar l'adreça predeterminada."},
+                status=HTTP_409_CONFLICT,
+            )
+
+        return Response(
+            AdrecaSerializer(adreca).data,
             status=HTTP_200_OK,
         )
