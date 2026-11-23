@@ -12,8 +12,9 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
-from usuaris.models import Usuari
+from usuaris.models import Adreca, Usuari
 from usuaris.serializers import (
+    AdrecaSerializer,
     CAMP_OBLIGATORI,
     BibliotecaRegistreSerializer,
     RepartidorRegistreSerializer,
@@ -147,3 +148,31 @@ class VerificacioBibliotecaView(generics.GenericAPIView):
             {"detail": "El compte de biblioteca s'ha verificat correctament."},
             status=HTTP_200_OK,
         )
+
+class AdrecaListCreateView(generics.ListCreateAPIView):
+    """Llista i crea les adreces de l'usuari autenticat."""
+
+    serializer_class = AdrecaSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None
+
+    def get_queryset(self):
+        return Adreca.objects.filter(usuari=self.request.user).order_by("id")
+
+    def perform_create(self, serializer):
+        serializer.save(usuari=self.request.user)
+
+
+class AdrecaDetailView(
+    generics.RetrieveAPIView,
+    generics.UpdateAPIView,
+    generics.DestroyAPIView,
+):
+    """Consulta, edita i suprimeix una adreça pròpia."""
+
+    serializer_class = AdrecaSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = "id"
+
+    def get_queryset(self):
+        return Adreca.objects.filter(usuari=self.request.user).order_by("id")
