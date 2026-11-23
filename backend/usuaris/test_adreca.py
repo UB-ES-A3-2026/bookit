@@ -153,3 +153,51 @@ def test_camps_amb_longitud_excessiva_es_rebutgen(camp, longitud_maxima):
 
     with pytest.raises(ValidationError):
         adreca.full_clean()
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "camp",
+    ["municipi", "carrer", "pis", "codi_postal"],
+)
+def test_camps_obligatoris_buits_es_rebutgen(camp):
+    usuari = crear_usuari()
+    dades = {
+        "usuari": usuari,
+        "municipi": "Barcelona",
+        "carrer": "C/ Major 1",
+        "pis": "1r",
+        "codi_postal": "08001",
+    }
+    dades[camp] = ""
+
+    adreca = Adreca(**dades)
+
+    with pytest.raises(ValidationError):
+        adreca.full_clean()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("camp", "longitud_maxima"),
+    [
+        ("municipi", 100),
+        ("carrer", 255),
+        ("pis", 20),
+        ("codi_postal", 5),
+    ],
+)
+def test_camps_amb_longitud_excessiva_es_rebutgen(camp, longitud_maxima):
+    usuari = crear_usuari()
+    dades = {
+        "usuari": usuari,
+        "municipi": "Barcelona",
+        "carrer": "C/ Major 1",
+        "pis": "1r",
+        "codi_postal": "08001",
+    }
+    dades[camp] = "X" * (longitud_maxima + 1)
+
+    adreca = Adreca(**dades)
+
+    with pytest.raises(ValidationError):
+        adreca.full_clean()
