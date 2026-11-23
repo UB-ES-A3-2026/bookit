@@ -122,4 +122,82 @@ describe("La meva comanda", () => {
 
     expect(element.textContent).toContain("Apuntat a la llista d'espera");
   });
+
+  it("confirma correctament una comanda i buida la selecció", async () => {
+    confirmaComanda.mockResolvedValue({
+      id: 12,
+      estat: "rebuda",
+    });
+    const element = await renderitza([
+      {
+        id: 7,
+        titol: "La plaça del Diamant",
+        autor: "Mercè Rodoreda",
+        biblioteca: { id: 3, nom: "Biblioteca" },
+      },
+      {
+        id: 9,
+        titol: "Solitud",
+        autor: "Víctor Català",
+        biblioteca: { id: 3, nom: "Biblioteca" },
+      },
+    ]);
+
+    element.querySelector(".resum-comanda .primary-button").click();
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(confirmaComanda).toHaveBeenCalledWith({
+      biblioteca: 3,
+      llibres: [7, 9],
+    });
+    expect(element.textContent).toContain(
+      "Encara no has afegit cap llibre a la comanda.",
+    );
+  });
+
+  it("mostra el límit exacte rebutjat pel servidor", async () => {
+    confirmaComanda.mockRejectedValue({
+      response: {
+        data: {
+          llibres: [
+            "Has superat el límit de llibres per aquesta comanda, elimina un per continuar",
+          ],
+        },
+      },
+    });
+    const element = await renderitza([
+      {
+        id: 7,
+        titol: "La plaça del Diamant",
+        autor: "Mercè Rodoreda",
+        biblioteca: { id: 3, nom: "Biblioteca" },
+      },
+    ]);
+
+    element.querySelector(".resum-comanda .primary-button").click();
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(element.textContent).toContain(
+      "Has superat el límit de llibres per aquesta comanda, elimina un per continuar",
+    );
+  });
+
+  it("no confirma una comanda sense biblioteca", async () => {
+    const element = await renderitza([
+      {
+        id: 7,
+        titol: "La plaça del Diamant",
+        autor: "Mercè Rodoreda",
+        portada: "",
+      },
+    ]);
+
+    element.querySelector(".resum-comanda .primary-button").click();
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(confirmaComanda).not.toHaveBeenCalled();
+    expect(element.textContent).toContain(
+      "No s'ha pogut determinar la biblioteca d'aquesta comanda.",
+    );
+  });
 });
