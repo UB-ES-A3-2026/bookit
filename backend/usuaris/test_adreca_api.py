@@ -6,6 +6,8 @@ from rest_framework_simplejwt.tokens import AccessToken
 from usuaris.models import Adreca, Usuari
 from usuaris.validacions import ADRECA_FORA_ZONA_SERVEI
 
+from datetime import timedelta
+
 COLLECCIO = "/api/usuaris/adreces/"
 
 
@@ -336,4 +338,284 @@ def test_marcar_ja_predeterminada_es_idempotent():
     assert Adreca.objects.filter(
         usuari=usuari,
         predeterminada=True,
+    ).count() == 1
+
+
+@pytest.mark.django_db
+def test_llista_retorna_tots_els_camps():
+    usuari = crear_usuari()
+    Adreca.objects.create(usuari=usuari, **dades_adreca())
+
+    resposta = client_de(usuari).get(COLLECCIO)
+
+    assert resposta.status_code == status.HTTP_200_OK
+    assert resposta.data[0].keys() == {
+        "id",
+        "municipi",
+        "carrer",
+        "pis",
+        "codi_postal",
+        "predeterminada",
+    }
+
+
+@pytest.mark.django_db
+def test_llista_buida_retorna_llista_vacia():
+    usuari = crear_usuari()
+
+    resposta = client_de(usuari).get(COLLECCIO)
+
+    assert resposta.status_code == status.HTTP_200_OK
+    assert resposta.data == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "camp",
+    ["municipi", "carrer", "pis", "codi_postal"],
+)
+@pytest.mark.parametrize("valor", ["", None])
+def test_afegir_camp_obligatori_buit_retorna_400(camp, valor):
+    usuari = crear_usuari()
+    dades = dades_adreca()
+    dades[camp] = valor
+
+    resposta = client_de(usuari).post(COLLECCIO, dades, format="json")
+
+    assert resposta.status_code == status.HTTP_400_BAD_REQUEST
+    assert camp in resposta.data
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("camp", "valor"),
+    [
+        ("municipi", "X" * 101),
+        ("carrer", "X" * 256),
+        ("pis", "X" * 21),
+        ("codi_postal", "123456"),
+    ],
+)
+def test_afegir_camp_massa_llarg_retorna_400(camp, valor):
+    usuari = crear_usuari()
+
+    resposta = client_de(usuari).post(
+        COLLECCIO,
+        dades_adreca(**{camp: valor}),
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_400_BAD_REQUEST
+    assert camp in resposta.data
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("camp", ["municipi", "carrer", "pis", "codi_postal"])
+def test_afegir_camp_absent_retorna_400(camp):
+    usuari = crear_usuari()
+    dades = dades_adreca()
+    del dades[camp]
+
+    resposta = client_de(usuari).post(COLLECCIO, dades, format="json")
+
+    assert resposta.status_code == status.HTTP_400_BAD_REQUEST
+    assert camp in resposta.data
+
+
+@pytest.mark.django_db
+def test_afegir_adreca_dins_zona_retorna_201():
+    usuari = crear_usuari()
+
+    resposta = client_de(usuari).post(
+        COLLECCIO,
+        dades_adreca(codi_postal="08000"),
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_201_CREATED
+    assert Adreca.objects.filter(
+        usuari=usuari,
+        codi_postal="08000",
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_put_canvia_adreca_i_manté_predeterminada():
+    usuari = crear_usuari()
+    adreca = Adreca.objects.create(
+        usuari=usuari,
+        **dades_adreca(predeterminada=True),
+    )
+
+    resposta = client_de(usuari).put(
+        f"{COLLECCIO}{adreca.id}/",
+        {
+            "municipi": "Girona",
+            "carrer": "C/ Nou 5",
+            "pis": "4t",
+            "codi_postal": "17001",
+        },
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_200_OK
+    adreca.refresh_from_db()
+    assert adreca.municipi == "Girona"
+    assert adreca.carrer == "C/ Nou 5"
+    assert adreca.pis == "4t"
+    assert adreca.codi_postal == "17001"
+    assert adreca.predeterminada is True
+
+
+@pytest.mark.django_db
+def test_patch_no_esborra_els_altres_camps():
+    usuari = crear_usuari()
+    adreca = Adreca.objects.create(usuari=usuari, **dades_adreca())
+
+    resposta = client_de(usuari).patch(
+        f"{COLLECCIO}{adreca.id}/",
+        {"municipi": "Sabadell"},
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_200_OK
+    adreca.refresh_from_db()
+    assert adreca.municipi == "Sabadell"
+    assert adreca.carrer == "C/ Major 1"
+    assert adreca.pis == "2n A"
+    assert adreca.codi_postal == "08001"
+
+
+@pytest.mark.django_db
+def test_get_adreca_inexistent_retorna_404():
+    usuari = crear_usuari()
+
+    resposta = client_de(usuari).get(f"{COLLECCIO}999999/")
+
+    assert resposta.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_put_adreca_inexistent_retorna_404():
+    usuari = crear_usuari()
+
+    resposta = client_de(usuari).put(
+        f"{COLLECCIO}999999/",
+        dades_adreca(),
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_patch_adreca_inexistent_retorna_404():
+    usuari = crear_usuari()
+
+    resposta = client_de(usuari).patch(
+        f"{COLLECCIO}999999/",
+        {"carrer": "C/ Nova"},
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_delete_adreca_inexistent_retorna_404():
+    usuari = crear_usuari()
+
+    resposta = client_de(usuari).delete(f"{COLLECCIO}999999/")
+
+    assert resposta.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_get_adreca_aliena_retorna_404():
+    usuari = crear_usuari()
+    altra = crear_usuari(
+        email="pere@example.com",
+        carnet="0987654321",
+        name="Pere Vila",
+    )
+    aliena = Adreca.objects.create(usuari=altra, **dades_adreca())
+
+    resposta = client_de(usuari).get(f"{COLLECCIO}{aliena.id}/")
+
+    assert resposta.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_token_invalid_retorna_401_a_la_llista():
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION="Bearer no-es-un-token")
+
+    resposta = client.get(COLLECCIO)
+
+    assert resposta.status_code == status.HTTP_401_UNAUTHORIZED
+    assert resposta.data["code"] == "token_not_valid"
+
+
+@pytest.mark.django_db
+def test_token_caducat_retorna_401_a_la_llista():
+    usuari = crear_usuari()
+    token = AccessToken.for_user(usuari)
+    token.set_exp(lifetime=-timedelta(seconds=1))
+    client = client_de(usuari)
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+
+    resposta = client.get(COLLECCIO)
+
+    assert resposta.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+def test_post_predeterminada_es_ignora():
+    usuari = crear_usuari()
+
+    resposta = client_de(usuari).post(
+        COLLECCIO,
+        dades_adreca() | {"predeterminada": True},
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_201_CREATED
+    adreca = Adreca.objects.get(pk=resposta.data["id"])
+    assert adreca.predeterminada is False
+
+
+@pytest.mark.django_db
+def test_put_predeterminada_es_ignora():
+    usuari = crear_usuari()
+    adreca = Adreca.objects.create(usuari=usuari, **dades_adreca())
+
+    resposta = client_de(usuari).put(
+        f"{COLLECCIO}{adreca.id}/",
+        dades_adreca() | {"predeterminada": True},
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_200_OK
+    adreca.refresh_from_db()
+    assert adreca.predeterminada is False
+
+
+@pytest.mark.django_db
+def test_adreces_iguals_de_usuaris_diferents_no_es_barregen():
+    usuari = crear_usuari()
+    altre = crear_usuari(
+        email="pere@example.com",
+        carnet="0987654321",
+        name="Pere Vila",
+    )
+    Adreca.objects.create(usuari=usuari, **dades_adreca())
+    Adreca.objects.create(usuari=altre, **dades_adreca())
+
+    resposta = client_de(usuari).get(COLLECCIO)
+
+    assert resposta.status_code == status.HTTP_200_OK
+    assert len(resposta.data) == 1
+    assert resposta.data[0]["municipi"] == "Barcelona"
+    assert Adreca.objects.filter(
+        usuari=altre,
     ).count() == 1
