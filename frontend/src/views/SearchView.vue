@@ -3,11 +3,15 @@ import axios from "axios";
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import logoImage from "../assets/bookit-logo.jpg";
+import { useComandaStore } from "../stores/comanda.js";
+import { useSessioStore } from "../stores/sessio.js";
 
 const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 const route = useRoute();
 const router = useRouter();
+const sessio = useSessioStore();
+const comanda = useComandaStore();
 
 // El text cercat i la pàgina arriben a l'adreça (/cerca?q=...&pagina=2).
 const textCercat = computed(() => (route.query.q ?? "").trim());
@@ -19,6 +23,7 @@ const hiHaSeguent = ref(false);
 const hiHaAnterior = ref(false);
 const carregant = ref(false);
 const error = ref("");
+const apuntatsEspera = ref([]);
 
 const textTotal = computed(() =>
   total.value === 1 ? "1 resultat" : `${total.value} resultats`,
@@ -69,6 +74,21 @@ function canviaPagina(novaPagina) {
   router.push({ name: "cerca", query: { q: textCercat.value, pagina: novaPagina } });
 }
 
+function afegeixALaComanda(llibre) {
+  if (!sessio.autenticat) {
+    router.push({ name: "inici-sessio" });
+    return;
+  }
+
+  comanda.afegirLlibre(llibre);
+}
+
+function apuntaAEspera(llibre) {
+  if (!apuntatsEspera.value.includes(llibre.id)) {
+    apuntatsEspera.value.push(llibre.id);
+  }
+}
+
 // Torna a cercar quan canvia el text o la pàgina de l'adreça.
 watch(() => [textCercat.value, pagina.value], cerca, { immediate: true });
 </script>
@@ -85,7 +105,12 @@ watch(() => [textCercat.value, pagina.value], cerca, { immediate: true });
         <span>bookit.</span>
       </RouterLink>
 
-      <RouterLink class="back-link" to="/">Torna a l'inici</RouterLink>
+      <div class="header-actions">
+        <RouterLink v-if="sessio.rol === 'usuari'" class="order-link" :to="{ name: 'comanda' }">
+          La meva comanda ({{ comanda.nombreLlibres }})
+        </RouterLink>
+        <RouterLink class="back-link" to="/">Torna a l'inici</RouterLink>
+      </div>
     </header>
 
     <section class="search-content">
@@ -131,6 +156,35 @@ watch(() => [textCercat.value, pagina.value], cerca, { immediate: true });
                 {{ llibre.disponible ? "Disponible" : "No disponible" }}
               </p>
               <p class="valoracions">{{ textValoracions(llibre) }}</p>
+              <p v-if="!llibre.disponible" class="stock-warning" role="alert">
+                Aquest llibre no te estoc en aquest moment. Pots apuntar-te a la llista d'espera
+                <button
+                  type="button"
+                  class="wait-button"
+                  :disabled="apuntatsEspera.includes(llibre.id)"
+                  @click="apuntaAEspera(llibre)"
+                >
+                  {{
+                    apuntatsEspera.includes(llibre.id)
+                      ? "Apuntat a la llista d'espera"
+                      : "Apuntar-me a la llista d'espera"
+                  }}
+                </button>
+              </p>
+              <button
+                type="button"
+                class="add-button"
+                :disabled="!llibre.disponible || comanda.teLlibre(llibre.id)"
+                @click="afegeixALaComanda(llibre)"
+              >
+                {{
+                  comanda.teLlibre(llibre.id)
+                    ? "Afegit a la comanda"
+                    : llibre.disponible
+                      ? "Afegir a la comanda"
+                      : "No disponible"
+                }}
+              </button>
             </div>
           </li>
         </ul>
@@ -206,6 +260,17 @@ watch(() => [textCercat.value, pagina.value], cerca, { immediate: true });
 }
 
 .back-link {
+  color: #a00000;
+  font-weight: 700;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.order-link {
   color: #a00000;
   font-weight: 700;
 }
@@ -357,6 +422,61 @@ h1 {
 
 .valoracions {
   color: #92867c;
+}
+
+.stock-warning {
+  margin: 0.7rem 0 0;
+  padding: 0.55rem;
+  border: 1px solid #dfc0b0;
+  border-radius: 0.45rem;
+  color: #870000;
+  background: #fff1e8;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.wait-button {
+  display: block;
+  margin-top: 0.5rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid #870000;
+  border-radius: 0.45rem;
+  color: #870000;
+  background: #fff;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wait-button:disabled {
+  color: #68705f;
+  border-color: #9da48f;
+  cursor: default;
+}
+
+.add-button {
+  width: 100%;
+  margin-top: 0.7rem;
+  padding: 0.6rem 0.8rem;
+  border: 0;
+  border-radius: 0.55rem;
+  color: #fff;
+  background: #980000;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.add-button:hover:not(:disabled) {
+  background: #720000;
+}
+
+.add-button:disabled {
+  color: #887b70;
+  background: #e8dfd3;
+  cursor: default;
 }
 
 .paginacio {
