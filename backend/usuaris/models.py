@@ -168,6 +168,26 @@ class Adreca(models.Model):
     carrer = models.CharField(max_length=255, verbose_name="carrer")
     pis = models.CharField(max_length=20, verbose_name="pis")
     codi_postal = models.CharField(max_length=5, verbose_name="codi postal", validators=[valida_codi_postal_zona])
+    latitud = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(-90),
+            MaxValueValidator(90),
+        ],
+    )
+    longitud = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(-180),
+            MaxValueValidator(180),
+        ],
+    )
     predeterminada = models.BooleanField(
         default=False,
         verbose_name="predeterminada",
