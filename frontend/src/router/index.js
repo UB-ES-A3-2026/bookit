@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useSessioStore } from "../stores/sessio.js";
+import AdrecesView from "../views/AdrecesView.vue";
 import AfegirLlibreView from "../views/AfegirLlibreView.vue";
 import CatalegView from "../views/CatalegView.vue";
 import HomeView from "../views/HomeView.vue";
@@ -22,6 +23,11 @@ export function nomesBiblioteques() {
     return { name: "home" };
   }
   return true;
+}
+
+export function requereixSessio() {
+  const sessio = useSessioStore();
+  return sessio.autenticat ? true : { name: "inici-sessio" };
 }
 
 export const NOM_APLICACIO = "bookit";
@@ -58,6 +64,13 @@ const router = createRouter({
       name: "inici-sessio",
       component: LoginView,
       meta: { titol: "Inicia sessió" },
+    },
+    {
+      path: "/adreces",
+      name: "adreces",
+      component: AdrecesView,
+      meta: { titol: "Les meves adreces" },
+      beforeEnter: requereixSessio,
     },
     {
       path: "/repartidor",

@@ -1,18 +1,20 @@
 import { createApp, h, nextTick } from "vue";
 import { createMemoryHistory, createRouter, RouterView } from "vue-router";
-import { createPinia } from "pinia";
+import { createPinia, setActivePinia } from "pinia";
 import { afterEach, describe, expect, it } from "vitest";
 import HomeView from "../views/HomeView.vue";
 import RegisterView from "../views/RegisterView.vue";
-import router from "../router";
+import router, { requereixSessio } from "../router";
+import { useSessioStore } from "../stores/sessio.js";
 
 const routes = [
   { path: "/", name: "home", component: HomeView },
   { path: "/registre", name: "registre", component: RegisterView },
   { path: "/inicia-sessio", name: "inici-sessio", component: { render: () => null } },
+  { path: "/adreces", name: "adreces", component: { render: () => null } },
 ];
 
-const muntarAplicacio = async () => {
+const muntarAplicacio = async (autenticada = false) => {
   const aplicacioRouter = createRouter({
     history: createMemoryHistory(),
     routes,
@@ -20,9 +22,14 @@ const muntarAplicacio = async () => {
   const contenidor = document.createElement("div");
   document.body.appendChild(contenidor);
   const aplicacio = createApp({ render: () => h(RouterView) });
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  if (autenticada) {
+    useSessioStore().iniciarSessio({ accessToken: "token-de-prova", rol: "usuari" });
+  }
 
   // La capçalera de la pàgina d'inici consulta la sessió (Pinia) per saber quins botons mostra.
-  aplicacio.use(createPinia()).use(aplicacioRouter).mount(contenidor);
+  aplicacio.use(pinia).use(aplicacioRouter).mount(contenidor);
   await aplicacioRouter.push("/");
   await aplicacioRouter.isReady();
   await nextTick();
@@ -51,6 +58,39 @@ describe("rutes publiques", () => {
     expect(aplicacio.aplicacioRouter.currentRoute.value.path).toBe("/");
 
     aplicacio.aplicacio.unmount();
+  });
+
+  it("mostra l'enllaç a les adreces quan hi ha una sessió", async () => {
+    const aplicacio = await muntarAplicacio(true);
+
+    expect(
+      aplicacio.contenidor.querySelector('a[href="/adreces"]')?.textContent,
+    ).toContain("Les meves adreces");
+
+    aplicacio.aplicacio.unmount();
+  });
+});
+
+describe("accés a les adreces", () => {
+  it("demana iniciar sessió si no hi ha cap usuari autenticat", () => {
+    setActivePinia(createPinia());
+
+    expect(requereixSessio()).toEqual({ name: "inici-sessio" });
+  });
+
+  it("permet accedir-hi amb una sessió autenticada", () => {
+    setActivePinia(createPinia());
+    useSessioStore().iniciarSessio({ accessToken: "token-de-prova", rol: "usuari" });
+
+    expect(requereixSessio()).toBe(true);
+  });
+
+  it("defineix la ruta privada i el títol de la pàgina", () => {
+    const adreces = router.getRoutes().find((ruta) => ruta.name === "adreces");
+
+    expect(adreces.path).toBe("/adreces");
+    expect(adreces.meta.titol).toBe("Les meves adreces");
+    expect(adreces.beforeEnter).toBe(requereixSessio);
   });
 });
 
