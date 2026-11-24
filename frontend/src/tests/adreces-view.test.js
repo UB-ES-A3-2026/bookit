@@ -107,6 +107,26 @@ describe("pàgina Les meves adreces", () => {
     expect(llistaAdreces).toHaveBeenCalledOnce();
   });
 
+  it("permet tornar a carregar les adreces després d'un error", async () => {
+    llistaAdreces
+      .mockRejectedValueOnce(new Error("Error de xarxa"))
+      .mockResolvedValueOnce([adrecaInicial]);
+    const element = renderitza();
+    await esperaActualitzacio();
+
+    expect(element.querySelector(".page-error").textContent).toContain(
+      "No s'han pogut carregar les adreces",
+    );
+    [...element.querySelectorAll("button")]
+      .find((boto) => boto.textContent.includes("Tornar-ho a provar"))
+      .click();
+    await esperaActualitzacio();
+
+    expect(llistaAdreces).toHaveBeenCalledTimes(2);
+    expect(element.textContent).toContain("Carrer Major 1");
+    expect(element.querySelector(".page-error")).toBeNull();
+  });
+
   it("valida els camps obligatoris abans d'afegir una adreça", async () => {
     const element = renderitza();
     await esperaActualitzacio();
@@ -140,6 +160,27 @@ describe("pàgina Les meves adreces", () => {
     expect(element.textContent).toContain("Girona");
   });
 
+  it("mostra un error general si falla l'alta de l'adreça", async () => {
+    afegeixAdreca.mockRejectedValue({
+      response: { status: 500, data: { detail: "Error intern" } },
+    });
+    const element = renderitza();
+    await esperaActualitzacio();
+    obreFormulari(element);
+    await nextTick();
+    ompleFormulari(element);
+    await nextTick();
+    element.querySelector("form").dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
+    await esperaActualitzacio();
+
+    expect(element.querySelector(".form-error-general").textContent).toContain(
+      "No s'han pogut desar les dades de l'adreça",
+    );
+    expect(element.querySelector("form")).not.toBeNull();
+  });
+
   it("edita una adreça existent", async () => {
     llistaAdreces.mockResolvedValue([adrecaInicial]);
     const adrecaActualitzada = { ...adrecaInicial, ...dadesAdreca };
@@ -158,6 +199,33 @@ describe("pàgina Les meves adreces", () => {
     expect(editaAdreca).toHaveBeenCalledWith(adrecaInicial.id, dadesAdreca);
     expect(element.textContent).toContain("Carrer Nou 5");
     expect(element.textContent).not.toContain("Carrer Major 1");
+  });
+
+  it("mostra errors de validació del backend en editar", async () => {
+    llistaAdreces.mockResolvedValue([adrecaInicial]);
+    editaAdreca.mockRejectedValue({
+      response: {
+        status: 400,
+        data: { municipi: ["Introdueix un municipi vàlid."] },
+      },
+    });
+    const element = renderitza();
+    await esperaActualitzacio();
+    element.querySelector('[aria-label="Editar l\'adreça de Carrer Major 1"]').click();
+    await nextTick();
+    ompleFormulari(element);
+    await nextTick();
+    element.querySelector("form").dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
+    await esperaActualitzacio();
+
+    expect(element.querySelector("#adreca-municipi-error").textContent).toContain(
+      "Introdueix un municipi vàlid.",
+    );
+    expect(element.querySelector(".address-card").textContent).toContain(
+      "Carrer Major 1",
+    );
   });
 
   it("mostra al camp el missatge de validació de zona del backend", async () => {
@@ -252,5 +320,35 @@ describe("pàgina Les meves adreces", () => {
     expect(window.confirm).toHaveBeenCalledOnce();
     expect(suprimeixAdreca).toHaveBeenCalledWith(adrecaInicial.id);
     expect(element.textContent).toContain("Encara no tens cap adreça desada.");
+  });
+
+  it("no suprimeix una adreça si l'usuari cancel·la la confirmació", async () => {
+    llistaAdreces.mockResolvedValue([adrecaInicial]);
+    window.confirm.mockReturnValue(false);
+    const element = renderitza();
+    await esperaActualitzacio();
+    element.querySelector('[aria-label="Suprimir l\'adreça de Carrer Major 1"]').click();
+    await esperaActualitzacio();
+
+    expect(suprimeixAdreca).not.toHaveBeenCalled();
+    expect(element.querySelector(".address-card").textContent).toContain(
+      "Carrer Major 1",
+    );
+  });
+
+  it("mostra un error i manté l'adreça si falla la supressió", async () => {
+    llistaAdreces.mockResolvedValue([adrecaInicial]);
+    suprimeixAdreca.mockRejectedValue(new Error("Error de xarxa"));
+    const element = renderitza();
+    await esperaActualitzacio();
+    element.querySelector('[aria-label="Suprimir l\'adreça de Carrer Major 1"]').click();
+    await esperaActualitzacio();
+
+    expect(element.querySelector('[role="alert"]').textContent).toContain(
+      "No s'ha pogut suprimir l'adreça",
+    );
+    expect(element.querySelector(".address-card").textContent).toContain(
+      "Carrer Major 1",
+    );
   });
 });
