@@ -28,8 +28,10 @@ Quan una comanda es lliura, es crea un préstec per cada llibre de la comanda. E
 lliurament i la data límit és 30 dies després (decisió D1). Quan l'usuari torna el llibre (US9), el préstec deixa de
 sortir a la llista.
 
-Els préstecs els crea `crea_prestecs` (US19-T1). Encara falta cridar-la quan la comanda passa a `lliurada`, perquè el
-canvi d'estat és a la US8; es connectarà quan les dues US siguin a `develop`.
+Els préstecs es creen quan la comanda passa a `lliurada`, dins de `canvia_estat` (US8) i en la mateixa transacció
+que el canvi d'estat (US19-T9). Si no es poden crear, la comanda no queda lliurada. Per això no importa qui marqui el
+lliurament (la parada completada de la US13 o qualsevol altre camí): sempre hi haurà els préstecs. Cap altre canvi
+d'estat en crea.
 
 ## Els meus préstecs
 
