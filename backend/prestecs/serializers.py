@@ -2,7 +2,7 @@ from django.conf import settings
 from rest_framework import serializers
 
 from cataleg.models import Llibre
-from prestecs.models import Comanda
+from prestecs.models import Comanda, Notificacio, Prestec
 from usuaris.models import Usuari
 
 # Missatges del contracte (docs/api-comandes.md). Els del límit i l'estoc són
@@ -50,8 +50,48 @@ class ComandaSerializer(serializers.ModelSerializer):
         return {"id": comanda.biblioteca_id, "nom": comanda.biblioteca.biblioteca.nom}
 
     def get_llibres(self, comanda):
-        linies = comanda.linies.select_related("llibre").order_by("id")
+        # `all()` aprofita les línies ja carregades amb `prefetch_related` a les llistes.
+        linies = sorted(comanda.linies.all(), key=lambda linia: linia.pk)
         return LlibreComandaSerializer([linia.llibre for linia in linies], many=True).data
+
+
+class ComandaBibliotecaSerializer(ComandaSerializer):
+    """Comanda tal com la veu la biblioteca: també diu de quin usuari és (US10)."""
+
+    usuari = serializers.SerializerMethodField()
+
+    class Meta(ComandaSerializer.Meta):
+        fields = (
+            "id",
+            "estat",
+            "usuari",
+            "biblioteca",
+            "llibres",
+            "tipus_lliurament",
+            "data_lliurament",
+            "creada",
+        )
+
+    def get_usuari(self, comanda):
+        return {"id": comanda.usuari_id, "nom": comanda.usuari.name}
+
+
+class PrestecSerializer(serializers.ModelSerializer):
+    """Un llibre que l'usuari té en préstec (US19-T2)."""
+
+    llibre = LlibreComandaSerializer()
+    biblioteca = serializers.SerializerMethodField()
+    termini_superat = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Prestec
+        fields = ("id", "llibre", "biblioteca", "data_inici", "data_limit", "termini_superat")
+
+    def get_biblioteca(self, prestec):
+        return {"id": prestec.biblioteca_id, "nom": prestec.biblioteca.biblioteca.nom}
+
+    def get_termini_superat(self, prestec):
+        return prestec.termini_superat()
 
 
 class ConfirmacioComandaSerializer(serializers.Serializer):
@@ -117,3 +157,11 @@ class ConfirmacioComandaSerializer(serializers.Serializer):
             raise serializers.ValidationError({"adreca_lliurament": [ADRECA_OBLIGATORIA]})
         dades["adreca_lliurament"] = adreca.strip()
         return dades
+
+
+class NotificacioSerializer(serializers.ModelSerializer):
+    """Una notificació de l'usuari (US8-T3)."""
+
+    class Meta:
+        model = Notificacio
+        fields = ("id", "comanda", "text", "llegida", "creada")

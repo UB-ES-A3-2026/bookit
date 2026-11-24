@@ -17,9 +17,12 @@ Aquest document és la base de les comandes. Les US7 (tipus de lliurament), US8 
 | `GET /api/prestecs/comandes/cost-enviament/` | Cost de cada tipus de lliurament. | US7-T1 |
 | `GET /api/prestecs/comandes/` | Llista les comandes de l'usuari amb el seu estat. | US8-T3 |
 | `POST /api/prestecs/comandes/<id>/cancellar/` | Cancel·la una comanda que encara no ha sortit. | US20-T1 |
-| `GET /api/prestecs/biblioteca/comandes/` | Llista les comandes pendents de la biblioteca. | US10-T1 |
+| `GET /api/prestecs/biblioteca/comandes/` | Llista les comandes pendents de la biblioteca. | US10 (aquest document) |
 | `POST /api/prestecs/biblioteca/comandes/<id>/preparada/` | Marca una comanda com a llesta per a recollida. | US15-T1 |
+| `POST /api/prestecs/biblioteca/comandes/<id>/recollida/` | Lliura a l'usuari una comanda de recollida. | US7-T8 |
 | `GET /api/prestecs/notificacions/` | Llista les notificacions de l'usuari. | US8-T3 |
+| `POST /api/prestecs/notificacions/<id>/llegida/` | Marca una notificació com a llegida. | US8-T3 |
+| `POST /api/prestecs/notificacions/llegides/` | Marca totes les notificacions com a llegides. | US8-T3 |
 
 Peticions i respostes en JSON (`Content-Type: application/json`). Les rutes que es defineixen en altres tasques poden
 canviar fins que la tasca les especifiqui en aquest document.
@@ -31,7 +34,8 @@ Tots els endpoints requereixen la capçalera `Authorization: Bearer <access>` (v
 | Cas | Estat | Resposta |
 |---|---|---|
 | Sense la capçalera `Authorization`, o amb un token invàlid o caducat | 401 | La de `docs/api-auth.md`. |
-| Crear una comanda amb un usuari que no té el rol `usuari` (biblioteca o repartidor) | 403 | `{"detail": "No té permisos per realitzar aquesta acció."}` |
+| Fer servir les rutes de comandes (crear, llistar o cancel·lar) o de notificacions de l'usuari sense el rol `usuari` (biblioteca o repartidor) | 403 | `{"detail": "No té permisos per realitzar aquesta acció."}` |
+| Fer servir una ruta `/biblioteca/` sense ser una biblioteca activa | 403 | `{"detail": "No té permisos per realitzar aquesta acció."}` |
 
 ## Estats de la comanda
 
@@ -40,10 +44,40 @@ Tots els endpoints requereixen la capçalera `Authorization: Bearer <access>` (v
 | `rebuda` | Rebuda | En confirmar la comanda. És l'estat inicial. |
 | `preparada` | Preparada | Quan la biblioteca la marca com a "Llesta per a recollida" (US15). |
 | `en_cami` | En camí | Quan el repartidor la recull a la biblioteca (US12 i US13). |
-| `lliurada` | Lliurada | Quan el repartidor marca el lliurament com a completat (US13). |
+| `lliurada` | Lliurada | Quan el repartidor marca el lliurament com a completat (US13) o, si és una recollida, quan la biblioteca la lliura a l'usuari (US7-T8). Es creen els préstecs dels llibres (US19). |
 | `cancellada` | Cancel·lada | Quan l'usuari la cancel·la abans que surti (US20). |
 
-Els canvis d'estat permesos i les notificacions que generen es defineixen a la US8.
+### Canvis d'estat permesos
+
+| Des de | Pot passar a |
+|---|---|
+| `rebuda` | `preparada`, `cancellada` |
+| `preparada` | `en_cami`, `cancellada`. Si és una recollida a la biblioteca: `lliurada`, `cancellada` (US7-T8) |
+| `en_cami` | `lliurada`, o tornar a `preparada` si la parada falla i cal tornar-la a planificar (US13) |
+| `lliurada` | Cap: és un estat final. |
+| `cancellada` | Cap: és un estat final. |
+
+Qualsevol altre canvi es rebutja i la comanda es queda com estava. Cada canvi es guarda a l'historial de la
+comanda amb el moment en què es fa, començant per `rebuda` en confirmar-la.
+
+### Notificacions
+
+Cada canvi d'estat, inclosa la confirmació de la comanda, crea una notificació per a l'usuari de la comanda dins de
+l'aplicació. La notificació depèn de l'estat al qual passa la comanda:
+
+| Estat nou | Text de la notificació |
+|---|---|
+| `rebuda` | `La teva comanda s'ha rebut correctament. La biblioteca ja l'està preparant` |
+| `preparada` | `La teva comanda ja està preparada i aviat sortirà cap a casa teva` |
+| `en_cami` | `En/Na {nom del repartidor} ja porta la teva comanda. Està en camí!` |
+| `lliurada` | `La teva comanda s'ha lliurat correctament. Gaudeix del teu llibre!` |
+| `cancellada` | `La teva comanda s'ha cancel·lat.` |
+
+Els textos de `rebuda`, `preparada`, `en_cami` i `lliurada` són literals dels criteris de la US8. Mentre la comanda
+no tingui repartidor assignat (US12), el text de `en_cami` és `El repartidor ja porta la teva comanda. Està en camí!`.
+Si una parada falla i la comanda torna a `preparada` (P6), l'usuari rep un altre cop el text de `preparada`.
+
+Per llistar-les i marcar-les com a llegides, vegeu [Notificacions de l'usuari](#notificacions-de-lusuari).
 
 ## Comanda
 
@@ -173,6 +207,217 @@ Requereix un usuari amb el rol `usuari`, igual que confirmar la comanda.
 }
 ```
 
+## Les meves comandes
+
+`GET /api/prestecs/comandes/`
+
+**200 OK**. Una llista amb totes les comandes de l'usuari, de la més nova a la més antiga, amb el format de
+[Comanda](#comanda). Hi surten totes, també les lliurades i les cancel·lades, perquè l'usuari en vegi l'estat. Si no
+en té cap, la llista és buida.
+
+```json
+[
+  {
+    "id": 12,
+    "estat": "en_cami",
+    "biblioteca": { "id": 3, "nom": "Biblioteca Montbau" },
+    "llibres": [{ "id": 9, "titol": "Solitud", "autor": "Víctor Català", "portada": "" }],
+    "data_lliurament": "2026-11-20",
+    "creada": "2026-11-16T16:20:00Z"
+  }
+]
+```
+
+## Notificacions de l'usuari
+
+### Llistar les notificacions
+
+`GET /api/prestecs/notificacions/`
+
+**200 OK**. Les notificacions de l'usuari, de la més nova a la més antiga. Si no en té cap, la llista és buida. Per
+mostrar quantes n'hi ha de noves a la capçalera, el frontend compta les que tenen `llegida` a `false`.
+
+| Camp | Tipus | Descripció |
+|---|---|---|
+| `id` | enter | Identificador de la notificació. |
+| `comanda` | enter | `id` de la comanda a la qual fa referència. |
+| `text` | text | El text de la notificació (vegeu [Notificacions](#notificacions)). |
+| `llegida` | booleà | Si l'usuari ja l'ha llegida. |
+| `creada` | text | Data i hora en què es va crear (ISO 8601). |
+
+```json
+[
+  {
+    "id": 31,
+    "comanda": 12,
+    "text": "La teva comanda ja està preparada i aviat sortirà cap a casa teva",
+    "llegida": false,
+    "creada": "2026-11-17T09:05:00Z"
+  },
+  {
+    "id": 30,
+    "comanda": 12,
+    "text": "La teva comanda s'ha rebut correctament. La biblioteca ja l'està preparant",
+    "llegida": true,
+    "creada": "2026-11-16T16:20:00Z"
+  }
+]
+```
+
+### Marcar una notificació com a llegida
+
+`POST /api/prestecs/notificacions/<id>/llegida/`
+
+La petició no porta cos. **200 OK** amb la notificació, ja amb `llegida` a `true`. Si ja estava llegida, la resposta
+és la mateixa. Una notificació que no existeix o que és d'un altre usuari rep un **404**.
+
+### Marcar totes les notificacions com a llegides
+
+`POST /api/prestecs/notificacions/llegides/`
+
+La petició no porta cos. **200 OK** amb el nombre de notificacions que s'han marcat ara:
+
+```json
+{ "marcades": 3 }
+```
+
+## Comandes pendents de la biblioteca
+
+`GET /api/prestecs/biblioteca/comandes/`
+
+Només per a biblioteques. No té cos.
+
+### Resposta correcta
+
+**200 OK**. Una llista amb les comandes de la biblioteca autenticada que estan en estat `rebuda`, `preparada` o
+`cancellada`. Les cancel·lades hi surten perquè la biblioteca sàpiga que ja no les ha de preparar (US20). Les que ja
+han sortit (`en_cami`) o s'han lliurat no hi surten. Sense paginació. Si no n'hi ha cap, retorna `[]`.
+
+Ordre: per `data_lliurament`, de la més propera a la més llunyana. Les que encara no tenen data surten al final. Amb
+la mateixa data, primer la més antiga.
+
+Cada comanda té el format de [Comanda](#comanda), però només amb el camp `tipus_lliurament` dels de la US7, perquè la
+biblioteca sàpiga quines comandes es recullen a la biblioteca. També hi ha el camp `usuari` (`id` i `nom`), perquè
+sàpiga de qui és.
+
+```json
+[
+  {
+    "id": 12,
+    "estat": "rebuda",
+    "usuari": { "id": 25, "nom": "Anna Puig" },
+    "biblioteca": { "id": 3, "nom": "Biblioteca Montbau" },
+    "llibres": [
+      { "id": 9, "titol": "Solitud", "autor": "Víctor Català", "portada": "" }
+    ],
+    "tipus_lliurament": "domicili",
+    "data_lliurament": "2026-11-20",
+    "creada": "2026-11-16T16:20:00Z"
+  }
+]
+```
+
+Una biblioteca només veu les seves comandes.
+
+## Marcar una comanda com a llesta per a recollida
+
+`POST /api/prestecs/biblioteca/comandes/<id>/preparada/`
+
+La biblioteca marca una comanda seva com a "Llesta per a recollida" (US15), que és l'estat `preparada` (P4). Només
+ho pot fer una biblioteca amb el compte actiu; un usuari o un repartidor reben el 403 de
+[Autenticació i permisos](#autenticació-i-permisos). La petició no porta cos.
+
+Un cop preparada, l'usuari en rep la notificació (US8) i la comanda s'assigna a un repartidor si n'hi ha cap amb un
+forat a les seves franges (vegeu [Assignació a un repartidor](#assignació-a-un-repartidor)). Si s'assigna, la
+resposta ja porta la `data_lliurament`.
+
+### Resposta correcta
+
+**200 OK**. La comanda amb el format de [Comanda](#comanda) i l'estat `preparada`.
+
+### Errors
+
+| Cas | Estat | Resposta |
+|---|---|---|
+| La comanda no existeix o és d'una altra biblioteca | 404 | Cos sense contingut rellevant. |
+| La comanda ja és `preparada` | 409 | `{"detail": "Aquesta comanda ja està llesta per a recollida."}` |
+| La comanda és `en_cami`, `lliurada` o `cancellada` | 409 | `{"detail": "Aquesta comanda no es pot marcar com a llesta perquè està en camí."}` (o `lliurada`, `cancel·lada`) |
+
+Una comanda d'una altra biblioteca rep el mateix 404 que una d'inexistent, perquè una biblioteca no pugui saber res
+de les comandes de les altres.
+
+## Lliurar una comanda de recollida
+
+`POST /api/prestecs/biblioteca/comandes/<id>/recollida/`
+
+Quan l'usuari ve a buscar una comanda de recollida, la biblioteca la marca com a lliurada (US7-T8). Només ho pot fer
+la biblioteca de la comanda, amb el compte actiu; un usuari o un repartidor reben el 403 de
+[Autenticació i permisos](#autenticació-i-permisos). La petició no porta cos.
+
+Una comanda de recollida no passa per `en_cami`: va directament de `preparada` a `lliurada`. En lliurar-la, l'usuari
+rep la notificació de lliurament (US8) i es creen els préstecs dels llibres (US19).
+
+### Resposta correcta
+
+**200 OK**. La comanda amb el format de [Comanda](#comanda) i l'estat `lliurada`.
+
+### Errors
+
+| Cas | Estat | Resposta |
+|---|---|---|
+| La comanda no existeix o és d'una altra biblioteca | 404 | Cos sense contingut rellevant. |
+| La comanda és a domicili | 409 | `{"detail": "Aquesta comanda és a domicili: la lliura el repartidor."}` |
+| La comanda és `rebuda` | 409 | `{"detail": "Aquesta comanda encara no està llesta per a recollida."}` |
+| La comanda ja és `lliurada` | 409 | `{"detail": "Aquesta comanda ja està lliurada."}` |
+| La comanda és `cancellada` | 409 | `{"detail": "Aquesta comanda no es pot lliurar perquè està cancel·lada."}` |
+
+Si la biblioteca la lliura alhora que l'usuari la cancel·la, només es fa una de les dues accions. L'altra rep el seu
+409.
+
+## Cancel·lar una comanda
+
+`POST /api/prestecs/comandes/<id>/cancellar/`
+
+L'usuari cancel·la una comanda seva mentre encara no ha sortit, és a dir, mentre és `rebuda` o `preparada` (US20). La
+petició no porta cos. El frontend demana confirmació abans d'enviar-la: "Segur que vols cancel·lar aquesta comanda?".
+
+### Resposta correcta
+
+**200 OK**. La comanda amb el format de [Comanda](#comanda) i l'estat `cancellada`.
+
+En cancel·lar-la, la biblioteca torna a tenir un exemplar més de cada llibre de la comanda, i la comanda li surt com
+a cancel·lada a la llista de comandes pendents (US10). Si la biblioteca ha tret algun llibre del seu catàleg
+mentrestant, aquell exemplar no s'hi torna.
+
+### Errors
+
+| Cas | Estat | Resposta |
+|---|---|---|
+| La comanda no existeix o és d'un altre usuari | 404 | Cos sense contingut rellevant. |
+| La comanda és `en_cami` o `lliurada` | 409 | `{"detail": "Aquesta comanda ja ha sortit i no es pot cancel·lar"}` |
+| La comanda ja és `cancellada` | 409 | `{"detail": "Aquesta comanda ja està cancel·lada."}` |
+
+El missatge de quan la comanda ja ha sortit és literal dels criteris d'acceptació de la US20.
+
+## Assignació a un repartidor
+
+No té endpoint propi: el backend assigna les comandes `preparada` als repartidors (US14-T3), i la ruta del dia del
+repartidor (US12) es farà a partir d'aquestes assignacions.
+
+- Una comanda s'assigna quan la biblioteca la marca com a llesta. Les que en aquell moment no troben cap repartidor
+  es queden `preparada` sense assignar, i l'ordre `python manage.py assigna_comandes` les torna a provar, de la més
+  antiga a la més nova.
+- Cada lliurament ocupa `DURADA_LLIURAMENT_MINUTS` minuts (30 per defecte) i ha de cabre sencer dins d'una franja
+  de disponibilitat del repartidor (`docs/api-franges.md`), sense trepitjar els altres lliuraments que ja té aquell
+  dia. Les comandes cancel·lades deixen el seu forat lliure.
+- Es busca a partir de l'endemà i durant una setmana. Es tria el primer dia amb algun forat i, d'aquell dia, el
+  forat que comença abans. Si dos repartidors poden començar a la mateixa hora, es tria el que té menys lliuraments
+  aquell dia.
+- Només es fan servir repartidors actius amb el perfil validat.
+
+En assignar-la, la comanda guarda el repartidor, la `data_lliurament` i l'hora d'inici i de final del lliurament. De
+moment, d'aquests camps les respostes de l'API només mostren la `data_lliurament`.
+
 ## Flux del frontend
 
 1. L'usuari afegeix llibres a la comanda des dels resultats de la cerca o del detall del llibre (US6-T6). Cada llibre
@@ -196,6 +441,16 @@ s'actualitzen aquí i al model abans d'implementar la resta d'endpoints.
   la comanda, un altre la pot avançar.
 - **P4. "Llesta per a recollida".** És l'estat `preparada` de la US8, no un estat a part (US15).
 - **P5. Un exemplar per llibre.** Cada llibre de la comanda és un exemplar; no se'n poden demanar dos del mateix.
+- **P6. Parada fallida.** Quan una parada falla (US13), la comanda torna de `en_cami` a `preparada` per tornar-la
+  a planificar. Falta confirmar amb el Product Owner que tornar a planificar vol dir això.
+- **P7. Comandes pendents.** La llista de la biblioteca inclou les rebudes, les preparades i les cancel·lades. Falta
+  confirmar amb el Product Owner si les preparades hi han de sortir.
 - **P8. Cost d'enviament.** Mentre el Product Owner no ho decideixi, l'enviament a domicili costa 2,50 € per comanda,
   sigui quina sigui la distància o el nombre de llibres, configurable amb la variable d'entorn
   `COST_ENVIAMENT_DOMICILI`. La recollida és gratuïta i es fa a la biblioteca de la comanda.
+- **P9. Notificacions.** De moment les notificacions només es veuen dins de l'aplicació, no s'envien per correu. El
+  text de la cancel·lació i el de les comandes que es recullen a la biblioteca (US7) els ha de confirmar el Product
+  Owner; ara la recollida rep els mateixos textos que el lliurament a domicili.
+- **P10. Assignació de comandes.** Mentre el Product Owner no digui qui assigna les comandes i quan, ho fa el
+  sistema sol en marcar-les com a llestes, amb l'ordre `assigna_comandes` per a les que es queden sense repartidor.
+  Cada lliurament ocupa 30 minuts i es busca a partir de l'endemà.
