@@ -1,15 +1,34 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useSessioStore } from "../stores/sessio.js";
+import AdrecesView from "../views/AdrecesView.vue";
 import AfegirLlibreView from "../views/AfegirLlibreView.vue";
+import ComandesBibliotecaView from "../views/ComandesBibliotecaView.vue";
 import CatalegView from "../views/CatalegView.vue";
+import ComandaView from "../views/ComandaView.vue";
 import HomeView from "../views/HomeView.vue";
+import LlibreDetallView from "../views/LlibreDetallView.vue";
 import MevesComandesView from "../views/MevesComandesView.vue";
 import LoginView from "../views/LoginView.vue";
+import PrestecsView from "../views/PrestecsView.vue";
 import RegisterConfirmationView from "../views/RegisterConfirmationView.vue";
 import RegisterView from "../views/RegisterView.vue";
 import RoleHomeView from "../views/RoleHomeView.vue";
+import FrangesView from "../views/FrangesView.vue";
 import SearchView from "../views/SearchView.vue";
 import VerifyLibraryView from "../views/VerifyLibraryView.vue";
+
+// Les franges només són per als repartidors.
+export function nomesRepartidors() {
+  const sessio = useSessioStore();
+
+  if (!sessio.autenticat) {
+    return { name: "inici-sessio" };
+  }
+  if (sessio.rol !== "repartidor") {
+    return { name: "home" };
+  }
+  return true;
+}
 
 // El catàleg només és per a biblioteques. Sense sessió es demana iniciar-la i
 // amb un altre rol es torna a l'inici.
@@ -36,6 +55,11 @@ export function nomesUsuaris() {
     return { name: "home" };
   }
   return true;
+}
+
+export function requereixSessio() {
+  const sessio = useSessioStore();
+  return sessio.autenticat ? true : { name: "inici-sessio" };
 }
 
 export const NOM_APLICACIO = "bookit";
@@ -81,10 +105,24 @@ const router = createRouter({
       meta: { titol: "Inicia sessió" },
     },
     {
+      path: "/adreces",
+      name: "adreces",
+      component: AdrecesView,
+      meta: { titol: "Les meves adreces" },
+      beforeEnter: requereixSessio,
+    },
+    {
       path: "/repartidor",
       name: "espai-repartidor",
       component: RoleHomeView,
       meta: { titol: "Espai del repartidor" },
+    },
+    {
+      path: "/repartidor/franges",
+      name: "franges-repartidor",
+      component: FrangesView,
+      meta: { titol: "Franges de disponibilitat" },
+      beforeEnter: nomesRepartidors,
     },
     {
       path: "/cataleg",
@@ -94,11 +132,25 @@ const router = createRouter({
       beforeEnter: nomesBiblioteques,
     },
     {
+      path: "/biblioteca/comandes",
+      name: "comandes-biblioteca",
+      component: ComandesBibliotecaView,
+      meta: { titol: "Comandes pendents" },
+      beforeEnter: nomesBiblioteques,
+    },
+    {
       path: "/cataleg/afegir",
       name: "cataleg-afegir",
       component: AfegirLlibreView,
       meta: { titol: "Afegir un llibre" },
       beforeEnter: nomesBiblioteques,
+    },
+    {
+      path: "/comanda",
+      name: "comanda",
+      component: ComandaView,
+      meta: { titol: "La meva comanda" },
+      beforeEnter: nomesUsuaris,
     },
     {
       path: "/verificacio/biblioteca/:uidb64/:token",
@@ -111,6 +163,19 @@ const router = createRouter({
       name: "cerca",
       component: SearchView,
       meta: { titol: "Resultats de la cerca" },
+    },
+    {
+      path: "/llibres/:id",
+      name: "detall-llibre",
+      component: LlibreDetallView,
+      meta: { titol: "Detall del llibre" },
+    },
+    {
+      path: "/prestecs",
+      name: "prestecs",
+      component: PrestecsView,
+      meta: { titol: "Els meus préstecs" },
+      beforeEnter: nomesUsuaris,
     },
   ],
 });

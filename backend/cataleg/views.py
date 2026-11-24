@@ -1,18 +1,32 @@
 """Vistes de l'API del mòdul cataleg."""
 
 from django.db.models import Avg, Count, Exists, OuterRef, Q
+from django.shortcuts import get_object_or_404
 from rest_framework import generics
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.status import (
+    HTTP_200_OK,
+    HTTP_201_CREATED,
+    HTTP_204_NO_CONTENT,
+)
+from rest_framework.views import APIView
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from cataleg.models import ExemplarBiblioteca, Llibre
+from cataleg.authentication import AutenticacioJWTOpcional
+from cataleg.models import ExemplarBiblioteca, LlistaEspera, Llibre
 from cataleg.permisos import EsBibliotecaActiva
 from cataleg.serializers import (
+    BibliotecaAmbEstocSerializer,
     EdicioLlibreCatalegSerializer,
+    EntradaLlistaEsperaSerializer,
     ExemplarsCatalegSerializer,
     LlibreCatalegSerializer,
     LlibreCercaSerializer,
 )
+from cataleg.serveis import distancia_haversine_km
+from usuaris.models import Adreca, Usuari
 
 
 class CercaLlibresPagination(PageNumberPagination):
@@ -109,3 +123,131 @@ class ExemplarsCatalegBibliotecaView(LlibreCatalegBibliotecaMixin, generics.Upda
     def patch(self, request, *args, **kwargs):
         # No és parcial: `exemplars` és l'únic camp i és obligatori.
         return self.update(request, *args, **kwargs)
+
+
+MISSATGE_SENSE_ESTOC = "Cap biblioteca te aquest llibre en estoc"
+MISSATGE_SENSE_ADRECA = "Afegeix una adreça per continuar"
+MISSATGE_ANONIM = "Registrat per ordenar les biblioteques per distància"
+
+
+class BibliotequesAmbEstocLlibreView(APIView):
+    authentication_classes = [AutenticacioJWTOpcional]
+    permission_classes = [AllowAny]
+
+    def get(self, request, id):
+        llibre = get_object_or_404(Llibre, pk=id)
+        exemplars = list(
+            ExemplarBiblioteca.objects.filter(
+                llibre=llibre,
+                quantitat__gt=0,
+                biblioteca__is_active=True,
+                biblioteca__role=Usuari.Role.BIBLIOTECA,
+                biblioteca__biblioteca__isnull=False,
+            )
+            .select_related(
+                "llibre",
+                "biblioteca",
+                "biblioteca__biblioteca",
+            )
+            .order_by(
+                "biblioteca__biblioteca__nom",
+                "biblioteca_id",
+            )
+        )
+
+        usuari_autenticat = (
+            request.user
+            and request.user.is_authenticated
+        )
+        adreca_predeterminada = None
+        ordenada_per_distancia = False
+
+        if usuari_autenticat:
+            adreca_predeterminada = (
+                Adreca.objects
+                .filter(
+                    usuari=request.user,
+                    predeterminada=True,
+                )
+                .only("latitud", "longitud")
+                .first()
+            )
+
+        adreca_amb_coordenades = (
+            adreca_predeterminada is not None
+            and adreca_predeterminada.latitud is not None
+            and adreca_predeterminada.longitud is not None
+        )
+
+        if adreca_amb_coordenades:
+            for exemplar in exemplars:
+                biblioteca = exemplar.biblioteca.biblioteca
+                if (
+                    biblioteca.latitud is not None
+                    and biblioteca.longitud is not None
+                ):
+                    exemplar.distancia_km = round(
+                        distancia_haversine_km(
+                            adreca_predeterminada.latitud,
+                            adreca_predeterminada.longitud,
+                            biblioteca.latitud,
+                            biblioteca.longitud,
+                        ),
+                        1,
+                    )
+
+            exemplars.sort(
+                key=lambda exemplar: (
+                    not hasattr(exemplar, "distancia_km"),
+                    getattr(exemplar, "distancia_km", float("inf")),
+                    exemplar.biblioteca.biblioteca.nom.casefold(),
+                    exemplar.biblioteca_id,
+                )
+            )
+            ordenada_per_distancia = True
+
+        if not exemplars:
+            missatge = MISSATGE_SENSE_ESTOC
+        elif not usuari_autenticat:
+            missatge = MISSATGE_ANONIM
+        elif not adreca_amb_coordenades:
+            missatge = MISSATGE_SENSE_ADRECA
+        else:
+            missatge = None
+
+        dades = BibliotecaAmbEstocSerializer(
+            exemplars,
+            many=True,
+        ).data
+
+        return Response({
+            "biblioteques": dades,
+            "ordenada_per_distancia": ordenada_per_distancia,
+            "missatge": missatge,
+        })
+
+class LlistaEsperaLlibreView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, id):
+        llibre = get_object_or_404(Llibre, pk=id)
+
+        entrada, creada = LlistaEspera.objects.get_or_create(
+            usuari=request.user,
+            llibre=llibre,
+        )
+
+        dades = EntradaLlistaEsperaSerializer(entrada).data
+        estat = HTTP_201_CREATED if creada else HTTP_200_OK
+        return Response(dades, status=estat)
+
+    def delete(self, request, id):
+        llibre = get_object_or_404(Llibre, pk=id)
+
+        LlistaEspera.objects.filter(
+            usuari=request.user,
+            llibre=llibre,
+        ).delete()
+
+        return Response(status=HTTP_204_NO_CONTENT)

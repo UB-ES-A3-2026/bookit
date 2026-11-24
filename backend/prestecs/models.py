@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from cataleg.models import Llibre
 
@@ -37,8 +38,35 @@ class Comanda(models.Model):
         choices=Estat.choices,
         default=Estat.REBUDA,
     )
+    class TipusLliurament(models.TextChoices):
+        # La recollida es fa a la mateixa biblioteca de la comanda (US7).
+        DOMICILI = "domicili", "Lliurament a domicili"
+        RECOLLIDA = "recollida", "Recollida a la biblioteca"
+
+    tipus_lliurament = models.CharField(
+        max_length=9,
+        choices=TipusLliurament.choices,
+        default=TipusLliurament.DOMICILI,
+    )
+    # On es porta la comanda. Buida si l'usuari la recull a la biblioteca.
+    adreca_lliurament = models.TextField(blank=True, default="")
+    # En euros. Es desa en confirmar la comanda, perquè no canviï si després
+    # canvia la tarifa.
+    cost_enviament = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     # La biblioteca ordena les comandes pendents per aquesta data (US10).
     data_lliurament = models.DateField(null=True, blank=True)
+    # Qui porta la comanda i a quina hora, dins d'una franja de disponibilitat
+    # seva (US14). Es decideix en assignar-la (`prestecs.assignacio`).
+    repartidor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        limit_choices_to={"role": "repartidor"},
+        on_delete=models.PROTECT,
+        related_name="comandes_assignades",
+    )
+    hora_inici_lliurament = models.TimeField(null=True, blank=True)
+    hora_fi_lliurament = models.TimeField(null=True, blank=True)
     creada = models.DateTimeField(auto_now_add=True)
     actualitzada = models.DateTimeField(auto_now=True)
 
@@ -51,6 +79,10 @@ class Comanda(models.Model):
 
     def pot_passar_a(self, nou_estat):
         """Diu si la comanda pot canviar de l'estat actual a `nou_estat`."""
+        if self.tipus_lliurament == self.TipusLliurament.RECOLLIDA and self.estat == self.Estat.PREPARADA:
+            # Una comanda de recollida no surt de la biblioteca: la biblioteca la
+            # lliura a l'usuari quan la ve a buscar (US7-T8).
+            return nou_estat in TRANSICIONS_RECOLLIDA_PREPARADA
         return nou_estat in TRANSICIONS[self.estat]
 
 
@@ -64,6 +96,8 @@ TRANSICIONS = {
     Comanda.Estat.LLIURADA: set(),
     Comanda.Estat.CANCELLADA: set(),
 }
+# Una comanda de recollida preparada no passa per "en camí".
+TRANSICIONS_RECOLLIDA_PREPARADA = {Comanda.Estat.LLIURADA, Comanda.Estat.CANCELLADA}
 
 
 class CanviEstat(models.Model):
@@ -146,3 +180,61 @@ class LiniaComanda(models.Model):
 
     def __str__(self):
         return f"{self.llibre} (comanda {self.comanda_id})"
+
+
+class Prestec(models.Model):
+    """Un llibre que l'usuari té en préstec (US19).
+
+    Es crea un préstec per cada línia quan la comanda es lliura. El préstec dura
+    fins que l'usuari torna el llibre (`data_devolucio`), i ho ha de fer abans de
+    la data límit.
+    """
+
+    linia = models.OneToOneField(
+        LiniaComanda,
+        on_delete=models.PROTECT,
+        related_name="prestec",
+    )
+    usuari = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="prestecs",
+    )
+    llibre = models.ForeignKey(
+        Llibre,
+        on_delete=models.PROTECT,
+        related_name="prestecs",
+    )
+    biblioteca = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        limit_choices_to={"role": "biblioteca"},
+        on_delete=models.PROTECT,
+        related_name="prestecs_biblioteca",
+    )
+    data_inici = models.DateField()
+    data_limit = models.DateField()
+    # Buida mentre l'usuari encara té el llibre. La devolució és la US9.
+    data_devolucio = models.DateField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["data_limit", "id"]
+        verbose_name = "préstec"
+        verbose_name_plural = "préstecs"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(data_limit__gte=models.F("data_inici")),
+                name="prestec_acaba_despres_de_comencar",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.llibre} a {self.usuari} fins al {self.data_limit:%d/%m/%Y}"
+
+    @property
+    def retornat(self):
+        return self.data_devolucio is not None
+
+    def termini_superat(self, avui=None):
+        """Diu si l'usuari encara té el llibre i ja ha passat la data límit."""
+        avui = avui or timezone.localdate()
+        return not self.retornat and self.data_limit < avui

@@ -202,7 +202,17 @@ def test_nomes_es_pot_fer_post(client, comanda):
 def test_la_resposta_te_el_format_de_comanda_del_contracte(client, comanda):
     dades = client.post(url(comanda.pk)).json()
 
-    assert set(dades) == {"id", "estat", "biblioteca", "llibres", "data_lliurament", "creada"}
+    assert set(dades) == {
+        "id",
+        "estat",
+        "biblioteca",
+        "llibres",
+        "tipus_lliurament",
+        "adreca_lliurament",
+        "cost_enviament",
+        "data_lliurament",
+        "creada",
+    }
     assert [llibre["titol"] for llibre in dades["llibres"]] == ["La plaça del Diamant", "Solitud"]
 
 
