@@ -44,6 +44,27 @@ beforeEach(() => {
 });
 
 describe("La meva comanda", () => {
+  it("mostra l'estructura del compte i la targeta de comanda", async () => {
+    const element = await renderitza([
+      {
+        id: 7,
+        titol: "La plaça del Diamant",
+        autor: "Mercè Rodoreda",
+        biblioteca: { id: 3, nom: "Biblioteca" },
+      },
+    ]);
+
+    expect(element.querySelector(".header-quote")).not.toBeNull();
+    expect(element.querySelector(".account-sidebar")).not.toBeNull();
+    expect(element.querySelector(".comanda-content h1").textContent).toBe(
+      "Les meves comandes",
+    );
+    expect(element.querySelector(".order-card")).not.toBeNull();
+    expect(
+      element.querySelector(".resum-comanda .primary-button").textContent,
+    ).toContain("Confirmar comanda");
+  });
+
   it("mostra un missatge quan no hi ha llibres", async () => {
     const element = await renderitza();
 
