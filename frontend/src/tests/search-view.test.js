@@ -1,4 +1,5 @@
 import axios from "axios";
+import { h } from "vue";
 import { mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SearchView from "../views/SearchView.vue";
@@ -20,15 +21,23 @@ vi.mock("vue-router", () => ({
   },
 }));
 
+const RouterLinkStub = {
+  props: ["to"],
+  setup(props, { slots }) {
+    return () =>
+      h(
+        "a",
+        { "data-destinacio": JSON.stringify(props.to) },
+        slots.default?.(),
+      );
+  },
+};
+
 function muntaCerca(query = {}) {
   route.query = query;
   return mount(SearchView, {
     global: {
-      components: {
-        RouterLink: {
-          template: "<a><slot /></a>",
-        },
-      },
+      components: { RouterLink: RouterLinkStub },
     },
   });
 }
@@ -84,6 +93,42 @@ describe("pàgina de resultats de la cerca", () => {
     expect(wrapper.text()).toContain("Mercè Rodoreda");
     expect(wrapper.text()).toContain("Disponible");
     expect(wrapper.text()).toContain("4,3 de 5 · 12 valoracions");
+  });
+
+  it("enllaça cada resultat amb el detall i hi passa les dades del llibre", async () => {
+    axios.get.mockResolvedValue({
+      data: {
+        count: 1,
+        next: null,
+        previous: null,
+        results: [
+          {
+            id: 12,
+            titol: "La plaça del Diamant",
+            autor: "Mercè Rodoreda",
+            disponible: true,
+            portada: "https://exemple.cat/portada.jpg",
+            mitjana_valoracions: 4.25,
+            nombre_valoracions: 12,
+          },
+        ],
+      },
+    });
+    const wrapper = muntaCerca({ q: "Rodoreda", pagina: "2" });
+    await vi.waitFor(() => expect(wrapper.find(".detall-link").exists()).toBe(true));
+
+    expect(wrapper.get(".detall-link").text()).toBe("Veure biblioteques");
+    expect(JSON.parse(wrapper.get(".detall-link").attributes("data-destinacio"))).toEqual({
+      name: "detall-llibre",
+      params: { id: 12 },
+      query: {
+        titol: "La plaça del Diamant",
+        autor: "Mercè Rodoreda",
+        portada: "https://exemple.cat/portada.jpg",
+        cerca: "Rodoreda",
+        pagina: 2,
+      },
+    });
   });
 
   it("mostra el missatge quan no hi ha resultats", async () => {
