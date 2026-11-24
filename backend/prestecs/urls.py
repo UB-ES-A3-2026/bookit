@@ -10,6 +10,7 @@ from prestecs.views import (
     NotificacionsView,
     RutaAvuiView,
     CompletarParadaView,
+    FallarParadaView,
 )
 
 app_name = "prestecs"
@@ -41,5 +42,10 @@ urlpatterns = [
         "repartidor/parades/<int:pk>/completar/",
         CompletarParadaView.as_view(),
         name="completar-parada",
+    ),
+    path(
+        "repartidor/parades/<int:pk>/fallida/",
+        FallarParadaView.as_view(),
+        name="fallar-parada",
     ),
 ]

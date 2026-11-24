@@ -144,3 +144,25 @@ class ParadaCompletadaSerializer(serializers.Serializer):
     estat = serializers.CharField(read_only=True)
     completada_el = serializers.DateTimeField(read_only=True)
     comanda = serializers.IntegerField(source="comanda_id", read_only=True)
+
+class FallarParadaSerializer(serializers.Serializer):
+    motiu = serializers.CharField(
+        max_length=500,
+        allow_blank=False,
+        trim_whitespace=True,
+        error_messages={
+            "required": "Aquest camp és obligatori.",
+            "blank": "Aquest camp és obligatori.",
+            "max_length": "El motiu no pot tenir més de 500 caràcters.",
+        },
+    )
+
+
+class ParadaFallidaSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    ordre = serializers.IntegerField(read_only=True)
+    tipus = serializers.CharField(read_only=True)
+    estat = serializers.CharField(read_only=True)
+    motiu = serializers.CharField(read_only=True)
+    completada_el = serializers.DateTimeField(read_only=True)
+    comanda = serializers.IntegerField(source="comanda_id", read_only=True)

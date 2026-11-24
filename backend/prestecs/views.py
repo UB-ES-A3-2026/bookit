@@ -18,6 +18,8 @@ from prestecs.serializers import (
     NotificacioSerializer,
     ParadaRutaSerializer,
     ParadaCompletadaSerializer,
+    FallarParadaSerializer,
+    ParadaFallidaSerializer,
 )
 from prestecs.rutes import (
     DadesRutaInconsistents,
@@ -32,7 +34,10 @@ from prestecs.serveis import (
     ParadaAmbComandaInvalida,
     ParadaEnEstatTerminal,
     ParadaJaCompletada,
+    ParadaFallarJaFallida,
+    fallar_parada,
 )
+
 from usuaris.permisos import EsRepartidorValidat
 
 
@@ -197,3 +202,38 @@ class CompletarParadaView(APIView):
 
         dades = ParadaCompletadaSerializer(parada).data
         return Response(dades, status=status.HTTP_200_OK)
+
+class FallarParadaView(APIView):
+    permission_classes = [EsRepartidorValidat]
+
+    def post(self, request, pk):
+        parada = get_object_or_404(
+            Parada.objects.select_related("ruta"),
+            pk=pk,
+            ruta__repartidor=request.user,
+        )
+
+        serializer = FallarParadaSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            parada = fallar_parada(
+                parada,
+                serializer.validated_data["motiu"],
+            )
+        except ParadaFallarJaFallida as error:
+            if error.motiu != serializer.validated_data["motiu"]:
+                return Response(
+                    {"detail": "La parada ja està fallida amb un motiu diferent."},
+                    status=status.HTTP_409_CONFLICT,
+                )
+        except ParadaEnEstatTerminal as error:
+            return Response(
+                {"detail": str(error)},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        return Response(
+            ParadaFallidaSerializer(parada).data,
+            status=status.HTTP_200_OK,
+        )
