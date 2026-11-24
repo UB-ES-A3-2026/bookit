@@ -73,7 +73,7 @@ onMounted(carregaPrestecs);
       </div>
 
       <p v-else-if="prestecs.length === 0" class="estat">
-        No tens cap llibre en préstec.
+        No tens cap llibre en préstec
       </p>
 
       <ul v-else class="llista-prestecs" aria-label="Llibres en préstec">

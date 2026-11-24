@@ -92,10 +92,10 @@ describe("Els meus préstecs", () => {
 
     const wrapper = muntaPrestecs();
     await vi.waitFor(() =>
-      expect(wrapper.text()).toContain("No tens cap llibre en préstec."),
+      expect(wrapper.text()).toContain("No tens cap llibre en préstec"),
     );
 
-    expect(wrapper.text()).toContain("No tens cap llibre en préstec.");
+    expect(wrapper.text()).toContain("No tens cap llibre en préstec");
   });
 
   it("mostra l'error i permet tornar-ho a provar", async () => {
@@ -111,7 +111,7 @@ describe("Els meus préstecs", () => {
     serveiPrestecs.llistaPrestecs.mockResolvedValueOnce([]);
     await wrapper.get(".secondary-button").trigger("click");
     await vi.waitFor(() =>
-      expect(wrapper.text()).toContain("No tens cap llibre en préstec."),
+      expect(wrapper.text()).toContain("No tens cap llibre en préstec"),
     );
   });
 });
