@@ -2,6 +2,7 @@
 import axios from "axios";
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import NotificacionsCapcalera from "../components/NotificacionsCapcalera.vue";
 import logoImage from "../assets/bookit-logo.jpg";
 import { useComandaStore } from "../stores/comanda.js";
 import { useSessioStore } from "../stores/sessio.js";
@@ -104,6 +105,7 @@ watch(() => [textCercat.value, pagina.value], cerca, { immediate: true });
         ></span>
         <span>bookit.</span>
       </RouterLink>
+      <NotificacionsCapcalera class="notificacions-cerca" />
 
       <div class="header-actions">
         <RouterLink v-if="sessio.rol === 'usuari'" class="order-link" :to="{ name: 'comanda' }">
@@ -185,6 +187,22 @@ watch(() => [textCercat.value, pagina.value], cerca, { immediate: true });
                       : "No disponible"
                 }}
               </button>
+              <RouterLink
+                class="detall-link"
+                :to="{
+                  name: 'detall-llibre',
+                  params: { id: llibre.id },
+                  query: {
+                    titol: llibre.titol,
+                    autor: llibre.autor,
+                    portada: llibre.portada || '',
+                    cerca: textCercat,
+                    pagina,
+                  },
+                }"
+              >
+                Veure biblioteques
+              </RouterLink>
             </div>
           </li>
         </ul>
@@ -227,6 +245,11 @@ watch(() => [textCercat.value, pagina.value], cerca, { immediate: true });
   min-height: 100svh;
   color: #241914;
   background: #f9f4eb;
+}
+
+.notificacions-cerca {
+  margin-right: 1rem;
+  margin-left: auto;
 }
 
 .site-header {
@@ -477,6 +500,20 @@ h1 {
   color: #887b70;
   background: #e8dfd3;
   cursor: default;
+}
+
+.detall-link {
+  display: inline-block;
+  margin-top: 0.8rem;
+  color: #870000;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.detall-link:hover,
+.detall-link:focus-visible {
+  text-decoration: underline;
 }
 
 .paginacio {

@@ -1,10 +1,10 @@
 <script setup>
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import logoImage from "../assets/bookit-logo.jpg";
 import { useComandaStore } from "../stores/comanda.js";
 import { useSessioStore } from "../stores/sessio.js";
-import { confirmaComanda } from "../services/prestecs.js";
+import { confirmaComanda, obtenirCostosLliurament } from "../services/prestecs.js";
 
 const router = useRouter();
 const comanda = useComandaStore();
@@ -34,6 +34,33 @@ const enviant = ref(false);
 const missatgeError = ref("");
 const idsSenseEstoc = ref([]);
 const apuntatsEspera = ref([]);
+
+// Tipus de lliurament i cost d'enviament (US7).
+const tipus = ref("domicili");
+const adreca = ref(sessio.usuari?.adreca ?? sessio.usuari?.address ?? "");
+const costos = ref({ domicili: "0.00", recollida: "0.00" });
+const carregantCostos = ref(true);
+const costActual = computed(() =>
+  tipus.value === "recollida" ? costos.value.recollida : costos.value.domicili,
+);
+
+function formataCost(cost) {
+  return `${Number(cost).toLocaleString("ca", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} €`;
+}
+
+async function carregaCostos() {
+  carregantCostos.value = true;
+  try {
+    costos.value = await obtenirCostosLliurament();
+  } catch {
+    missatgeError.value = "No s'han pogut carregar els costos d'enviament.";
+  } finally {
+    carregantCostos.value = false;
+  }
+}
 
 function eliminaLlibre(id) {
   comanda.eliminarLlibre(id);
@@ -66,6 +93,11 @@ async function confirma() {
     return;
   }
 
+  if (tipus.value === "domicili" && !adreca.value.trim()) {
+    missatgeError.value = "Indica l'adreça de lliurament.";
+    return;
+  }
+
   enviant.value = true;
   missatgeError.value = "";
   idsSenseEstoc.value = [];
@@ -74,6 +106,8 @@ async function confirma() {
     await confirmaComanda({
       biblioteca: [...biblioteques][0],
       llibres: comanda.llibres.map((llibre) => llibre.id),
+      tipus_lliurament: tipus.value,
+      adreca_lliurament: tipus.value === "domicili" ? adreca.value.trim() : "",
     });
     comanda.buidar();
   } catch (error) {
@@ -82,6 +116,8 @@ async function confirma() {
     missatgeError.value =
       dades?.llibres?.[0] ??
       dades?.biblioteca?.[0] ??
+      dades?.tipus_lliurament?.[0] ??
+      dades?.adreca_lliurament?.[0] ??
       "No s'ha pogut confirmar la comanda. Torna-ho a provar.";
   } finally {
     enviant.value = false;
@@ -93,6 +129,8 @@ function apuntaAEspera(llibre) {
     apuntatsEspera.value.push(llibre.id);
   }
 }
+
+onMounted(carregaCostos);
 </script>
 
 <template>
@@ -290,14 +328,50 @@ function apuntaAEspera(llibre) {
               </li>
             </ul>
 
+            <section class="lliurament" aria-labelledby="lliurament-title">
+              <h2 id="lliurament-title">Tipus de lliurament</h2>
+
+              <fieldset class="opcions">
+                <legend>Com vols rebre la comanda?</legend>
+                <label>
+                  <input v-model="tipus" type="radio" value="domicili" />
+                  <span>
+                    <strong>Lliurament a domicili</strong>
+                    <small>
+                      {{ carregantCostos ? "Calculant cost..." : formataCost(costos.domicili) }}
+                    </small>
+                  </span>
+                </label>
+                <label>
+                  <input v-model="tipus" type="radio" value="recollida" />
+                  <span>
+                    <strong>Recollida a la biblioteca</strong>
+                    <small>
+                      {{ carregantCostos ? "Calculant cost..." : formataCost(costos.recollida) }}
+                    </small>
+                  </span>
+                </label>
+              </fieldset>
+
+              <label v-if="tipus === 'domicili'" class="camp-adreca">
+                Adreça de lliurament
+                <input v-model="adreca" type="text" autocomplete="street-address" />
+              </label>
+
+              <div class="cost-total">
+                <span>Cost d'enviament</span>
+                <strong>{{ carregantCostos ? "Calculant..." : formataCost(costActual) }}</strong>
+              </div>
+            </section>
+
             <footer class="resum-comanda">
               <p class="next-step">
                 En confirmar, enviarem la comanda a la biblioteca seleccionada.
               </p>
               <button
                 type="button"
-                class="primary-button"
-                :disabled="comanda.superaLimit || enviant"
+                class="primary-button confirm-button"
+                :disabled="comanda.superaLimit || carregantCostos || enviant"
                 @click="confirma"
               >
                 {{ enviant ? "Confirmant..." : "Confirmar comanda" }}
@@ -1130,5 +1204,66 @@ h1 {
     width: 1rem;
     height: 1rem;
   }
+}
+
+/* Tipus de lliurament (US7) */
+.lliurament {
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid #eadfcd;
+}
+.lliurament h2 {
+  margin: 0 0 1rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.3rem;
+}
+.opcions {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  border: 0;
+}
+.opcions legend {
+  margin-bottom: 0.75rem;
+  font-weight: 800;
+}
+.opcions label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid #dfd1bd;
+  border-radius: 0.75rem;
+  background: #fffdf8;
+  cursor: pointer;
+}
+.opcions span,
+.cost-total {
+  display: flex;
+  flex: 1;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.opcions small {
+  color: #5f544b;
+}
+.camp-adreca {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 1.25rem;
+  font-weight: 800;
+}
+.camp-adreca input {
+  min-height: 44px;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #c9bba6;
+  border-radius: 0.55rem;
+  font: inherit;
+}
+.cost-total {
+  align-items: center;
+  padding: 1rem 0;
+  border-top: 1px solid #dfd1bd;
+  border-bottom: 1px solid #dfd1bd;
 }
 </style>

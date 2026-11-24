@@ -164,6 +164,9 @@ onMounted(carregaCataleg);
 
       <div class="header-accions">
         <span class="header-link">Catàleg</span>
+        <RouterLink class="header-link" :to="{ name: 'comandes-biblioteca' }">
+          Comandes pendents
+        </RouterLink>
         <RouterLink class="afegir-link" :to="{ name: 'cataleg-afegir' }">
           Afegir un llibre
         </RouterLink>
@@ -314,8 +317,11 @@ onMounted(carregaCataleg);
 
 .header-accions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 1.25rem;
+  justify-content: flex-end;
+  gap: 0.5rem 1.25rem;
+  padding: 0.5rem 0;
 }
 
 .afegir-link {

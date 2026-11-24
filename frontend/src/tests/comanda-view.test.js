@@ -7,8 +7,17 @@ import { useComandaStore } from "../stores/comanda.js";
 
 let app;
 const confirmaComanda = vi.hoisted(() => vi.fn());
+const obtenirCostosLliurament = vi.hoisted(() => vi.fn());
 
-vi.mock("../services/prestecs.js", () => ({ confirmaComanda }));
+vi.mock("../services/prestecs.js", () => ({ confirmaComanda, obtenirCostosLliurament }));
+
+// Les comandes a domicili necessiten una adreça (US7).
+async function escriuAdreca(element, adreca = "C/ Major 1") {
+  const camp = element.querySelector(".camp-adreca input");
+  camp.value = adreca;
+  camp.dispatchEvent(new Event("input", { bubbles: true }));
+  await new Promise((resolve) => setTimeout(resolve));
+}
 
 async function renderitza(llibres = []) {
   const router = createRouter({
@@ -41,6 +50,7 @@ afterEach(() => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  obtenirCostosLliurament.mockResolvedValue({ domicili: "2.50", recollida: "0.00" });
 });
 
 describe("La meva comanda", () => {
@@ -131,6 +141,7 @@ describe("La meva comanda", () => {
       },
     ]);
 
+    await escriuAdreca(element);
     element.querySelector(".resum-comanda .primary-button").click();
     await new Promise((resolve) => setTimeout(resolve));
 
@@ -164,12 +175,15 @@ describe("La meva comanda", () => {
       },
     ]);
 
+    await escriuAdreca(element);
     element.querySelector(".resum-comanda .primary-button").click();
     await new Promise((resolve) => setTimeout(resolve));
 
     expect(confirmaComanda).toHaveBeenCalledWith({
       biblioteca: 3,
       llibres: [7, 9],
+      tipus_lliurament: "domicili",
+      adreca_lliurament: "C/ Major 1",
     });
     expect(element.textContent).toContain(
       "Encara no has afegit cap llibre a la comanda.",
@@ -195,6 +209,7 @@ describe("La meva comanda", () => {
       },
     ]);
 
+    await escriuAdreca(element);
     element.querySelector(".resum-comanda .primary-button").click();
     await new Promise((resolve) => setTimeout(resolve));
 
