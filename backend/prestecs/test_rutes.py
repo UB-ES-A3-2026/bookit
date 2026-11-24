@@ -3,9 +3,11 @@ from datetime import date
 import pytest
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from datetime import date, time
 
 from prestecs.models import Comanda, Parada, Ruta
 from usuaris.models import PerfilRepartidor, Usuari
+
 
 from prestecs.rutes import (
     DadesRutaInconsistents,
@@ -470,3 +472,87 @@ def test_parades_duplicades_del_mateix_tipus_llancen_error_explit(
 
     with pytest.raises(DadesRutaInconsistents):
         ordena_parades([recollida_un, recollida_dos])
+
+def test_la_precedencia_guanya_al_criteri_secundari(repartidor, comanda):
+    ruta = Ruta.objects.create(
+        repartidor=repartidor,
+        data=date(2026, 11, 24),
+    )
+    comanda.hora_inici_lliurament = time(8, 0)
+    comanda.save(update_fields=["hora_inici_lliurament"])
+
+    lliurament = Parada.objects.create(
+        ruta=ruta,
+        comanda=comanda,
+        tipus=Parada.Tipus.LLIVRAMENT,
+        ordre=1,
+    )
+    recollida = Parada.objects.create(
+        ruta=ruta,
+        comanda=comanda,
+        tipus=Parada.Tipus.RECOLLIDA,
+        ordre=2,
+    )
+
+    resultat = calcula_i_desaa_ordre_ruta(ruta)
+
+    posicions = {
+        parada.id: index
+        for index, parada in enumerate(resultat, start=1)
+    }
+    assert posicions[recollida.id] < posicions[lliurament.id]
+
+
+def test_tres_comandes_intercalades_tenen_precedencia(repartidor, comanda):
+    ruta = Ruta.objects.create(
+        repartidor=repartidor,
+        data=date(2026, 11, 24),
+    )
+    altres = [
+        Comanda.objects.create(
+            usuari=crea_usuari(f"lector-{index}@example.com"),
+            biblioteca=comanda.biblioteca,
+        )
+        for index in range(2)
+    ]
+    comandes = [comanda, *altres]
+
+    parades = []
+    for index, comanda_actual in enumerate(comandes):
+        parades.append(
+            Parada.objects.create(
+                ruta=ruta,
+                comanda=comanda_actual,
+                tipus=Parada.Tipus.LLIVRAMENT,
+                ordre=index + 1,
+            )
+        )
+        parades.append(
+            Parada.objects.create(
+                ruta=ruta,
+                comanda=comanda_actual,
+                tipus=Parada.Tipus.RECOLLIDA,
+                ordre=index + 4,
+            )
+        )
+
+    resultat = calcula_i_desaa_ordre_ruta(ruta)
+    posicions = {
+        parada.id: index
+        for index, parada in enumerate(resultat, start=1)
+    }
+
+    for comanda_actual in comandes:
+        recollida = next(
+            parada
+            for parada in parades
+            if parada.comanda_id == comanda_actual.id
+            and parada.tipus == Parada.Tipus.RECOLLIDA
+        )
+        lliurament = next(
+            parada
+            for parada in parades
+            if parada.comanda_id == comanda_actual.id
+            and parada.tipus == Parada.Tipus.LLIVRAMENT
+        )
+        assert posicions[recollida.id] < posicions[lliurament.id]
