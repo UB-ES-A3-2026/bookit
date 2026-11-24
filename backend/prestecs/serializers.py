@@ -55,6 +55,18 @@ class ComandaSerializer(serializers.ModelSerializer):
         return LlibreComandaSerializer([linia.llibre for linia in linies], many=True).data
 
 
+class ComandaBibliotecaSerializer(ComandaSerializer):
+    """Comanda tal com la veu la biblioteca: també diu de quin usuari és (US10)."""
+
+    usuari = serializers.SerializerMethodField()
+
+    class Meta(ComandaSerializer.Meta):
+        fields = ("id", "estat", "usuari", "biblioteca", "llibres", "data_lliurament", "creada")
+
+    def get_usuari(self, comanda):
+        return {"id": comanda.usuari_id, "nom": comanda.usuari.name}
+
+
 class ConfirmacioComandaSerializer(serializers.Serializer):
     """Dades per confirmar una comanda: la biblioteca, els llibres i com es lliura.
 

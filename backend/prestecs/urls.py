@@ -3,6 +3,7 @@
 from django.urls import path
 
 from prestecs.views import (
+    ComandesBibliotecaView,
     ComandesView,
     CostEnviamentView,
     NotificacioLlegidaView,
@@ -25,5 +26,10 @@ urlpatterns = [
         "notificacions/llegides/",
         NotificacionsLlegidesView.as_view(),
         name="notificacions-llegides",
+    ),
+    path(
+        "biblioteca/comandes/",
+        ComandesBibliotecaView.as_view(),
+        name="comandes-biblioteca",
     ),
 ]

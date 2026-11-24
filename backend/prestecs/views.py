@@ -1,12 +1,15 @@
 """Vistes de l'API del mòdul prestecs."""
 
+from django.db.models import F
 from rest_framework import generics, status
 from rest_framework.response import Response
 
+from cataleg.permisos import EsBibliotecaActiva
 from prestecs.models import Comanda
 from prestecs.permisos import EsUsuariActiu
 from prestecs.serializers import (
     SENSE_ESTOC,
+    ComandaBibliotecaSerializer,
     ComandaSerializer,
     ConfirmacioComandaSerializer,
     NotificacioSerializer,
@@ -103,3 +106,26 @@ class NotificacionsLlegidesView(generics.GenericAPIView):
     def post(self, request):
         marcades = request.user.notificacions.filter(llegida=False).update(llegida=True)
         return Response({"marcades": marcades})
+
+
+class ComandesBibliotecaView(generics.ListAPIView):
+    """Comandes pendents de la biblioteca autenticada (US10-T1).
+
+    Són les que encara ha de preparar o ja té preparades, i també les cancel·lades,
+    perquè la biblioteca vegi que no les ha de preparar (US20). Surten ordenades per
+    data de lliurament; les que encara no en tenen, al final.
+    """
+
+    serializer_class = ComandaBibliotecaSerializer
+    permission_classes = [EsBibliotecaActiva]
+    pagination_class = None
+
+    ESTATS_PENDENTS = [Comanda.Estat.REBUDA, Comanda.Estat.PREPARADA, Comanda.Estat.CANCELLADA]
+
+    def get_queryset(self):
+        return (
+            Comanda.objects.filter(biblioteca=self.request.user, estat__in=self.ESTATS_PENDENTS)
+            .select_related("usuari", "biblioteca__biblioteca")
+            .prefetch_related("linies__llibre")
+            .order_by(F("data_lliurament").asc(nulls_last=True), "creada", "id")
+        )

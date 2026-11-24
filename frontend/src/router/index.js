@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useSessioStore } from "../stores/sessio.js";
 import AfegirLlibreView from "../views/AfegirLlibreView.vue";
+import ComandesBibliotecaView from "../views/ComandesBibliotecaView.vue";
 import CatalegView from "../views/CatalegView.vue";
 import ComandaView from "../views/ComandaView.vue";
 import HomeView from "../views/HomeView.vue";
@@ -92,6 +93,13 @@ const router = createRouter({
       name: "cataleg",
       component: CatalegView,
       meta: { titol: "El meu catàleg" },
+      beforeEnter: nomesBiblioteques,
+    },
+    {
+      path: "/biblioteca/comandes",
+      name: "comandes-biblioteca",
+      component: ComandesBibliotecaView,
+      meta: { titol: "Comandes pendents" },
       beforeEnter: nomesBiblioteques,
     },
     {
