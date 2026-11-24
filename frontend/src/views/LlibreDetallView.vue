@@ -35,6 +35,7 @@ const errorLlistaEspera = ref("");
 const missatgeLlistaEspera = ref("");
 const apuntantLlistaEspera = ref(false);
 const llistaEsperaCompletada = ref(false);
+let peticioDisponibilitat = 0;
 
 const biblioteques = computed(
   () => disponibilitat.value?.biblioteques ?? [],
@@ -54,9 +55,14 @@ function textExemplars(quantitat) {
 }
 
 async function carregaDisponibilitat() {
+  const numeroPeticio = ++peticioDisponibilitat;
   const id = llibreId.value;
   disponibilitat.value = null;
   error.value = "";
+  errorLlistaEspera.value = "";
+  missatgeLlistaEspera.value = "";
+  apuntantLlistaEspera.value = false;
+  llistaEsperaCompletada.value = false;
 
   if (!Number.isSafeInteger(id) || id < 1) {
     error.value = "No s'ha pogut trobar aquest llibre.";
@@ -67,15 +73,22 @@ async function carregaDisponibilitat() {
   carregant.value = true;
   try {
     const resposta = await llistaBibliotequesAmbEstoc(id);
+    if (numeroPeticio !== peticioDisponibilitat) {
+      return;
+    }
     if (!Array.isArray(resposta.biblioteques)) {
       throw new Error("La resposta de disponibilitat no conté la llista de biblioteques.");
     }
     disponibilitat.value = resposta;
   } catch {
-    error.value =
-      "No s'ha pogut carregar la disponibilitat del llibre. Torna-ho a provar més tard.";
+    if (numeroPeticio === peticioDisponibilitat) {
+      error.value =
+        "No s'ha pogut carregar la disponibilitat del llibre. Torna-ho a provar més tard.";
+    }
   } finally {
-    carregant.value = false;
+    if (numeroPeticio === peticioDisponibilitat) {
+      carregant.value = false;
+    }
   }
 }
 
@@ -84,12 +97,16 @@ async function apuntaEspera() {
     return;
   }
 
+  const id = llibreId.value;
   apuntantLlistaEspera.value = true;
   errorLlistaEspera.value = "";
   missatgeLlistaEspera.value = "";
 
   try {
-    const resposta = await apuntaLlistaEspera(llibreId.value);
+    const resposta = await apuntaLlistaEspera(id);
+    if (id !== llibreId.value) {
+      return;
+    }
     if (resposta.status === 201) {
       missatgeLlistaEspera.value =
         "T'has apuntat a la llista d'espera d'aquest llibre.";
@@ -101,11 +118,15 @@ async function apuntaEspera() {
     }
     llistaEsperaCompletada.value = true;
   } catch (errorPeticio) {
-    errorLlistaEspera.value =
-      errorPeticio.response?.data?.detail ??
-      "No s'ha pogut actualitzar la llista d'espera. Torna-ho a provar.";
+    if (id === llibreId.value) {
+      errorLlistaEspera.value =
+        errorPeticio.response?.data?.detail ??
+        "No s'ha pogut actualitzar la llista d'espera. Torna-ho a provar.";
+    }
   } finally {
-    apuntantLlistaEspera.value = false;
+    if (id === llibreId.value) {
+      apuntantLlistaEspera.value = false;
+    }
   }
 }
 
@@ -219,37 +240,39 @@ watch(llibreId, carregaDisponibilitat, { immediate: true });
             No hi ha biblioteques amb estoc disponible.
           </p>
 
-          <aside class="waitlist-panel">
-            <div class="waitlist-icon" aria-hidden="true">↗</div>
-            <div class="waitlist-copy">
-              <strong>No trobes una biblioteca que et vagi bé?</strong>
-              <p>Pots apuntar-te a la llista d'espera d'aquest llibre.</p>
-            </div>
-            <button
-              v-if="sessio.autenticat"
-              type="button"
-              class="primary-button"
-              :disabled="apuntantLlistaEspera || llistaEsperaCompletada"
-              @click="apuntaEspera"
-            >
-              {{
-                apuntantLlistaEspera
-                  ? "Apuntant..."
-                  : llistaEsperaCompletada
-                    ? "Sol·licitud registrada"
-                    : "Llista d'espera"
-              }}
-            </button>
-            <RouterLink v-else class="primary-button" to="/inicia-sessio">
-              Inicia sessió
-            </RouterLink>
-          </aside>
-          <p v-if="missatgeLlistaEspera" class="waitlist-success" role="status">
-            {{ missatgeLlistaEspera }}
-          </p>
-          <p v-if="errorLlistaEspera" class="waitlist-error" role="alert">
-            {{ errorLlistaEspera }}
-          </p>
+          <div v-if="senseEstoc" class="waitlist-section">
+            <aside class="waitlist-panel">
+              <div class="waitlist-icon" aria-hidden="true">↗</div>
+              <div class="waitlist-copy">
+                <strong>Aquest llibre no té estoc disponible.</strong>
+                <p>Pots apuntar-te a la llista d'espera del llibre.</p>
+              </div>
+              <button
+                v-if="sessio.autenticat"
+                type="button"
+                class="primary-button"
+                :disabled="apuntantLlistaEspera || llistaEsperaCompletada"
+                @click="apuntaEspera"
+              >
+                {{
+                  apuntantLlistaEspera
+                    ? "Apuntant..."
+                    : llistaEsperaCompletada
+                      ? "Sol·licitud registrada"
+                      : "Llista d'espera"
+                }}
+              </button>
+              <RouterLink v-else class="primary-button" to="/inicia-sessio">
+                Inicia sessió
+              </RouterLink>
+            </aside>
+            <p v-if="missatgeLlistaEspera" class="waitlist-success" role="status">
+              {{ missatgeLlistaEspera }}
+            </p>
+            <p v-if="errorLlistaEspera" class="waitlist-error" role="alert">
+              {{ errorLlistaEspera }}
+            </p>
+          </div>
         </template>
       </section>
     </section>

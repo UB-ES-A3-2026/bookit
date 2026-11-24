@@ -380,6 +380,11 @@ codi que la comprovi i no afecta els endpoints actuals.
 [proposat] No està decidit si només cal permetre-ho sense estoc o sempre.
 Ara mateix el `POST` no comprova l'estoc i sempre el permet.
 
+[decisió frontend US5-T9] L'opció de llista d'espera només es mostra quan el
+llibre no té estoc. L'opció per a biblioteques fora de la zona queda pendent
+fins que es defineixi la regla i l'API indiqui quines biblioteques en queden
+fora.
+
 ### Saber si l'usuari ja és a la llista
 
 [proposat] No existeix cap endpoint de consulta ni cap camp que indiqui si

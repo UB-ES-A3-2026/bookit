@@ -218,7 +218,7 @@ que no apareguin als criteris.
 | CA3: missatge quan cap biblioteca té estoc | CP-US5-03 | Cobert |
 | CA4: demanar adreça predeterminada | CP-US5-04 | Cobert |
 | CA5: convidat sense ordre per distància i missatge de registre | CP-US5-05 | Cobert |
-| CA6: oferir llista d'espera sense estoc o fora de zona | CP-US5-03, CP-US5-06 | Cobert |
+| CA6: oferir llista d'espera sense estoc o fora de zona | CP-US5-03, CP-US5-06 | Parcial; CP-US5-06 pendent |
 
 ## Decisions i abast
 
@@ -236,3 +236,7 @@ que no apareguin als criteris.
 - El criteri no defineix si una biblioteca fora de zona es treu de la llista
   d'estoc o s'hi mostra amb una indicació. El cas només exigeix que es pugui
   reconèixer com a fora de zona i que s'ofereixi la llista d'espera.
+- A US5-T9 s'ha decidit mostrar l'opció de llista d'espera quan el llibre no té
+  estoc. El cas de biblioteca fora de zona queda pendent fins que se'n defineixi
+  la regla i l'API retorni aquesta informació; no s'ha d'inferir a partir de la
+  distància ni del codi postal de l'usuari.
