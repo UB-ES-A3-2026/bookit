@@ -1,4 +1,14 @@
+from pathlib import Path
+
 import pytest
+from django.conf import settings
+
+
+def pytest_configure():
+    """Els tests no executen collectstatic, així que la carpeta dels fitxers estàtics
+    no existeix i WhiteNoise avisa a cada petició que no la troba. N'hi ha prou que hi
+    sigui, encara que estigui buida (és al .gitignore)."""
+    Path(settings.STATIC_ROOT).mkdir(parents=True, exist_ok=True)
 
 
 @pytest.fixture(autouse=True)
