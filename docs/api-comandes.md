@@ -19,6 +19,7 @@ Aquest document és la base de les comandes. Les US7 (tipus de lliurament), US8 
 | `POST /api/prestecs/comandes/<id>/cancellar/` | Cancel·la una comanda que encara no ha sortit. | US20-T1 |
 | `GET /api/prestecs/biblioteca/comandes/` | Llista les comandes pendents de la biblioteca. | US10 (aquest document) |
 | `POST /api/prestecs/biblioteca/comandes/<id>/preparada/` | Marca una comanda com a llesta per a recollida. | US15-T1 |
+| `POST /api/prestecs/biblioteca/comandes/<id>/recollida/` | Lliura a l'usuari una comanda de recollida. | US7-T8 |
 | `GET /api/prestecs/notificacions/` | Llista les notificacions de l'usuari. | US8-T3 |
 | `POST /api/prestecs/notificacions/<id>/llegida/` | Marca una notificació com a llegida. | US8-T3 |
 | `POST /api/prestecs/notificacions/llegides/` | Marca totes les notificacions com a llegides. | US8-T3 |
@@ -43,7 +44,7 @@ Tots els endpoints requereixen la capçalera `Authorization: Bearer <access>` (v
 | `rebuda` | Rebuda | En confirmar la comanda. És l'estat inicial. |
 | `preparada` | Preparada | Quan la biblioteca la marca com a "Llesta per a recollida" (US15). |
 | `en_cami` | En camí | Quan el repartidor la recull a la biblioteca (US12 i US13). |
-| `lliurada` | Lliurada | Quan el repartidor marca el lliurament com a completat (US13). Es creen els préstecs dels llibres (US19). |
+| `lliurada` | Lliurada | Quan el repartidor marca el lliurament com a completat (US13) o, si és una recollida, quan la biblioteca la lliura a l'usuari (US7-T8). Es creen els préstecs dels llibres (US19). |
 | `cancellada` | Cancel·lada | Quan l'usuari la cancel·la abans que surti (US20). |
 
 ### Canvis d'estat permesos
@@ -51,7 +52,7 @@ Tots els endpoints requereixen la capçalera `Authorization: Bearer <access>` (v
 | Des de | Pot passar a |
 |---|---|
 | `rebuda` | `preparada`, `cancellada` |
-| `preparada` | `en_cami`, `cancellada` |
+| `preparada` | `en_cami`, `cancellada`. Si és una recollida a la biblioteca: `lliurada`, `cancellada` (US7-T8) |
 | `en_cami` | `lliurada`, o tornar a `preparada` si la parada falla i cal tornar-la a planificar (US13) |
 | `lliurada` | Cap: és un estat final. |
 | `cancellada` | Cap: és un estat final. |
@@ -295,8 +296,9 @@ han sortit (`en_cami`) o s'han lliurat no hi surten. Sense paginació. Si no n'h
 Ordre: per `data_lliurament`, de la més propera a la més llunyana. Les que encara no tenen data surten al final. Amb
 la mateixa data, primer la més antiga.
 
-Cada comanda té el format de [Comanda](#comanda) més el camp `usuari` (`id` i `nom`), perquè la biblioteca sàpiga de
-qui és.
+Cada comanda té el format de [Comanda](#comanda), però només amb el camp `tipus_lliurament` dels de la US7, perquè la
+biblioteca sàpiga quines comandes es recullen a la biblioteca. També hi ha el camp `usuari` (`id` i `nom`), perquè
+sàpiga de qui és.
 
 ```json
 [
@@ -308,6 +310,7 @@ qui és.
     "llibres": [
       { "id": 9, "titol": "Solitud", "autor": "Víctor Català", "portada": "" }
     ],
+    "tipus_lliurament": "domicili",
     "data_lliurament": "2026-11-20",
     "creada": "2026-11-16T16:20:00Z"
   }
@@ -342,6 +345,34 @@ resposta ja porta la `data_lliurament`.
 
 Una comanda d'una altra biblioteca rep el mateix 404 que una d'inexistent, perquè una biblioteca no pugui saber res
 de les comandes de les altres.
+
+## Lliurar una comanda de recollida
+
+`POST /api/prestecs/biblioteca/comandes/<id>/recollida/`
+
+Quan l'usuari ve a buscar una comanda de recollida, la biblioteca la marca com a lliurada (US7-T8). Només ho pot fer
+la biblioteca de la comanda, amb el compte actiu; un usuari o un repartidor reben el 403 de
+[Autenticació i permisos](#autenticació-i-permisos). La petició no porta cos.
+
+Una comanda de recollida no passa per `en_cami`: va directament de `preparada` a `lliurada`. En lliurar-la, l'usuari
+rep la notificació de lliurament (US8) i es creen els préstecs dels llibres (US19).
+
+### Resposta correcta
+
+**200 OK**. La comanda amb el format de [Comanda](#comanda) i l'estat `lliurada`.
+
+### Errors
+
+| Cas | Estat | Resposta |
+|---|---|---|
+| La comanda no existeix o és d'una altra biblioteca | 404 | Cos sense contingut rellevant. |
+| La comanda és a domicili | 409 | `{"detail": "Aquesta comanda és a domicili: la lliura el repartidor."}` |
+| La comanda és `rebuda` | 409 | `{"detail": "Aquesta comanda encara no està llesta per a recollida."}` |
+| La comanda ja és `lliurada` | 409 | `{"detail": "Aquesta comanda ja està lliurada."}` |
+| La comanda és `cancellada` | 409 | `{"detail": "Aquesta comanda no es pot lliurar perquè està cancel·lada."}` |
+
+Si la biblioteca la lliura alhora que l'usuari la cancel·la, només es fa una de les dues accions. L'altra rep el seu
+409.
 
 ## Cancel·lar una comanda
 
