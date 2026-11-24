@@ -3,6 +3,7 @@ import { useSessioStore } from "../stores/sessio.js";
 import AfegirLlibreView from "../views/AfegirLlibreView.vue";
 import CatalegView from "../views/CatalegView.vue";
 import HomeView from "../views/HomeView.vue";
+import LlibreDetallView from "../views/LlibreDetallView.vue";
 import LoginView from "../views/LoginView.vue";
 import RegisterConfirmationView from "../views/RegisterConfirmationView.vue";
 import RegisterView from "../views/RegisterView.vue";
@@ -90,6 +91,12 @@ const router = createRouter({
       name: "cerca",
       component: SearchView,
       meta: { titol: "Resultats de la cerca" },
+    },
+    {
+      path: "/llibres/:id",
+      name: "detall-llibre",
+      component: LlibreDetallView,
+      meta: { titol: "Detall del llibre" },
     },
   ],
 });

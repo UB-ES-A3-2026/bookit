@@ -131,6 +131,22 @@ watch(() => [textCercat.value, pagina.value], cerca, { immediate: true });
                 {{ llibre.disponible ? "Disponible" : "No disponible" }}
               </p>
               <p class="valoracions">{{ textValoracions(llibre) }}</p>
+              <RouterLink
+                class="detall-link"
+                :to="{
+                  name: 'detall-llibre',
+                  params: { id: llibre.id },
+                  query: {
+                    titol: llibre.titol,
+                    autor: llibre.autor,
+                    portada: llibre.portada || '',
+                    cerca: textCercat,
+                    pagina,
+                  },
+                }"
+              >
+                Veure biblioteques
+              </RouterLink>
             </div>
           </li>
         </ul>
@@ -357,6 +373,20 @@ h1 {
 
 .valoracions {
   color: #92867c;
+}
+
+.detall-link {
+  display: inline-block;
+  margin-top: 0.8rem;
+  color: #870000;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.detall-link:hover,
+.detall-link:focus-visible {
+  text-decoration: underline;
 }
 
 .paginacio {
