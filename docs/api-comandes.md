@@ -463,8 +463,11 @@ moment, d'aquests camps les respostes de l'API només mostren la `data_lliuramen
 
 ## Flux del frontend
 
-1. L'usuari afegeix llibres a la comanda des dels resultats de la cerca o del detall del llibre (US6-T6). Cada llibre
-   s'afegeix amb la biblioteca que l'ofereix; si n'hi ha de biblioteques diferents, es fan comandes diferents.
+1. L'usuari afegeix llibres a la comanda des del detall del llibre (US5), on cada biblioteca amb estoc té el seu botó
+   "Afegir a la comanda". Des dels resultats de la cerca, el botó porta al detall, perquè la cerca no diu de quina
+   biblioteca és cada llibre (US6-T12). Una comanda només pot tenir llibres d'una biblioteca: per demanar-ne d'una
+   altra, cal confirmar-la o treure'n els llibres primer.
+   La comanda es desa al navegador (`localStorage`) per a cada usuari, i es conserva encara que es tanqui la pestanya.
 2. Abans d'enviar, el frontend avisa si se supera el límit amb el mateix missatge. L'usuari tria domicili (amb
    l'adreça del perfil o una altra) o recollida, i veu el cost de cada opció (US7-T3).
 3. En confirmar, envia el `POST`. Si rep un 400, mostra els missatges i marca els llibres de `sense_estoc` amb l'opció
