@@ -6,8 +6,22 @@ import { test, expect } from "@playwright/test";
 
 const URL_CERCA = "**/api/cataleg/llibres/**";
 const URL_COMANDA = "**/api/prestecs/comandes/";
+const URL_COSTOS = "**/api/prestecs/comandes/cost-enviament/";
+const URL_NOTIFICACIONS = "**/api/prestecs/notificacions/";
 
 async function entrarComUsuari(page) {
+  // La capçalera demana les notificacions (US8) i la comanda, el cost d'enviament (US7).
+  // Amb el token de prova el backend respondria 401 i es tancaria la sessió.
+  await page.route(URL_NOTIFICACIONS, (ruta) =>
+    ruta.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
+  );
+  await page.route(URL_COSTOS, (ruta) =>
+    ruta.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ domicili: "2.50", recollida: "0.00" }),
+    }),
+  );
   await page.addInitScript(() => {
     sessionStorage.removeItem("bookit.comanda");
     sessionStorage.setItem(
@@ -15,7 +29,13 @@ async function entrarComUsuari(page) {
       JSON.stringify({
         accessToken: "token-e2e-usuari",
         refreshToken: "refresh-e2e-usuari",
-        usuari: { id: 25, nom: "Usuari E2E", correu: "usuari.e2e@example.com", rol: "usuari" },
+        usuari: {
+          id: 25,
+          nom: "Usuari E2E",
+          correu: "usuari.e2e@example.com",
+          adreca: "C/ Major 1",
+          rol: "usuari",
+        },
         rol: "usuari",
       }),
     );
@@ -89,7 +109,12 @@ test.describe("comanda amb diversos llibres (US6)", () => {
     await page.getByRole("button", { name: "Confirmar comanda", exact: true }).click();
 
     await expect(page.getByText("Encara no has afegit cap llibre a la comanda.", { exact: true })).toBeVisible();
-    expect(cosEnviat).toEqual({ biblioteca: 3, llibres: [7, 9] });
+    expect(cosEnviat).toEqual({
+      biblioteca: 3,
+      llibres: [7, 9],
+      tipus_lliurament: "domicili",
+      adreca_lliurament: "C/ Major 1",
+    });
   });
 
   test("CP-US6-09 · impedeix confirmar quan se supera el límit", async ({ page }) => {
