@@ -15,6 +15,19 @@ def geocodifica_adreca(adreca):
         f"{adreca.carrer}, {adreca.pis}, "
         f"{adreca.codi_postal} {adreca.municipi}, Catalunya, Espanya"
     )
+    return geocodifica_text(consulta)
+
+
+def geocodifica_text(consulta):
+    """Geocodifica una adreça escrita com a text lliure (US12-T13).
+
+    Retorna una tupla (latitud, longitud), o None si el text és buit o no es pot
+    geocodificar.
+    """
+
+    if not consulta or not consulta.strip():
+        return None
+
     parametres = urlencode(
         {
             "q": consulta,

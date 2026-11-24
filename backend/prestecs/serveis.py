@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from cataleg.models import ExemplarBiblioteca
 from prestecs.models import CanviEstat, Comanda, LiniaComanda, Notificacio, Prestec
+from usuaris.geocodificacio import geocodifica_text
 
 Estat = Comanda.Estat
 
@@ -102,6 +103,26 @@ def confirma_comanda(
         CanviEstat.objects.create(comanda=comanda, estat=comanda.estat)
         notifica(comanda)
     return comanda
+
+
+def desa_coordenades_lliurament(comanda):
+    """Geocodifica l'adreça de lliurament i en desa les coordenades (US12-T13).
+
+    Es crida fora de la transacció de `confirma_comanda`, perquè la petició al
+    geocodificador no bloquegi els exemplars. Si no es pot geocodificar, les
+    coordenades queden buides i la comanda continua sent vàlida: la parada surt
+    a la llista de la ruta, però no al mapa. Retorna si s'han trobat.
+    """
+    coordenades = None
+    if (
+        comanda.tipus_lliurament == Comanda.TipusLliurament.DOMICILI
+        and comanda.adreca_lliurament.strip()
+    ):
+        coordenades = geocodifica_text(f"{comanda.adreca_lliurament}, Catalunya, Espanya")
+
+    comanda.latitud_lliurament, comanda.longitud_lliurament = coordenades or (None, None)
+    comanda.save(update_fields=["latitud_lliurament", "longitud_lliurament"])
+    return coordenades is not None
 
 
 def text_notificacio(estat, repartidor=None):

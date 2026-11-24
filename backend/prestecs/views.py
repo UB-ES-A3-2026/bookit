@@ -23,6 +23,7 @@ from prestecs.serveis import (
     canvia_estat,
     confirma_comanda,
     cost_enviament,
+    desa_coordenades_lliurament,
 )
 
 # Literal dels criteris d'acceptació de la US20.
@@ -78,6 +79,9 @@ class ComandesView(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Les coordenades són per al mapa del repartidor (US12-T13): si el
+        # geocodificador falla, la comanda es crea igualment.
+        desa_coordenades_lliurament(comanda)
         return Response(ComandaSerializer(comanda).data, status=status.HTTP_201_CREATED)
 
 

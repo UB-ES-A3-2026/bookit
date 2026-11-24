@@ -135,8 +135,8 @@ Exemple amb dues parades d'una mateixa comanda:
         "nom": "Biblioteca Central"
       },
       "text": null,
-      "latitud": null,
-      "longitud": null
+      "latitud": 41.385064,
+      "longitud": 2.173404
     }
   },
   {
@@ -156,8 +156,8 @@ Exemple amb dues parades d'una mateixa comanda:
     "adreca": {
       "biblioteca": null,
       "text": "C/ Major 1",
-      "latitud": null,
-      "longitud": null
+      "latitud": 41.403629,
+      "longitud": 2.174355
     }
   }
 ]
@@ -180,9 +180,9 @@ Exemple amb dues parades d'una mateixa comanda:
 | Camp | Tipus | Nul | Només lectura | Descripció |
 |---|---|---|---|---|
 | `biblioteca` | objecte o `null` | Sí | Sí | Identificador i nom de la biblioteca en una recollida. |
-| `text` | text o `null` | Sí | Sí | Adreça textual del lliurament. Actualment prové de `Usuari.address`. |
-| `latitud` | decimal o `null` | Sí | Sí | Coordenada de la parada. Actualment sempre `null`. |
-| `longitud` | decimal o `null` | Sí | Sí | Coordenada de la parada. Actualment sempre `null`. |
+| `text` | text o `null` | Sí | Sí | Adreça textual del lliurament: `Comanda.adreca_lliurament` o, si és buida (comandes antigues), `Usuari.address`. |
+| `latitud` | número o `null` | Sí | Sí | Latitud de la parada en graus decimals. Recollida: `Biblioteca.latitud`. Lliurament: `Comanda.latitud_lliurament`. `null` si no se sap (US12-T13). |
+| `longitud` | número o `null` | Sí | Sí | Longitud de la parada, amb el mateix origen que `latitud`. |
 
 La separació entre recollida i lliurament és explícita:
 
@@ -571,15 +571,23 @@ Altres missatges de transició es poden trobar a `docs/api-comandes.md`.
 
 ## Coordenades i adreces
 
-Actualment no existeix un model de lliurament amb coordenades a la branca
-US12:
+Decidit a la US12-T13:
 
-- les recollides exposen `biblioteca.id` i `biblioteca.nom`;
-- els lliuraments exposen `Usuari.address` a `adreca.text`;
-- `latitud` i `longitud` sempre són `null`.
+- les recollides exposen `biblioteca.id` i `biblioteca.nom`, i les coordenades
+  de `Biblioteca`, que es completen des del Django admin;
+- els lliuraments exposen `Comanda.adreca_lliurament` a `adreca.text` (o
+  `Usuari.address` si la comanda és anterior a aquest camp) i les coordenades
+  de `Comanda.latitud_lliurament` i `Comanda.longitud_lliurament`;
+- les coordenades del lliurament es calculen en confirmar la comanda,
+  geocodificant `adreca_lliurament` amb `usuaris.geocodificacio` (Nominatim). Si
+  falla, queden a `null` i la comanda es crea igualment;
+- les comandes anteriors es poden geocodificar amb
+  `python manage.py geocodifica_comandes`;
+- `latitud` i `longitud` són números JSON, o `null` quan no se saben. El
+  frontend mostra al mapa només les parades amb coordenades.
 
-Cal decidir quan s'afegiran els camps geogràfics reals i si s'ha d'exposar
-`municipi`, `codi_postal`, `carrer` i `numero_porta`.
+Pendent de decidir: si s'ha d'exposar `municipi`, `codi_postal`, `carrer` i
+`numero_porta`.
 
 ## Estats i accions de parada US13
 
