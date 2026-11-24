@@ -215,6 +215,8 @@ def test_check_deploy_no_avisa_de_la_configuracio_de_d2():
     """HSTS amb subdominis i preload (W005, W021) s'han de decidir amb el domini real."""
     entorn = {
         **os.environ,
+        # Els tests fan servir config.settings_tests; aquí es comprova la de producció.
+        "DJANGO_SETTINGS_MODULE": "config.settings",
         "DJANGO_SECRET_KEY": CLAU_REAL,
         "DJANGO_DEBUG": "False",
         "DJANGO_ALLOWED_HOSTS": "api.bookit.test",
