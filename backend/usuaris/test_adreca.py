@@ -3,6 +3,7 @@
 import pytest
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from decimal import Decimal
 
 from usuaris.models import Adreca, Usuari
 
@@ -201,3 +202,88 @@ def test_camps_amb_longitud_excessiva_es_rebutgen(camp, longitud_maxima):
 
     with pytest.raises(ValidationError):
         adreca.full_clean()
+
+@pytest.mark.django_db
+def test_adreca_pot_tenir_coordenades():
+    usuari = crear_usuari()
+
+    adreca = Adreca.objects.create(
+        usuari=usuari,
+        municipi="Barcelona",
+        carrer="C/ Major 1",
+        pis="2n A",
+        codi_postal="08001",
+        latitud=Decimal("41.979400"),
+        longitud=Decimal("2.821400"),
+    )
+
+    adreca.full_clean()
+
+    assert adreca.latitud == Decimal("41.979400")
+    assert adreca.longitud == Decimal("2.821400")
+
+
+@pytest.mark.django_db
+def test_adreca_sense_coordenades_es_valida():
+    usuari = crear_usuari()
+
+    adreca = Adreca.objects.create(
+        usuari=usuari,
+        municipi="Barcelona",
+        carrer="C/ Major 1",
+        pis="2n A",
+        codi_postal="08001",
+    )
+
+    adreca.full_clean()
+
+    assert adreca.latitud is None
+    assert adreca.longitud is None
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("camp", "valor"),
+    [
+        ("latitud", Decimal("-90.000001")),
+        ("latitud", Decimal("90.000001")),
+        ("longitud", Decimal("-180.000001")),
+        ("longitud", Decimal("180.000001")),
+    ],
+)
+def test_coordenada_fora_de_rang_es_rebutjada(camp, valor):
+    usuari = crear_usuari()
+    adreca = Adreca(
+        usuari=usuari,
+        municipi="Barcelona",
+        carrer="C/ Major 1",
+        pis="2n A",
+        codi_postal="08001",
+        **{camp: valor},
+    )
+
+    with pytest.raises(ValidationError):
+        adreca.full_clean()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("latitud", "longitud"),
+    [
+        (Decimal("-90"), Decimal("-180")),
+        (Decimal("90"), Decimal("180")),
+    ],
+)
+def test_valors_limite_de_coordenades_s_accepten(latitud, longitud):
+    usuari = crear_usuari()
+    adreca = Adreca(
+        usuari=usuari,
+        municipi="Barcelona",
+        carrer="C/ Major 1",
+        pis="2n A",
+        codi_postal="08001",
+        latitud=latitud,
+        longitud=longitud,
+    )
+
+    adreca.full_clean()

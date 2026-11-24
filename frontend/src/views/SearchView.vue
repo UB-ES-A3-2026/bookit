@@ -187,6 +187,22 @@ watch(() => [textCercat.value, pagina.value], cerca, { immediate: true });
                       : "No disponible"
                 }}
               </button>
+              <RouterLink
+                class="detall-link"
+                :to="{
+                  name: 'detall-llibre',
+                  params: { id: llibre.id },
+                  query: {
+                    titol: llibre.titol,
+                    autor: llibre.autor,
+                    portada: llibre.portada || '',
+                    cerca: textCercat,
+                    pagina,
+                  },
+                }"
+              >
+                Veure biblioteques
+              </RouterLink>
             </div>
           </li>
         </ul>
@@ -484,6 +500,20 @@ h1 {
   color: #887b70;
   background: #e8dfd3;
   cursor: default;
+}
+
+.detall-link {
+  display: inline-block;
+  margin-top: 0.8rem;
+  color: #870000;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.detall-link:hover,
+.detall-link:focus-visible {
+  text-decoration: underline;
 }
 
 .paginacio {

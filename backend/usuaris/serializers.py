@@ -18,6 +18,7 @@ from rest_framework_simplejwt.serializers import (
     TokenRefreshSerializer,
 )
 
+from usuaris.geocodificacio import geocodifica_adreca
 from usuaris.models import Adreca, Biblioteca, FranjaDisponibilitat, PerfilRepartidor, Usuari
 from usuaris.validacions import (
     ADRECA_FORA_ZONA_SERVEI,
@@ -580,6 +581,16 @@ class FrangesSerializer(serializers.Serializer):
 
 class AdrecaSerializer(serializers.ModelSerializer):
     predeterminada = serializers.BooleanField(read_only=True)
+    latitud = serializers.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        read_only=True,
+    )
+    longitud = serializers.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        read_only=True,
+    )
 
     class Meta:
         model = Adreca
@@ -589,9 +600,16 @@ class AdrecaSerializer(serializers.ModelSerializer):
             "carrer",
             "pis",
             "codi_postal",
+            "latitud",
+            "longitud",
             "predeterminada",
         )
-        read_only_fields = ("id", "predeterminada")
+        read_only_fields = (
+            "id",
+            "latitud",
+            "longitud",
+            "predeterminada",
+        )
 
     def validate_codi_postal(self, value):
         codi_postal = normalitza_codi_postal(value)
@@ -618,3 +636,45 @@ class AdrecaSerializer(serializers.ModelSerializer):
             attrs["codi_postal"] = codi_postal
 
         return attrs
+
+    def create(self, validated_data):
+        adreca = Adreca.objects.create(**validated_data)
+        coordenades = geocodifica_adreca(adreca)
+
+        adreca.latitud = None
+        adreca.longitud = None
+
+        if coordenades is not None:
+            adreca.latitud, adreca.longitud = coordenades
+
+        adreca.save(update_fields=["latitud", "longitud"])
+        return adreca
+
+    def update(self, instance, validated_data):
+        camps_ubicacio = {
+            "municipi",
+            "carrer",
+            "codi_postal",
+        }
+        ha_canviat_ubicacio = any(
+            camp in validated_data
+            and validated_data[camp] != getattr(instance, camp)
+            for camp in camps_ubicacio
+        )
+
+        for camp, valor in validated_data.items():
+            setattr(instance, camp, valor)
+        instance.save()
+
+        if ha_canviat_ubicacio:
+            coordenades = geocodifica_adreca(instance)
+
+            instance.latitud = None
+            instance.longitud = None
+
+            if coordenades is not None:
+                instance.latitud, instance.longitud = coordenades
+
+            instance.save(update_fields=["latitud", "longitud"])
+
+        return instance

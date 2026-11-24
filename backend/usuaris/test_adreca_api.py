@@ -6,6 +6,7 @@ from rest_framework_simplejwt.tokens import AccessToken
 from usuaris.models import Adreca, Usuari
 from usuaris.validacions import ADRECA_FORA_ZONA_SERVEI
 
+from decimal import Decimal
 from datetime import timedelta
 
 COLLECCIO = "/api/usuaris/adreces/"
@@ -355,6 +356,8 @@ def test_llista_retorna_tots_els_camps():
         "carrer",
         "pis",
         "codi_postal",
+        "latitud",
+        "longitud",
         "predeterminada",
     }
 
@@ -619,3 +622,184 @@ def test_adreces_iguals_de_usuaris_diferents_no_es_barregen():
     assert Adreca.objects.filter(
         usuari=altre,
     ).count() == 1
+
+
+@pytest.mark.django_db
+def test_crear_adreca_desa_coordenades(monkeypatch):
+    usuari = crear_usuari()
+    coordenades = (
+        Decimal("41.979400"),
+        Decimal("2.821400"),
+    )
+    monkeypatch.setattr(
+        "usuaris.serializers.geocodifica_adreca",
+        lambda adreca: coordenades,
+    )
+
+    resposta = client_de(usuari).post(
+        COLLECCIO,
+        dades_adreca(),
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_201_CREATED
+
+    adreca = Adreca.objects.get(pk=resposta.data["id"])
+    assert adreca.latitud == coordenades[0]
+    assert adreca.longitud == coordenades[1]
+
+
+@pytest.mark.django_db
+def test_fallo_geocodificacio_desa_sense_coordenades(monkeypatch):
+    usuari = crear_usuari()
+    monkeypatch.setattr(
+        "usuaris.serializers.geocodifica_adreca",
+        lambda adreca: None,
+    )
+
+    resposta = client_de(usuari).post(
+        COLLECCIO,
+        dades_adreca(),
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_201_CREATED
+
+    adreca = Adreca.objects.get(pk=resposta.data["id"])
+    assert adreca.latitud is None
+    assert adreca.longitud is None
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("camp", "valor"),
+    [
+        ("carrer", "C/ Nova 8"),
+        ("codi_postal", "17001"),
+    ],
+)
+def test_editar_ubicacio_recalcula(monkeypatch, camp, valor):
+    usuari = crear_usuari()
+    adreca = Adreca.objects.create(
+        usuari=usuari,
+        latitud=Decimal("41.979400"),
+        longitud=Decimal("2.821400"),
+        **dades_adreca(),
+    )
+    coordenades_noves = (
+        Decimal("41.388800"),
+        Decimal("2.159000"),
+    )
+    monkeypatch.setattr(
+        "usuaris.serializers.geocodifica_adreca",
+        lambda adreca: coordenades_noves,
+    )
+
+    resposta = client_de(usuari).patch(
+        f"{COLLECCIO}{adreca.id}/",
+        {camp: valor},
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_200_OK
+
+    adreca.refresh_from_db()
+    assert adreca.latitud == coordenades_noves[0]
+    assert adreca.longitud == coordenades_noves[1]
+
+
+@pytest.mark.django_db
+def test_editar_sense_ubicacio_no_recalcula(monkeypatch):
+    usuari = crear_usuari()
+    adreca = Adreca.objects.create(
+        usuari=usuari,
+        latitud=Decimal("41.979400"),
+        longitud=Decimal("2.821400"),
+        **dades_adreca(),
+    )
+    monkeypatch.setattr(
+        "usuaris.serializers.geocodifica_adreca",
+        lambda adreca: pytest.fail("No s'hauria de recalcular"),
+    )
+
+    resposta = client_de(usuari).patch(
+        f"{COLLECCIO}{adreca.id}/",
+        {"pis": "3r B"},
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_200_OK
+    adreca.refresh_from_db()
+    assert adreca.latitud == Decimal("41.979400")
+    assert adreca.longitud == Decimal("2.821400")
+
+
+@pytest.mark.django_db
+def test_fallo_recalcular_buia_coordenades(monkeypatch):
+    usuari = crear_usuari()
+    adreca = Adreca.objects.create(
+        usuari=usuari,
+        latitud=Decimal("41.979400"),
+        longitud=Decimal("2.821400"),
+        **dades_adreca(),
+    )
+    monkeypatch.setattr(
+        "usuaris.serializers.geocodifica_adreca",
+        lambda adreca: None,
+    )
+
+    resposta = client_de(usuari).patch(
+        f"{COLLECCIO}{adreca.id}/",
+        {"carrer": "Carrer inexistent"},
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_200_OK
+
+    adreca.refresh_from_db()
+    assert adreca.latitud is None
+    assert adreca.longitud is None
+
+
+@pytest.mark.django_db
+def test_marcar_predeterminada_no_recalcula(monkeypatch):
+    usuari = crear_usuari()
+    adreca = Adreca.objects.create(
+        usuari=usuari,
+        latitud=Decimal("41.979400"),
+        longitud=Decimal("2.821400"),
+        **dades_adreca(),
+    )
+    monkeypatch.setattr(
+        "usuaris.serializers.geocodifica_adreca",
+        lambda adreca: pytest.fail("No s'hauria de recalcular"),
+    )
+
+    resposta = client_de(usuari).post(
+        f"{COLLECCIO}{adreca.id}/predeterminada/",
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_200_OK
+
+
+@pytest.mark.django_db
+def test_client_no_pot_escriure_coordenades():
+    usuari = crear_usuari()
+    monkeypatch = None
+
+    resposta = client_de(usuari).post(
+        COLLECCIO,
+        dades_adreca()
+        | {
+            "latitud": "41.979400",
+            "longitud": "2.821400",
+        },
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_201_CREATED
+
+    adreca = Adreca.objects.get(pk=resposta.data["id"])
+    assert adreca.latitud is None
+    assert adreca.longitud is None

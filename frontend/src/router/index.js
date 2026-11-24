@@ -6,6 +6,7 @@ import ComandesBibliotecaView from "../views/ComandesBibliotecaView.vue";
 import CatalegView from "../views/CatalegView.vue";
 import ComandaView from "../views/ComandaView.vue";
 import HomeView from "../views/HomeView.vue";
+import LlibreDetallView from "../views/LlibreDetallView.vue";
 import MevesComandesView from "../views/MevesComandesView.vue";
 import LoginView from "../views/LoginView.vue";
 import RegisterConfirmationView from "../views/RegisterConfirmationView.vue";
@@ -161,6 +162,12 @@ const router = createRouter({
       name: "cerca",
       component: SearchView,
       meta: { titol: "Resultats de la cerca" },
+    },
+    {
+      path: "/llibres/:id",
+      name: "detall-llibre",
+      component: LlibreDetallView,
+      meta: { titol: "Detall del llibre" },
     },
   ],
 });

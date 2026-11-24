@@ -92,3 +92,7 @@ El frontend mostra el missatge següent quan `results` és buit:
 
 > No s'ha trobat el llibre cercat, assegura't que l'informació introduïda sigui correcta
 
+## Biblioteques amb estoc i llista d'espera
+
+Vegeu el contracte de la US5 a [api-us5.md](./api-us5.md).
+
