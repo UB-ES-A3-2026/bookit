@@ -8,6 +8,7 @@ import MevesComandesView from "../views/MevesComandesView.vue";
 
 const servei = vi.hoisted(() => ({
   llistaMevesComandes: vi.fn(),
+  cancellaComanda: vi.fn(),
 }));
 
 vi.mock("../services/comandesUsuari.js", () => servei);
@@ -45,6 +46,7 @@ beforeEach(() => {
 afterEach(() => {
   wrapper?.unmount();
   wrapper = undefined;
+  vi.restoreAllMocks();
 });
 
 function comanda(id, estat, data_lliurament = null) {
@@ -78,6 +80,85 @@ describe("Les meves comandes", () => {
       "Lliurada",
       "Cancel·lada",
     ]);
+  });
+
+  it("demana confirmació amb el text exacte abans de cancel·lar", async () => {
+    servei.llistaMevesComandes.mockResolvedValue([comanda(15, "rebuda")]);
+    servei.cancellaComanda.mockResolvedValue(comanda(15, "cancellada"));
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    await renderitza();
+
+    await wrapper.get(".cancel-button").trigger("click");
+    await flushPromises();
+
+    expect(window.confirm).toHaveBeenCalledWith(
+      "Segur que vols cancel·lar aquesta comanda?",
+    );
+    expect(servei.cancellaComanda).toHaveBeenCalledWith(15);
+  });
+
+  it("no envia la petició si l'usuari rebutja la confirmació", async () => {
+    servei.llistaMevesComandes.mockResolvedValue([comanda(15, "rebuda")]);
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    await renderitza();
+
+    await wrapper.get(".cancel-button").trigger("click");
+
+    expect(servei.cancellaComanda).not.toHaveBeenCalled();
+    expect(wrapper.get(".etiqueta").text()).toBe("Rebuda");
+  });
+
+  it("actualitza la comanda quan la cancel·lació té èxit", async () => {
+    servei.llistaMevesComandes.mockResolvedValue([comanda(15, "preparada")]);
+    servei.cancellaComanda.mockResolvedValue(comanda(15, "cancellada"));
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    await renderitza();
+
+    await wrapper.get(".cancel-button").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.get(".etiqueta").text()).toBe("Cancel·lada");
+    expect(wrapper.find(".cancel-button").exists()).toBe(false);
+  });
+
+  it("mostra l'avís exacte si la comanda ja ha sortit", async () => {
+    servei.llistaMevesComandes.mockResolvedValue([
+      comanda(15, "en_cami"),
+      comanda(14, "lliurada"),
+    ]);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    await renderitza();
+
+    const buttons = wrapper.findAll(".cancel-button");
+    await buttons[0].trigger("click");
+    await buttons[1].trigger("click");
+
+    expect(wrapper.findAll('[role="alert"]').map((alert) => alert.text())).toEqual([
+      "Aquesta comanda ja ha sortit i no es pot cancel·lar",
+      "Aquesta comanda ja ha sortit i no es pot cancel·lar",
+    ]);
+    expect(window.confirm).not.toHaveBeenCalled();
+    expect(servei.cancellaComanda).not.toHaveBeenCalled();
+  });
+
+  it("mostra l'avís retornat pel servidor si l'estat ha canviat", async () => {
+    servei.llistaMevesComandes.mockResolvedValue([comanda(15, "rebuda")]);
+    servei.cancellaComanda.mockRejectedValue({
+      response: {
+        status: 409,
+        data: { detail: "Aquesta comanda ja ha sortit i no es pot cancel·lar" },
+      },
+    });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    await renderitza();
+
+    await wrapper.get(".cancel-button").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toBe(
+      "Aquesta comanda ja ha sortit i no es pot cancel·lar",
+    );
+    expect(wrapper.get(".etiqueta").text()).toBe("Rebuda");
   });
 
   it("mostra la biblioteca, els llibres i la data de la comanda", async () => {

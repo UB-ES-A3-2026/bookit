@@ -6,3 +6,8 @@ export async function llistaMevesComandes() {
   const resposta = await api.get("/prestecs/comandes/");
   return resposta.data;
 }
+
+export async function cancellaComanda(id) {
+  const resposta = await api.post(`/prestecs/comandes/${id}/cancellar/`);
+  return resposta.data;
+}

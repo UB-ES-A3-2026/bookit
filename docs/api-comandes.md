@@ -33,7 +33,7 @@ Tots els endpoints requereixen la capçalera `Authorization: Bearer <access>` (v
 | Cas | Estat | Resposta |
 |---|---|---|
 | Sense la capçalera `Authorization`, o amb un token invàlid o caducat | 401 | La de `docs/api-auth.md`. |
-| Fer servir les rutes de comandes o de notificacions de l'usuari sense el rol `usuari` (biblioteca o repartidor) | 403 | `{"detail": "No té permisos per realitzar aquesta acció."}` |
+| Fer servir les rutes de comandes (crear, llistar o cancel·lar) o de notificacions de l'usuari sense el rol `usuari` (biblioteca o repartidor) | 403 | `{"detail": "No té permisos per realitzar aquesta acció."}` |
 | Fer servir una ruta `/biblioteca/` sense ser una biblioteca activa | 403 | `{"detail": "No té permisos per realitzar aquesta acció."}` |
 
 ## Estats de la comanda
@@ -340,6 +340,105 @@ Un cop preparada, la comanda ja es pot assignar a un repartidor (US14) i l'usuar
 
 Una comanda d'una altra biblioteca rep el mateix 404 que una d'inexistent, perquè una biblioteca no pugui saber res
 de les comandes de les altres.
+
+## Cancel·lar una comanda
+
+`POST /api/prestecs/comandes/<id>/cancellar/`
+
+L'usuari cancel·la una comanda seva mentre encara no ha sortit, és a dir, mentre és `rebuda` o `preparada` (US20). La
+petició no porta cos. El frontend demana confirmació abans d'enviar-la: "Segur que vols cancel·lar aquesta comanda?".
+
+### Resposta correcta
+
+**200 OK**. La comanda amb el format de [Comanda](#comanda) i l'estat `cancellada`.
+
+En cancel·lar-la, la biblioteca torna a tenir un exemplar més de cada llibre de la comanda, i la comanda li surt com
+a cancel·lada a la llista de comandes pendents (US10). Si la biblioteca ha tret algun llibre del seu catàleg
+mentrestant, aquell exemplar no s'hi torna.
+
+### Errors
+
+| Cas | Estat | Resposta |
+|---|---|---|
+| La comanda no existeix o és d'un altre usuari | 404 | Cos sense contingut rellevant. |
+| La comanda és `en_cami` o `lliurada` | 409 | `{"detail": "Aquesta comanda ja ha sortit i no es pot cancel·lar"}` |
+| La comanda ja és `cancellada` | 409 | `{"detail": "Aquesta comanda ja està cancel·lada."}` |
+
+El missatge de quan la comanda ja ha sortit és literal dels criteris d'acceptació de la US20.
+
+## Les meves comandes
+
+`GET /api/prestecs/comandes/`
+
+**200 OK**. Una llista amb totes les comandes de l'usuari, de la més nova a la més antiga, amb el format de
+[Comanda](#comanda). Hi surten totes, també les lliurades i les cancel·lades, perquè l'usuari en vegi l'estat. Si no
+en té cap, la llista és buida.
+
+```json
+[
+  {
+    "id": 12,
+    "estat": "en_cami",
+    "biblioteca": { "id": 3, "nom": "Biblioteca Montbau" },
+    "llibres": [{ "id": 9, "titol": "Solitud", "autor": "Víctor Català", "portada": "" }],
+    "data_lliurament": "2026-11-20",
+    "creada": "2026-11-16T16:20:00Z"
+  }
+]
+```
+
+## Notificacions de l'usuari
+
+### Llistar les notificacions
+
+`GET /api/prestecs/notificacions/`
+
+**200 OK**. Les notificacions de l'usuari, de la més nova a la més antiga. Si no en té cap, la llista és buida. Per
+mostrar quantes n'hi ha de noves a la capçalera, el frontend compta les que tenen `llegida` a `false`.
+
+| Camp | Tipus | Descripció |
+|---|---|---|
+| `id` | enter | Identificador de la notificació. |
+| `comanda` | enter | `id` de la comanda a la qual fa referència. |
+| `text` | text | El text de la notificació (vegeu [Notificacions](#notificacions)). |
+| `llegida` | booleà | Si l'usuari ja l'ha llegida. |
+| `creada` | text | Data i hora en què es va crear (ISO 8601). |
+
+```json
+[
+  {
+    "id": 31,
+    "comanda": 12,
+    "text": "La teva comanda ja està preparada i aviat sortirà cap a casa teva",
+    "llegida": false,
+    "creada": "2026-11-17T09:05:00Z"
+  },
+  {
+    "id": 30,
+    "comanda": 12,
+    "text": "La teva comanda s'ha rebut correctament. La biblioteca ja l'està preparant",
+    "llegida": true,
+    "creada": "2026-11-16T16:20:00Z"
+  }
+]
+```
+
+### Marcar una notificació com a llegida
+
+`POST /api/prestecs/notificacions/<id>/llegida/`
+
+La petició no porta cos. **200 OK** amb la notificació, ja amb `llegida` a `true`. Si ja estava llegida, la resposta
+és la mateixa. Una notificació que no existeix o que és d'un altre usuari rep un **404**.
+
+### Marcar totes les notificacions com a llegides
+
+`POST /api/prestecs/notificacions/llegides/`
+
+La petició no porta cos. **200 OK** amb el nombre de notificacions que s'han marcat ara:
+
+```json
+{ "marcades": 3 }
+```
 
 ## Flux del frontend
 

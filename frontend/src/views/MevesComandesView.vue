@@ -4,7 +4,7 @@ import { useRouter } from "vue-router";
 import NotificacionsCapcalera from "../components/NotificacionsCapcalera.vue";
 import logoImage from "../assets/bookit-logo.jpg";
 import { useSessioStore } from "../stores/sessio.js";
-import { llistaMevesComandes } from "../services/comandesUsuari.js";
+import { cancellaComanda, llistaMevesComandes } from "../services/comandesUsuari.js";
 import { formataData, formataDia, textEstat } from "../utils/comandes.js";
 
 const router = useRouter();
@@ -13,6 +13,11 @@ const sessio = useSessioStore();
 const comandes = ref([]);
 const carregant = ref(true);
 const error = ref("");
+const errorsCancel = ref({});
+const cancelant = ref({});
+
+const CONFIRMACIO_CANCELACIO = "Segur que vols cancel·lar aquesta comanda?";
+const ERROR_COMANDA_SORTIDA = "Aquesta comanda ja ha sortit i no es pot cancel·lar";
 
 function tancaSessio() {
   sessio.tancarSessio();
@@ -34,6 +39,46 @@ async function carregaComandes() {
     error.value = "No s'han pogut carregar les teves comandes. Torna-ho a provar més tard.";
   } finally {
     carregant.value = false;
+  }
+}
+
+async function gestionaCancelacio(comanda) {
+  errorsCancel.value = { ...errorsCancel.value, [comanda.id]: "" };
+
+  if (comanda.estat === "en_cami" || comanda.estat === "lliurada") {
+    errorsCancel.value = { ...errorsCancel.value, [comanda.id]: ERROR_COMANDA_SORTIDA };
+    return;
+  }
+
+  if (comanda.estat !== "rebuda" && comanda.estat !== "preparada") {
+    errorsCancel.value = {
+      ...errorsCancel.value,
+      [comanda.id]: "No es pot cancel·lar aquesta comanda.",
+    };
+    return;
+  }
+
+  if (!window.confirm(CONFIRMACIO_CANCELACIO)) {
+    return;
+  }
+
+  cancelant.value = { ...cancelant.value, [comanda.id]: true };
+  try {
+    const comandaActualitzada = await cancellaComanda(comanda.id);
+    comandes.value = comandes.value.map((actual) =>
+      actual.id === comanda.id ? comandaActualitzada : actual,
+    );
+  } catch (errorPeticio) {
+    const missatge = errorPeticio.response?.data?.detail;
+    errorsCancel.value = {
+      ...errorsCancel.value,
+      [comanda.id]:
+        typeof missatge === "string"
+          ? missatge
+          : "No s'ha pogut cancel·lar la comanda. Torna-ho a provar.",
+    };
+  } finally {
+    cancelant.value = { ...cancelant.value, [comanda.id]: false };
   }
 }
 
@@ -113,6 +158,20 @@ onMounted(carregaComandes);
               <span class="autor"> · {{ llibre.autor }}</span>
             </li>
           </ul>
+
+          <div v-if="comanda.estat !== 'cancellada'" class="accions-comanda">
+            <button
+              type="button"
+              class="secondary-button cancel-button"
+              :disabled="cancelant[comanda.id]"
+              @click="gestionaCancelacio(comanda)"
+            >
+              {{ cancelant[comanda.id] ? "Cancel·lant..." : "Cancel·lar comanda" }}
+            </button>
+            <p v-if="errorsCancel[comanda.id]" class="error-cancellacio" role="alert">
+              {{ errorsCancel[comanda.id] }}
+            </p>
+          </div>
         </li>
       </ul>
     </section>
@@ -243,6 +302,20 @@ h1 {
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+}
+
+.secondary-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.accions-comanda {
+  margin-top: 1rem;
+}
+
+.error-cancellacio {
+  margin: 0.75rem 0 0;
+  color: #870000;
 }
 
 .llista-comandes {

@@ -3,6 +3,7 @@
 from django.urls import path
 
 from prestecs.views import (
+    CancellarComandaView,
     ComandaLlestaView,
     ComandesBibliotecaView,
     ComandesView,
@@ -17,6 +18,7 @@ app_name = "prestecs"
 urlpatterns = [
     path("comandes/", ComandesView.as_view(), name="comandes"),
     path("comandes/cost-enviament/", CostEnviamentView.as_view(), name="cost-enviament"),
+    path("comandes/<int:pk>/cancellar/", CancellarComandaView.as_view(), name="cancellar-comanda"),
     path("notificacions/", NotificacionsView.as_view(), name="notificacions"),
     path(
         "notificacions/<int:pk>/llegida/",
