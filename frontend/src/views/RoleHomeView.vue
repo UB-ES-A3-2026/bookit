@@ -14,11 +14,16 @@ const titol = computed(() =>
     <section class="role-card" aria-labelledby="role-title">
       <h1 id="role-title">{{ titol }}</h1>
       <p>Has iniciat sessió correctament.</p>
-      <p v-if="route.name === 'espai-repartidor'" class="role-action">
-        <RouterLink :to="{ name: 'franges-repartidor' }">
-          Les meves franges de disponibilitat
-        </RouterLink>
-      </p>
+      <template v-if="route.name === 'espai-repartidor'">
+        <p class="role-action">
+          <RouterLink :to="{ name: 'ruta-repartidor' }">La meva ruta d'avui</RouterLink>
+        </p>
+        <p class="role-action">
+          <RouterLink :to="{ name: 'franges-repartidor' }">
+            Les meves franges de disponibilitat
+          </RouterLink>
+        </p>
+      </template>
       <RouterLink to="/">Tornar a l'inici</RouterLink>
     </section>
   </main>
