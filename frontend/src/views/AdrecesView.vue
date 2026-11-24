@@ -1,17 +1,30 @@
 <script setup>
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import logoImage from "../assets/bookit-logo.jpg";
 import {
   afegeixAdreca,
   editaAdreca,
   llistaAdreces,
+  marcaAdrecaPredeterminada,
   suprimeixAdreca,
 } from "../services/adreces.js";
 import { useSessioStore } from "../stores/sessio.js";
 
 const router = useRouter();
 const sessio = useSessioStore();
+const nomUsuari = computed(
+  () => sessio.usuari?.nom ?? sessio.usuari?.correu ?? "Usuari",
+);
+const correuUsuari = computed(() => sessio.usuari?.correu ?? "");
+const inicialsUsuari = computed(() =>
+  nomUsuari.value
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toLocaleUpperCase())
+    .join(""),
+);
 
 const camps = ["municipi", "carrer", "pis", "codi_postal"];
 const etiquetesCamps = {
@@ -27,15 +40,19 @@ const autocompletatCamps = {
   codi_postal: "postal-code",
 };
 const campsObligatoris = "Aquest camp és obligatori.";
+const ERROR_ZONA_SERVEI =
+  "Aquesta adreça està fora de la zona de servei, introdueix una adreça vàlida";
 const adreces = ref([]);
 const carregant = ref(true);
 const error = ref("");
 const errorAccio = ref("");
+const errorZona = ref("");
 const errorGeneral = ref("");
 const formulariObert = ref(false);
 const editantId = ref(null);
 const enviant = ref(false);
 const eliminantId = ref(null);
+const predeterminantId = ref(null);
 
 const formulari = reactive({
   municipi: "",
@@ -56,6 +73,7 @@ function netejaErrors() {
     errors[camp] = "";
   });
   errorGeneral.value = "";
+  errorZona.value = "";
 }
 
 function netejaFormulari() {
@@ -105,6 +123,9 @@ function mostraErrorsBackend(dades) {
   Object.entries(dades).forEach(([camp, missatges]) => {
     if (camp in errors && Array.isArray(missatges)) {
       errors[camp] = missatges.join(" ");
+      if (camp === "codi_postal" && missatges.includes(ERROR_ZONA_SERVEI)) {
+        errorZona.value = ERROR_ZONA_SERVEI;
+      }
       teErrors = true;
     }
   });
@@ -117,6 +138,13 @@ function mostraErrorsBackend(dades) {
   if (!teErrors) {
     errorGeneral.value =
       "No s'han pogut desar les dades de l'adreça. Torna-ho a provar.";
+  }
+}
+
+function netejaErrorCamp(camp) {
+  errors[camp] = "";
+  if (camp === "codi_postal") {
+    errorZona.value = "";
   }
 }
 
@@ -156,6 +184,29 @@ async function desaAdreca() {
     }
   } finally {
     enviant.value = false;
+  }
+}
+
+async function marcaPredeterminada(adreca) {
+  if (adreca.predeterminada || predeterminantId.value !== null) {
+    return;
+  }
+
+  predeterminantId.value = adreca.id;
+  errorAccio.value = "";
+  try {
+    const adrecaActualitzada = await marcaAdrecaPredeterminada(adreca.id);
+    adreces.value = adreces.value.map((element) =>
+      element.id === adreca.id
+        ? adrecaActualitzada
+        : { ...element, predeterminada: false },
+    );
+  } catch (errorPeticio) {
+    errorAccio.value =
+      errorPeticio.response?.data?.detail ??
+      "No s'ha pogut actualitzar l'adreça predeterminada. Torna-ho a provar.";
+  } finally {
+    predeterminantId.value = null;
   }
 }
 
@@ -203,159 +254,278 @@ onMounted(carregaAdreces);
 <template>
   <main class="adreces-page">
     <header class="site-header">
-      <RouterLink class="brand" to="/" aria-label="bookit inici">
-        <span
-          class="brand-mark"
-          :style="{ backgroundImage: `url(${logoImage})` }"
-          aria-hidden="true"
-        ></span>
-        <span>bookit.</span>
-      </RouterLink>
+      <div class="site-header__inner">
+        <RouterLink class="brand" to="/" aria-label="bookit inici">
+          <span
+            class="brand-mark"
+            :style="{ backgroundImage: `url(${logoImage})` }"
+            aria-hidden="true"
+          ></span>
+          <span>bookit.</span>
+        </RouterLink>
 
-      <nav class="header-actions" aria-label="Navegació del compte">
-        <RouterLink class="header-link" to="/">Inici</RouterLink>
-        <button type="button" class="logout-button" @click="tancaSessio">
-          Tancar sessió
-        </button>
-      </nav>
+        <p class="site-tagline">La literatura, a la porta de casa</p>
+
+        <nav class="header-actions" aria-label="Navegació del compte">
+          <RouterLink class="catalog-link" :to="{ name: 'cerca' }">
+            Catàleg
+          </RouterLink>
+          <span class="user-pill">
+            <span class="user-avatar user-avatar--small" aria-hidden="true">
+              {{ inicialsUsuari }}
+            </span>
+            <span class="user-pill__identity">
+              <strong>{{ nomUsuari }}</strong>
+              <small>Usuari</small>
+            </span>
+          </span>
+          <button type="button" class="logout-button" @click="tancaSessio">
+            Tancar sessió
+          </button>
+        </nav>
+      </div>
     </header>
 
-    <section class="adreces-content">
-      <div class="page-heading">
-        <div>
-          <p class="eyebrow">El teu compte</p>
-          <h1>Les meves adreces</h1>
-          <p class="description">
-            Desa les adreces on vols rebre les teves comandes.
-          </p>
-        </div>
-        <button
-          v-if="!formulariObert"
-          type="button"
-          class="primary-button"
-          @click="iniciaNovaAdreca"
-        >
-          Afegir una adreça
-          <span aria-hidden="true">+</span>
-        </button>
-      </div>
-
-      <form
-        v-if="formulariObert"
-        class="address-form"
-        novalidate
-        @submit.prevent="desaAdreca"
-      >
-        <div class="form-heading">
-          <div>
-            <h2>{{ editantId === null ? "Nova adreça" : "Editar adreça" }}</h2>
-            <p>Tots els camps són obligatoris.</p>
+    <div class="account-layout">
+      <aside class="account-sidebar">
+        <section class="account-card" aria-label="Compte">
+          <div class="profile-summary">
+            <span class="user-avatar" aria-hidden="true">{{ inicialsUsuari }}</span>
+            <div class="profile-summary__identity">
+              <strong>{{ nomUsuari }}</strong>
+              <span v-if="correuUsuari">{{ correuUsuari }}</span>
+            </div>
           </div>
-        </div>
 
-        <p v-if="errorGeneral" class="form-error-general" role="alert">
-          {{ errorGeneral }}
-        </p>
+          <nav class="account-nav" aria-label="El meu compte">
+            <RouterLink class="account-nav__link account-nav__link--active" :to="{ name: 'adreces' }">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3.5 10.5 12 3l8.5 7.5M6 9v11h12V9M9.5 20v-6h5v6" />
+              </svg>
+              Adreces de lliurament
+            </RouterLink>
+            <RouterLink class="account-nav__link" :to="{ name: 'home' }">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 12h13M13 6l6 6-6 6" />
+              </svg>
+              Per tornar
+            </RouterLink>
+          </nav>
 
-        <div class="form-grid">
-          <div v-for="camp in camps" :key="camp" class="form-field">
-            <label :for="`adreca-${camp}`">
-              {{ etiquetesCamps[camp] }}
-            </label>
-            <input
-              :id="`adreca-${camp}`"
-              v-model="formulari[camp]"
-              type="text"
-              :inputmode="camp === 'codi_postal' ? 'numeric' : undefined"
-              :autocomplete="autocompletatCamps[camp]"
-              :aria-invalid="Boolean(errors[camp])"
-              :aria-describedby="`adreca-${camp}-error`"
-              required
-              @input="errors[camp] = ''"
-            />
-            <p
-              :id="`adreca-${camp}-error`"
-              class="field-error"
-              aria-live="polite"
-            >
-              {{ errors[camp] }}
+          <div class="help-card">
+            <strong>Necessites ajuda?</strong>
+            <p>
+              El codi postal de cada adreça es comprova en desar-la per validar
+              la zona de servei.
             </p>
           </div>
-        </div>
+        </section>
+      </aside>
 
-        <div class="form-actions">
-          <button
-            type="button"
-            class="secondary-button"
-            :disabled="enviant"
-            @click="cancelLaEdicio"
-          >
-            Cancel·lar
-          </button>
-          <button type="submit" class="primary-button" :disabled="enviant">
-            {{ enviant ? "Desant..." : editantId === null ? "Afegir adreça" : "Desar canvis" }}
-          </button>
-        </div>
-      </form>
+      <section class="adreces-content">
+        <nav class="breadcrumb" aria-label="Ruta de navegació">
+          <RouterLink :to="{ name: 'home' }">El meu compte</RouterLink>
+          <span aria-hidden="true">/</span>
+          <span>Adreces</span>
+        </nav>
 
-      <p v-if="errorAccio" class="action-error" role="alert">
-        {{ errorAccio }}
-      </p>
-
-      <p v-if="carregant" class="page-state" role="status">
-        Carregant les adreces...
-      </p>
-      <div v-else-if="error" class="page-state page-error" role="alert">
-        <p>{{ error }}</p>
-        <button type="button" class="secondary-button" @click="carregaAdreces">
-          Tornar-ho a provar
-        </button>
-      </div>
-      <p v-else-if="adreces.length === 0" class="page-state">
-        Encara no tens cap adreça desada.
-      </p>
-
-      <ul
-        v-if="!carregant && !error && adreces.length > 0"
-        class="address-list"
-        aria-label="Adreces de lliurament"
-      >
-        <li v-for="adreca in adreces" :key="adreca.id" class="address-card">
-          <div class="address-details">
-            <div class="address-title">
-              <h2>{{ adreca.carrer }}</h2>
-              <span v-if="adreca.predeterminada" class="default-badge">
-                Predeterminada
-              </span>
-            </div>
-            <address>
-              {{ adreca.pis }}<br />
-              {{ adreca.codi_postal }} {{ adreca.municipi }}
-            </address>
+        <div class="page-heading">
+          <div>
+            <h1>Les meves adreces de lliurament</h1>
+            <p class="description">Gestiona on vols rebre els teus llibres.</p>
           </div>
-          <div class="address-actions">
+          <button
+            v-if="!formulariObert"
+            type="button"
+            class="primary-button add-button"
+            @click="iniciaNovaAdreca"
+          >
+            <span aria-hidden="true">+</span>
+            Afegir nova adreça
+          </button>
+        </div>
+
+        <form
+          v-if="formulariObert"
+          class="address-form"
+          novalidate
+          @submit.prevent="desaAdreca"
+        >
+          <div class="form-heading">
+            <div>
+              <h2>{{ editantId === null ? "Nova adreça" : "Editar adreça" }}</h2>
+              <p>Tots els camps són obligatoris.</p>
+            </div>
+          </div>
+
+          <p v-if="errorZona" class="zone-warning" role="alert">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3 2.8 20h18.4L12 3Z" />
+              <path d="M12 9v5m0 3h.01" />
+            </svg>
+            {{ errorZona }}
+          </p>
+          <p v-if="errorGeneral" class="form-error-general" role="alert">
+            {{ errorGeneral }}
+          </p>
+
+          <div class="form-grid">
+            <div v-for="camp in camps" :key="camp" class="form-field">
+              <label :for="`adreca-${camp}`">{{ etiquetesCamps[camp] }}</label>
+              <input
+                :id="`adreca-${camp}`"
+                v-model="formulari[camp]"
+                type="text"
+                :inputmode="camp === 'codi_postal' ? 'numeric' : undefined"
+                :autocomplete="autocompletatCamps[camp]"
+                :aria-invalid="Boolean(errors[camp])"
+                :aria-describedby="`adreca-${camp}-error`"
+                required
+                @input="netejaErrorCamp(camp)"
+              />
+              <p
+                :id="`adreca-${camp}-error`"
+                class="field-error"
+                aria-live="polite"
+              >
+                {{ errors[camp] }}
+              </p>
+            </div>
+          </div>
+
+          <div class="form-actions">
             <button
               type="button"
               class="secondary-button"
-              :aria-label="`Editar l'adreça de ${adreca.carrer}`"
-              :disabled="enviant || eliminantId !== null"
-              @click="iniciaEdicio(adreca)"
+              :disabled="enviant"
+              @click="cancelLaEdicio"
             >
-              Editar
+              Cancel·lar
             </button>
-            <button
-              type="button"
-              class="danger-button"
-              :aria-label="`Suprimir l'adreça de ${adreca.carrer}`"
-              :disabled="enviant || eliminantId !== null"
-              @click="confirmaSupressio(adreca)"
-            >
-              {{ eliminantId === adreca.id ? "Suprimint..." : "Suprimir" }}
+            <button type="submit" class="primary-button" :disabled="enviant">
+              {{
+                enviant
+                  ? "Desant..."
+                  : editantId === null
+                    ? "Afegir adreça"
+                    : "Desar canvis"
+              }}
             </button>
           </div>
-        </li>
-      </ul>
-    </section>
+        </form>
+
+        <p v-if="errorAccio" class="action-error" role="alert">
+          {{ errorAccio }}
+        </p>
+
+        <p v-if="carregant" class="page-state" role="status">
+          Carregant les adreces...
+        </p>
+        <div v-else-if="error" class="page-state page-error" role="alert">
+          <p>{{ error }}</p>
+          <button type="button" class="secondary-button" @click="carregaAdreces">
+            Tornar-ho a provar
+          </button>
+        </div>
+        <p v-else-if="adreces.length === 0" class="page-state">
+          Encara no tens cap adreça desada.
+        </p>
+
+        <ul
+          v-if="!carregant && !error && adreces.length > 0"
+          class="address-list"
+          aria-label="Adreces de lliurament"
+        >
+          <li
+            v-for="adreca in adreces"
+            :key="adreca.id"
+            class="address-card"
+            :class="{ 'address-card--default': adreca.predeterminada }"
+          >
+            <span class="address-icon" aria-hidden="true">
+              <svg v-if="adreca.predeterminada" viewBox="0 0 24 24">
+                <path d="M3.5 10.5 12 3l8.5 7.5M6 9v11h12V9M9.5 20v-6h5v6" />
+              </svg>
+              <svg v-else viewBox="0 0 24 24">
+                <path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" />
+                <circle cx="12" cy="10" r="2.2" />
+              </svg>
+            </span>
+
+            <div class="address-details">
+              <div class="address-title">
+                <h2>{{ adreca.carrer }}</h2>
+                <span v-if="adreca.predeterminada" class="default-badge">
+                  Predeterminada
+                </span>
+              </div>
+              <address>
+                {{ adreca.pis }}<br />
+                {{ adreca.codi_postal }} {{ adreca.municipi }}
+              </address>
+            </div>
+
+            <div class="address-actions">
+              <button
+                type="button"
+                class="secondary-button"
+                :aria-label="`Editar l'adreça de ${adreca.carrer}`"
+                :disabled="enviant || eliminantId !== null || predeterminantId !== null"
+                @click="iniciaEdicio(adreca)"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m15 5 4 4M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z" />
+                </svg>
+                Editar
+              </button>
+              <button
+                v-if="!adreca.predeterminada"
+                type="button"
+                class="secondary-button default-button"
+                :aria-label="`Fer predeterminada l'adreça de ${adreca.carrer}`"
+                :disabled="enviant || eliminantId !== null || predeterminantId !== null"
+                @click="marcaPredeterminada(adreca)"
+              >
+                <span aria-hidden="true">✓</span>
+                {{
+                  predeterminantId === adreca.id
+                    ? "Actualitzant..."
+                    : "Fer predeterminada"
+                }}
+              </button>
+              <button
+                type="button"
+                class="danger-button"
+                :aria-label="`Suprimir l'adreça de ${adreca.carrer}`"
+                :disabled="enviant || eliminantId !== null || predeterminantId !== null"
+                @click="confirmaSupressio(adreca)"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5" />
+                </svg>
+                {{ eliminantId === adreca.id ? "Eliminant..." : "Eliminar" }}
+              </button>
+            </div>
+          </li>
+        </ul>
+
+        <aside class="service-area" aria-label="Zona de servei actual">
+          <span class="service-area__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" />
+              <circle cx="12" cy="10" r="2.2" />
+            </svg>
+          </span>
+          <div>
+            <strong>Zona de servei actual</strong>
+            <p>
+              Comprovem automàticament que el codi postal de l'adreça sigui dins
+              la zona de servei.
+            </p>
+          </div>
+        </aside>
+      </section>
+    </div>
   </main>
 </template>
 
@@ -367,13 +537,20 @@ onMounted(carregaAdreces);
 }
 
 .site-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 62px;
-  padding: 0 max(1.25rem, calc((100% - 1170px) / 2));
+  min-height: 58px;
+  padding: 0 1.25rem;
   background: #fffdf9;
   box-sizing: border-box;
+}
+
+.site-header__inner {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(180px, 1.2fr) minmax(390px, 1.6fr);
+  align-items: center;
+  gap: 1rem;
+  max-width: 1070px;
+  min-height: 58px;
+  margin: 0 auto;
 }
 
 .brand {
@@ -396,6 +573,14 @@ onMounted(carregaAdreces);
   background-size: auto 240%;
 }
 
+.site-tagline {
+  color: #806f61;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 0.72rem;
+  font-style: italic;
+  text-align: center;
+}
+
 .header-actions,
 .address-actions,
 .form-actions {
@@ -404,10 +589,71 @@ onMounted(carregaAdreces);
   gap: 0.75rem;
 }
 
-.header-link {
+.header-actions {
+  justify-content: flex-end;
+  gap: 0.9rem;
+}
+
+.catalog-link {
   color: #241914;
   font-weight: 700;
   text-decoration: none;
+  white-space: nowrap;
+}
+
+.catalog-link:hover,
+.catalog-link:focus-visible,
+.header-link:hover,
+.header-link:focus-visible {
+  color: #980000;
+}
+
+.user-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.2rem 0.55rem 0.2rem 0.2rem;
+  border: 1px solid #dfd1bd;
+  border-radius: 2rem;
+  background: #fffdf9;
+}
+
+.user-pill__identity,
+.profile-summary__identity {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.user-pill__identity strong {
+  max-width: 6rem;
+  overflow: hidden;
+  font-size: 0.67rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-pill__identity small {
+  color: #75695f;
+  font-size: 0.58rem;
+}
+
+.user-avatar {
+  display: grid;
+  flex: 0 0 2.3rem;
+  height: 2.3rem;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #980000;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.user-avatar--small {
+  flex-basis: 1.8rem;
+  height: 1.8rem;
+  font-size: 0.62rem;
 }
 
 .logout-button,
@@ -442,8 +688,23 @@ onMounted(carregaAdreces);
 }
 
 .danger-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid #ead8cf;
   color: #870000;
-  background: #fbeaea;
+  background: #fffdf9;
+}
+
+.danger-button svg,
+.address-actions svg {
+  width: 0.9rem;
+  height: 0.9rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
 }
 
 .logout-button:disabled,
@@ -454,40 +715,162 @@ onMounted(carregaAdreces);
   opacity: 0.7;
 }
 
+.account-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  align-items: start;
+  gap: 2.25rem;
+  max-width: 1070px;
+  margin: 1.5rem auto 0;
+  padding: 0 1rem;
+}
+
+.account-card {
+  padding: 0.85rem 0.75rem 0.75rem;
+  border: 1px solid #e6d8c5;
+  border-radius: 0.65rem;
+  background: #fffdf9;
+}
+
+.profile-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.35rem 0.25rem 0.85rem;
+  border-bottom: 1px solid #e6d8c5;
+}
+
+.profile-summary__identity {
+  overflow: hidden;
+  gap: 0.15rem;
+}
+
+.profile-summary__identity strong {
+  overflow: hidden;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-summary__identity span {
+  overflow: hidden;
+  color: #75695f;
+  font-size: 0.63rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-nav {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.75rem 0 0.95rem;
+}
+
+.account-nav__link {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.15rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.45rem;
+  color: #49423d;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.account-nav__link svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.account-nav__link:hover,
+.account-nav__link:focus-visible,
+.account-nav__link--active {
+  color: #870000;
+  background: #f4e5c9;
+}
+
+.help-card {
+  padding: 0.8rem 0.7rem;
+  border-radius: 0.5rem;
+  background: #f5ecdc;
+}
+
+.help-card strong {
+  font-size: 0.7rem;
+}
+
+.help-card p {
+  margin-top: 0.35rem;
+  color: #6b5d52;
+  font-size: 0.64rem;
+  line-height: 1.5;
+}
+
 .adreces-content {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 3rem 1.25rem;
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0 0 2.5rem;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 0.8rem;
+  color: #817569;
+  font-size: 0.65rem;
+}
+
+.breadcrumb a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.breadcrumb a:hover,
+.breadcrumb a:focus-visible {
+  color: #870000;
 }
 
 .page-heading {
   display: flex;
-  align-items: end;
+  align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
-  margin-bottom: 1.75rem;
-}
-
-.eyebrow {
-  margin: 0 0 0.75rem;
-  color: #a00000;
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
+  margin-bottom: 0.75rem;
 }
 
 h1 {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(2.2rem, 4vw, 2.8rem);
+  font-size: clamp(1.7rem, 2.4vw, 2rem);
+  font-weight: 700;
   letter-spacing: -0.03em;
 }
 
 .description {
-  margin-top: 0.75rem;
+  margin-top: 0.25rem;
   color: #4d4541;
-  line-height: 1.6;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.add-button {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.7rem 1.1rem;
+  box-shadow: 0 0.2rem 0.35rem rgb(72 0 0 / 20%);
+  font-size: 0.82rem;
 }
 
 .address-form,
@@ -514,13 +897,39 @@ h1 {
 .address-title h2 {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.35rem;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .form-heading p {
   margin-top: 0.3rem;
   color: #6b5d52;
   font-size: 0.85rem;
+}
+
+.zone-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.75rem 0.85rem;
+  margin: 0 0 1rem;
+  border: 1px solid #e6b9a7;
+  border-radius: 0.5rem;
+  color: #7d1713;
+  background: #fff0e9;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.zone-warning svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: 0 0 1.1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
 
 .form-grid {
@@ -593,18 +1002,47 @@ h1 {
 
 .address-list {
   display: grid;
-  gap: 0.8rem;
+  gap: 0.65rem;
   padding: 0;
   margin: 0;
   list-style: none;
 }
 
 .address-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.5rem;
-  padding: 1.25rem 1.5rem;
+  display: grid;
+  grid-template-columns: 2.4rem minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.8rem;
+  min-height: 5.3rem;
+  padding: 0.85rem 1rem;
+  border-left: 3px solid transparent;
+  border-radius: 0.55rem;
+}
+
+.address-card--default {
+  border-left-color: #980000;
+}
+
+.address-icon,
+.service-area__icon {
+  display: grid;
+  width: 2.4rem;
+  height: 2.4rem;
+  place-items: center;
+  border-radius: 0.5rem;
+  color: #980000;
+  background: #f4e5c9;
+}
+
+.address-icon svg,
+.service-area__icon svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
 }
 
 .address-title {
@@ -615,35 +1053,206 @@ h1 {
 }
 
 .address-details address {
-  margin-top: 0.45rem;
+  margin-top: 0.3rem;
   color: #4d4541;
-  font-size: 0.9rem;
+  font-size: 0.72rem;
   font-style: normal;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .default-badge {
-  padding: 0.25rem 0.5rem;
-  border-radius: 99px;
-  color: #6b2b00;
-  background: #f4e3c2;
-  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+  color: #2f735f;
+  background: #e6f4ed;
+  font-size: 0.58rem;
   font-weight: 700;
+}
+
+.address-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.address-actions .secondary-button,
+.address-actions .danger-button {
+  min-height: 1.85rem;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.66rem;
+  white-space: nowrap;
+}
+
+.default-button {
+  color: #55483c;
+}
+
+.service-area {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-height: 4.1rem;
+  padding: 0.75rem 1rem;
+  margin-top: 1rem;
+  border-radius: 0.5rem;
+  color: #33271f;
+  background: #f2e5c8;
+}
+
+.service-area__icon {
+  flex: 0 0 2.2rem;
+  width: 2.2rem;
+  height: 2.2rem;
+  background: transparent;
+}
+
+.service-area strong {
+  font-size: 0.72rem;
+}
+
+.service-area p {
+  margin-top: 0.25rem;
+  color: #75695f;
+  font-size: 0.63rem;
+  line-height: 1.45;
 }
 
 .action-error {
   margin: 0 0 1rem;
 }
 
-@media (max-width: 600px) {
-  .adreces-content {
-    padding-top: 2rem;
+@media (max-width: 900px) {
+  .site-header__inner {
+    grid-template-columns: auto 1fr;
   }
 
-  .page-heading,
+  .site-tagline {
+    display: none;
+  }
+
+  .account-layout {
+    gap: 1.25rem;
+    max-width: 760px;
+  }
+
+  .account-sidebar {
+    width: 190px;
+  }
+
   .address-card {
-    align-items: stretch;
+    grid-template-columns: 2.2rem minmax(0, 1fr);
+  }
+
+  .address-actions {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 650px) {
+  .site-header {
+    padding: 0 0.75rem;
+  }
+
+  .site-header__inner {
+    gap: 0.6rem;
+  }
+
+  .brand {
+    gap: 0.35rem;
+    font-size: 1rem;
+  }
+
+  .brand-mark {
+    width: 1.7rem;
+    height: 1.7rem;
+  }
+
+  .header-actions {
+    gap: 0.45rem;
+  }
+
+  .catalog-link {
+    font-size: 0.72rem;
+  }
+
+  .user-pill {
+    padding-right: 0.3rem;
+  }
+
+  .user-pill__identity {
+    display: none;
+  }
+
+  .logout-button {
+    padding: 0.45rem 0.55rem;
+    font-size: 0.65rem;
+  }
+
+  .account-layout {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding: 0 0.75rem;
+  }
+
+  .account-sidebar {
+    width: auto;
+  }
+
+  .account-card {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem;
+  }
+
+  .profile-summary {
+    padding: 0;
+    border-bottom: 0;
+  }
+
+  .account-nav {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0;
+  }
+
+  .account-nav__link {
+    font-size: 0.67rem;
+  }
+
+  .account-nav__link:not(.account-nav__link--active) {
+    display: none;
+  }
+
+  .help-card {
+    display: none;
+  }
+
+  .adreces-content {
+    padding-bottom: 1.5rem;
+  }
+
+  .page-heading {
+    align-items: flex-start;
     flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .page-heading h1 {
+    font-size: 1.65rem;
+  }
+
+  .add-button {
+    padding: 0.6rem 0.85rem;
+  }
+
+  .address-card {
+    grid-template-columns: 2.2rem minmax(0, 1fr);
+    gap: 0.65rem;
+    padding: 0.85rem;
   }
 
   .form-grid {
@@ -651,12 +1260,21 @@ h1 {
   }
 
   .address-actions {
-    justify-content: flex-end;
+    grid-column: 1 / -1;
+    justify-content: flex-start;
   }
 
   .page-error {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .address-form {
+    padding: 1rem;
+  }
+
+  .service-area {
+    align-items: flex-start;
   }
 }
 </style>
