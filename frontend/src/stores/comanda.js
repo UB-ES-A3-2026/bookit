@@ -1,43 +1,64 @@
 import { defineStore } from "pinia";
+import { useSessioStore } from "./sessio.js";
 
-const ORDER_STORAGE_KEY = "bookit.comanda";
+const PREFIX_CLAU = "bookit.comanda";
 export const LIMIT_LLIBRES_COMANDA = 5;
 
-function llegirComanda() {
-  const comandaDesada = sessionStorage.getItem(ORDER_STORAGE_KEY);
-
-  if (!comandaDesada) {
-    return [];
-  }
-
-  try {
-    const comanda = JSON.parse(comandaDesada);
-    return Array.isArray(comanda) ? comanda : [];
-  } catch {
-    sessionStorage.removeItem(ORDER_STORAGE_KEY);
-    return [];
-  }
+// Cada usuari té la seva comanda, desada al localStorage perquè no es perdi si es
+// tanca la pestanya i perquè un altre usuari del mateix navegador no la vegi.
+function clauComanda() {
+  const usuari = useSessioStore().usuari;
+  return usuari?.id ? `${PREFIX_CLAU}.${usuari.id}` : PREFIX_CLAU;
 }
 
-function desarComanda(llibres) {
-  sessionStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(llibres));
+function llegirComanda(clau) {
+  try {
+    const comanda = JSON.parse(localStorage.getItem(clau));
+    return Array.isArray(comanda) ? comanda : [];
+  } catch {
+    localStorage.removeItem(clau);
+    return [];
+  }
 }
 
 export const useComandaStore = defineStore("comanda", {
-  state: () => ({
-    llibres: llegirComanda(),
-  }),
+  state: () => {
+    const clau = clauComanda();
+    return { clau, llibres: llegirComanda(clau) };
+  },
 
   getters: {
     nombreLlibres: (state) => state.llibres.length,
     superaLimit: (state) => state.llibres.length > LIMIT_LLIBRES_COMANDA,
     teLlibre: (state) => (id) =>
       state.llibres.some((llibre) => llibre.id === id),
+    // Una comanda és d'una sola biblioteca: la dels llibres que ja hi ha.
+    biblioteca: (state) => state.llibres[0]?.biblioteca ?? null,
   },
 
   actions: {
+    // Torna a llegir la comanda si ha canviat l'usuari de la sessió.
+    sincronitza() {
+      const clau = clauComanda();
+      if (clau !== this.clau) {
+        this.clau = clau;
+        this.llibres = llegirComanda(clau);
+      }
+    },
+
+    desa() {
+      localStorage.setItem(this.clau, JSON.stringify(this.llibres));
+    },
+
+    // Diu si el llibre es pot afegir des d'aquesta biblioteca.
+    esDUnaAltraBiblioteca(biblioteca) {
+      this.sincronitza();
+      return this.biblioteca !== null && this.biblioteca.id !== biblioteca?.id;
+    },
+
     afegirLlibre(llibre) {
-      if (this.teLlibre(llibre.id)) {
+      this.sincronitza();
+      if (!llibre.biblioteca || this.teLlibre(llibre.id) || this.esDUnaAltraBiblioteca(llibre.biblioteca)) {
         return false;
       }
 
@@ -46,20 +67,22 @@ export const useComandaStore = defineStore("comanda", {
         titol: llibre.titol,
         autor: llibre.autor,
         portada: llibre.portada ?? "",
-        biblioteca: llibre.biblioteca ?? null,
+        biblioteca: { id: llibre.biblioteca.id, nom: llibre.biblioteca.nom },
       });
-      desarComanda(this.llibres);
+      this.desa();
       return true;
     },
 
     eliminarLlibre(id) {
+      this.sincronitza();
       this.llibres = this.llibres.filter((llibre) => llibre.id !== id);
-      desarComanda(this.llibres);
+      this.desa();
     },
 
     buidar() {
+      this.sincronitza();
       this.llibres = [];
-      sessionStorage.removeItem(ORDER_STORAGE_KEY);
+      localStorage.removeItem(this.clau);
     },
   },
 });

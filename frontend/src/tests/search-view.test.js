@@ -1,8 +1,10 @@
 import axios from "axios";
+import { h } from "vue";
 import { mount } from "@vue/test-utils";
-import { createPinia } from "pinia";
+import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SearchView from "../views/SearchView.vue";
+import { useSessioStore } from "../stores/sessio.js";
 
 const push = vi.fn();
 const route = { query: {} };
@@ -13,6 +15,9 @@ vi.mock("axios", () => ({
   },
 }));
 
+// Les notificacions tenen els seus tests: aquí no fa falta el client de l'API.
+vi.mock("../services/notificacions.js", () => ({}));
+
 vi.mock("vue-router", () => ({
   useRoute: () => route,
   useRouter: () => ({ push }),
@@ -21,16 +26,24 @@ vi.mock("vue-router", () => ({
   },
 }));
 
+const RouterLinkStub = {
+  props: ["to"],
+  setup(props, { slots }) {
+    return () =>
+      h(
+        "a",
+        { "data-destinacio": JSON.stringify(props.to) },
+        slots.default?.(),
+      );
+  },
+};
+
 function muntaCerca(query = {}) {
   route.query = query;
   return mount(SearchView, {
     global: {
       plugins: [createPinia()],
-      components: {
-        RouterLink: {
-          template: "<a><slot /></a>",
-        },
-      },
+      components: { RouterLink: RouterLinkStub },
     },
   });
 }
@@ -120,6 +133,42 @@ describe("pàgina de resultats de la cerca", () => {
     expect(waitButton.text()).toBe("Apuntat a la llista d'espera");
   });
 
+  it("enllaça cada resultat amb el detall i hi passa les dades del llibre", async () => {
+    axios.get.mockResolvedValue({
+      data: {
+        count: 1,
+        next: null,
+        previous: null,
+        results: [
+          {
+            id: 12,
+            titol: "La plaça del Diamant",
+            autor: "Mercè Rodoreda",
+            disponible: true,
+            portada: "https://exemple.cat/portada.jpg",
+            mitjana_valoracions: 4.25,
+            nombre_valoracions: 12,
+          },
+        ],
+      },
+    });
+    const wrapper = muntaCerca({ q: "Rodoreda", pagina: "2" });
+    await vi.waitFor(() => expect(wrapper.find(".detall-link").exists()).toBe(true));
+
+    expect(wrapper.get(".detall-link").text()).toBe("Veure biblioteques");
+    expect(JSON.parse(wrapper.get(".detall-link").attributes("data-destinacio"))).toEqual({
+      name: "detall-llibre",
+      params: { id: 12 },
+      query: {
+        titol: "La plaça del Diamant",
+        autor: "Mercè Rodoreda",
+        portada: "https://exemple.cat/portada.jpg",
+        cerca: "Rodoreda",
+        pagina: 2,
+      },
+    });
+  });
+
   it("mostra el missatge quan no hi ha resultats", async () => {
     const wrapper = muntaCerca({ q: "llibre inexistent" });
     await vi.waitFor(() =>
@@ -149,5 +198,61 @@ describe("pàgina de resultats de la cerca", () => {
     expect(wrapper.text()).toContain(
       "Escriu el títol, l'autor o l'ISBN al cercador de la pàgina d'inici.",
     );
+  });
+
+  it("el botó d'afegir porta al detall perquè l'usuari triï la biblioteca", async () => {
+    axios.get.mockResolvedValue({
+      data: {
+        count: 1,
+        next: null,
+        previous: null,
+        results: [
+          {
+            id: 12,
+            titol: "La plaça del Diamant",
+            autor: "Mercè Rodoreda",
+            disponible: true,
+            portada: "",
+            mitjana_valoracions: null,
+            nombre_valoracions: 0,
+          },
+        ],
+      },
+    });
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    useSessioStore().iniciarSessio({ accessToken: "token-de-prova", usuari: { id: 25 }, rol: "usuari" });
+    route.query = { q: "Rodoreda" };
+    const wrapper = mount(SearchView, {
+      global: { plugins: [pinia], components: { RouterLink: RouterLinkStub } },
+    });
+    await vi.waitFor(() => expect(wrapper.find(".add-button").exists()).toBe(true));
+
+    await wrapper.get(".add-button").trigger("click");
+
+    expect(push).toHaveBeenCalledWith({
+      name: "detall-llibre",
+      params: { id: 12 },
+      query: { titol: "La plaça del Diamant", autor: "Mercè Rodoreda", portada: "", cerca: "Rodoreda", pagina: 1 },
+    });
+  });
+
+  it("sense sessió, el botó d'afegir porta a iniciar-la", async () => {
+    axios.get.mockResolvedValue({
+      data: {
+        count: 1,
+        next: null,
+        previous: null,
+        results: [
+          { id: 12, titol: "Solitud", autor: "Víctor Català", disponible: true, portada: "", nombre_valoracions: 0 },
+        ],
+      },
+    });
+    const wrapper = muntaCerca({ q: "Solitud" });
+    await vi.waitFor(() => expect(wrapper.find(".add-button").exists()).toBe(true));
+
+    await wrapper.get(".add-button").trigger("click");
+
+    expect(push).toHaveBeenCalledWith({ name: "inici-sessio" });
   });
 });

@@ -1,0 +1,448 @@
+<script setup>
+import { onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
+import logoImage from "../assets/bookit-logo.jpg";
+import { useSessioStore } from "../stores/sessio.js";
+import {
+  llistaComandesBiblioteca,
+  marcaComandaPreparada,
+} from "../services/comandesBiblioteca.js";
+import { formataData, formataDia, textEstat } from "../utils/comandes.js";
+
+const router = useRouter();
+const sessio = useSessioStore();
+
+const comandes = ref([]);
+const carregant = ref(true);
+const error = ref("");
+// Comanda que s'està marcant com a llesta i missatges d'error de cada comanda.
+const marcant = ref(null);
+const errorsComanda = ref({});
+
+function tancaSessio() {
+  sessio.tancarSessio();
+  router.push({ name: "home" });
+}
+
+async function carregaComandes({ silenciosa = false } = {}) {
+  if (!silenciosa) {
+    carregant.value = true;
+    error.value = "";
+  }
+
+  try {
+    comandes.value = await llistaComandesBiblioteca();
+  } catch (errorPeticio) {
+    // Si falla el refresc després d'una acció, es manté la llista que hi ha.
+    if (silenciosa) {
+      return;
+    }
+    // Un compte que no és una biblioteca activa no pot veure aquesta pàgina.
+    if (errorPeticio.response?.status === 403) {
+      router.push({ name: "home" });
+      return;
+    }
+    error.value = "No s'han pogut carregar les comandes. Torna-ho a provar més tard.";
+  } finally {
+    carregant.value = false;
+  }
+}
+
+function textErrorMarcar(errorPeticio) {
+  const estat = errorPeticio.response?.status;
+  if (estat === 409) {
+    return (
+      errorPeticio.response.data?.detail ??
+      "Aquesta comanda ja no es pot marcar com a llesta."
+    );
+  }
+  if (estat === 404) {
+    return "Aquesta comanda ja no existeix.";
+  }
+  return "No s'ha pogut marcar la comanda com a llesta. Torna-ho a provar més tard.";
+}
+
+async function marcaLlesta(comanda) {
+  if (marcant.value !== null) {
+    return;
+  }
+  marcant.value = comanda.id;
+  const errors = { ...errorsComanda.value };
+  delete errors[comanda.id];
+  errorsComanda.value = errors;
+
+  try {
+    const actualitzada = await marcaComandaPreparada(comanda.id);
+    // La resposta no porta l'usuari: es conserva el que ja teníem.
+    comandes.value = comandes.value.map((actual) =>
+      actual.id === comanda.id ? { ...actual, ...actualitzada } : actual,
+    );
+  } catch (errorPeticio) {
+    const estat = errorPeticio.response?.status;
+    if (estat === 403) {
+      router.push({ name: "home" });
+      return;
+    }
+    errorsComanda.value = {
+      ...errorsComanda.value,
+      [comanda.id]: textErrorMarcar(errorPeticio),
+    };
+    // Amb un 409 o un 404 la llista que es veu està desfasada: es torna a demanar.
+    if (estat === 409 || estat === 404) {
+      await carregaComandes({ silenciosa: true });
+    }
+  } finally {
+    marcant.value = null;
+  }
+}
+
+onMounted(() => carregaComandes());
+</script>
+
+<template>
+  <main class="comandes-page">
+    <header class="site-header">
+      <RouterLink class="brand" to="/" aria-label="bookit inici">
+        <span
+          class="brand-mark"
+          :style="{ backgroundImage: `url(${logoImage})` }"
+          aria-hidden="true"
+        ></span>
+        <span>bookit.</span>
+      </RouterLink>
+
+      <div class="header-accions">
+        <RouterLink class="header-link" :to="{ name: 'cataleg' }">Catàleg</RouterLink>
+        <button type="button" class="logout-button" @click="tancaSessio">
+          Tancar sessió
+        </button>
+      </div>
+    </header>
+
+    <section class="comandes-content">
+      <p class="eyebrow">Espai de biblioteca</p>
+      <h1>Comandes pendents</h1>
+      <p class="description">
+        Les comandes de la teva biblioteca, de la data de lliurament més propera
+        a la més llunyana. Les que encara no tenen data surten al final.
+      </p>
+
+      <p v-if="carregant" class="estat" role="status">Carregant les comandes...</p>
+
+      <div v-else-if="error" class="estat estat-error" role="alert">
+        <p>{{ error }}</p>
+        <button type="button" class="secondary-button" @click="carregaComandes()">
+          Tornar-ho a provar
+        </button>
+      </div>
+
+      <p v-else-if="comandes.length === 0" class="estat">
+        No tens cap comanda pendent.
+      </p>
+
+      <ol v-else class="llista-comandes" aria-label="Comandes pendents">
+        <li v-for="comanda in comandes" :key="comanda.id" class="comanda">
+          <div class="comanda-capcalera">
+            <h2>Comanda {{ comanda.id }}</h2>
+            <span class="etiqueta" :class="`etiqueta-${comanda.estat}`">
+              {{ textEstat(comanda.estat) }}
+            </span>
+          </div>
+          <p v-if="comanda.estat === 'cancellada'" class="avis-cancellada">
+            L'usuari l'ha cancel·lada: no cal preparar-la.
+          </p>
+
+          <dl class="dades-comanda">
+            <div>
+              <dt>Lliurament</dt>
+              <dd class="data-lliurament">
+                {{ comanda.data_lliurament ? formataData(comanda.data_lliurament) : "Sense data" }}
+              </dd>
+            </div>
+            <div>
+              <dt>Usuari</dt>
+              <dd>{{ comanda.usuari.nom }}</dd>
+            </div>
+            <div>
+              <dt>Demanada el</dt>
+              <dd>{{ formataDia(comanda.creada) }}</dd>
+            </div>
+          </dl>
+
+          <ul class="llibres" :aria-label="`Llibres de la comanda ${comanda.id}`">
+            <li v-for="llibre in comanda.llibres" :key="llibre.id">
+              <span class="titol">{{ llibre.titol }}</span>
+              <span class="autor"> · {{ llibre.autor }}</span>
+            </li>
+          </ul>
+
+          <div
+            v-if="comanda.estat === 'rebuda' || errorsComanda[comanda.id]"
+            class="accions-comanda"
+          >
+            <button
+              v-if="comanda.estat === 'rebuda'"
+              type="button"
+              class="primary-button"
+              :disabled="marcant !== null"
+              @click="marcaLlesta(comanda)"
+            >
+              {{ marcant === comanda.id ? "Marcant..." : "Llesta per a recollida" }}
+            </button>
+            <p v-if="errorsComanda[comanda.id]" class="error-comanda" role="alert">
+              {{ errorsComanda[comanda.id] }}
+            </p>
+          </div>
+        </li>
+      </ol>
+    </section>
+  </main>
+</template>
+
+<style scoped>
+.comandes-page {
+  min-height: 100svh;
+  color: #241914;
+  background: #f5ecdc;
+}
+
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  min-height: 62px;
+  padding: 0.5rem max(1.25rem, calc((100% - 1170px) / 2));
+  background: #fffdf9;
+  box-sizing: border-box;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #271d1a;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  text-decoration: none;
+}
+
+.brand-mark {
+  display: block;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.35rem;
+  background-position: center 36%;
+  background-size: auto 240%;
+}
+
+.header-accions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+}
+
+.header-link {
+  color: #241914;
+  font-weight: 700;
+}
+
+.logout-button {
+  padding: 0.55rem 1rem;
+  border: 0;
+  border-radius: 0.55rem;
+  color: #fff;
+  background: #980000;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.logout-button:hover,
+.logout-button:focus-visible {
+  background: #740000;
+}
+
+.comandes-content {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 3.5rem 1.25rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.75rem;
+  color: #a00000;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  color: #241914;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.2rem, 4vw, 2.8rem);
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.description {
+  max-width: 34rem;
+  margin: 0.75rem 0 2rem;
+  color: #4d4541;
+  line-height: 1.6;
+}
+
+.estat {
+  padding: 1.5rem;
+  border: 1px solid #dfd1bd;
+  border-radius: 0.75rem;
+  color: #4d4541;
+  background: #fffdf8;
+}
+
+.estat-error {
+  color: #870000;
+}
+
+.estat-error p {
+  margin: 0 0 1rem;
+}
+
+.secondary-button {
+  padding: 0.6rem 1.1rem;
+  border: 1px solid #dfd1bd;
+  border-radius: 0.55rem;
+  color: #241914;
+  background: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.llista-comandes {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.comanda {
+  padding: 1.25rem;
+  border: 1px solid #dfd1bd;
+  border-radius: 0.75rem;
+  background: #fffdf8;
+}
+
+.comanda-capcalera {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.comanda h2 {
+  margin: 0;
+  color: #241914;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.etiqueta {
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  color: #870000;
+  background: #f5ecdc;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.etiqueta-preparada,
+.etiqueta-lliurada {
+  color: #1d5a36;
+  background: #e3f0e4;
+}
+
+.etiqueta-cancellada {
+  color: #4d4541;
+  background: #e8e4df;
+}
+
+.dades-comanda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 2rem;
+  margin: 1rem 0;
+}
+
+.dades-comanda dt {
+  color: #6b5d52;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.dades-comanda dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.llibres {
+  margin: 0;
+  padding: 0.75rem 0 0 1.1rem;
+  border-top: 1px solid #efe5d6;
+}
+
+.autor {
+  color: #4d4541;
+}
+
+.accions-comanda {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #efe5d6;
+}
+
+.primary-button {
+  padding: 0.6rem 1.1rem;
+  border: 0;
+  border-radius: 0.55rem;
+  color: #fff;
+  background: #980000;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary-button:hover:not(:disabled),
+.primary-button:focus-visible {
+  background: #740000;
+}
+
+.primary-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.error-comanda {
+  margin: 0;
+  color: #870000;
+  font-weight: 700;
+}
+
+.avis-cancellada {
+  margin-top: 0.5rem;
+  color: #870000;
+  font-weight: 700;
+}
+</style>

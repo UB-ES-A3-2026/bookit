@@ -2,6 +2,7 @@
 import axios from "axios";
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import NotificacionsCapcalera from "../components/NotificacionsCapcalera.vue";
 import logoImage from "../assets/bookit-logo.jpg";
 import { useComandaStore } from "../stores/comanda.js";
 import { useSessioStore } from "../stores/sessio.js";
@@ -74,13 +75,29 @@ function canviaPagina(novaPagina) {
   router.push({ name: "cerca", query: { q: textCercat.value, pagina: novaPagina } });
 }
 
+function rutaDetall(llibre) {
+  return {
+    name: "detall-llibre",
+    params: { id: llibre.id },
+    query: {
+      titol: llibre.titol,
+      autor: llibre.autor,
+      portada: llibre.portada || "",
+      cerca: textCercat.value,
+      pagina: pagina.value,
+    },
+  };
+}
+
+// Un llibre pot ser a diverses biblioteques: l'usuari tria de quina el vol al
+// detall del llibre (US5), on cada biblioteca té el seu botó per afegir-lo.
 function afegeixALaComanda(llibre) {
   if (!sessio.autenticat) {
     router.push({ name: "inici-sessio" });
     return;
   }
 
-  comanda.afegirLlibre(llibre);
+  router.push(rutaDetall(llibre));
 }
 
 function apuntaAEspera(llibre) {
@@ -104,6 +121,7 @@ watch(() => [textCercat.value, pagina.value], cerca, { immediate: true });
         ></span>
         <span>bookit.</span>
       </RouterLink>
+      <NotificacionsCapcalera class="notificacions-cerca" />
 
       <div class="header-actions">
         <RouterLink v-if="sessio.rol === 'usuari'" class="order-link" :to="{ name: 'comanda' }">
@@ -185,6 +203,9 @@ watch(() => [textCercat.value, pagina.value], cerca, { immediate: true });
                       : "No disponible"
                 }}
               </button>
+              <RouterLink class="detall-link" :to="rutaDetall(llibre)">
+                Veure biblioteques
+              </RouterLink>
             </div>
           </li>
         </ul>
@@ -227,6 +248,11 @@ watch(() => [textCercat.value, pagina.value], cerca, { immediate: true });
   min-height: 100svh;
   color: #241914;
   background: #f9f4eb;
+}
+
+.notificacions-cerca {
+  margin-right: 1rem;
+  margin-left: auto;
 }
 
 .site-header {
@@ -477,6 +503,20 @@ h1 {
   color: #887b70;
   background: #e8dfd3;
   cursor: default;
+}
+
+.detall-link {
+  display: inline-block;
+  margin-top: 0.8rem;
+  color: #870000;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.detall-link:hover,
+.detall-link:focus-visible {
+  text-decoration: underline;
 }
 
 .paginacio {
