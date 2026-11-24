@@ -2,7 +2,7 @@ from django.conf import settings
 from rest_framework import serializers
 
 from cataleg.models import Llibre
-from prestecs.models import Comanda, Prestec
+from prestecs.models import Comanda, Notificacio, Prestec
 from usuaris.models import Usuari
 
 # Missatges del contracte (docs/api-comandes.md). Els del límit i l'estoc són
@@ -38,7 +38,8 @@ class ComandaSerializer(serializers.ModelSerializer):
         return {"id": comanda.biblioteca_id, "nom": comanda.biblioteca.biblioteca.nom}
 
     def get_llibres(self, comanda):
-        linies = comanda.linies.select_related("llibre").order_by("id")
+        # `all()` aprofita les línies ja carregades amb `prefetch_related` a les llistes.
+        linies = sorted(comanda.linies.all(), key=lambda linia: linia.pk)
         return LlibreComandaSerializer([linia.llibre for linia in linies], many=True).data
 
 
@@ -103,3 +104,11 @@ class ConfirmacioComandaSerializer(serializers.Serializer):
         if len(ids) > settings.LIMIT_LLIBRES_COMANDA:
             raise serializers.ValidationError(LIMIT_SUPERAT)
         return [llibres[id_llibre] for id_llibre in ids]
+
+
+class NotificacioSerializer(serializers.ModelSerializer):
+    """Una notificació de l'usuari (US8-T3)."""
+
+    class Meta:
+        model = Notificacio
+        fields = ("id", "comanda", "text", "llegida", "creada")

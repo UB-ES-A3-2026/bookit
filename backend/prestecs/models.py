@@ -50,6 +50,75 @@ class Comanda(models.Model):
     def __str__(self):
         return f"Comanda {self.pk} de {self.usuari} ({self.get_estat_display()})"
 
+    def pot_passar_a(self, nou_estat):
+        """Diu si la comanda pot canviar de l'estat actual a `nou_estat`."""
+        return nou_estat in TRANSICIONS[self.estat]
+
+
+# Canvis d'estat permesos (US8). Una comanda es pot cancel·lar mentre no surti
+# de la biblioteca (US20). Si una parada falla (US13), la comanda torna a
+# "preparada" per tornar-la a planificar. Lliurada i cancel·lada són finals.
+TRANSICIONS = {
+    Comanda.Estat.REBUDA: {Comanda.Estat.PREPARADA, Comanda.Estat.CANCELLADA},
+    Comanda.Estat.PREPARADA: {Comanda.Estat.EN_CAMI, Comanda.Estat.CANCELLADA},
+    Comanda.Estat.EN_CAMI: {Comanda.Estat.LLIURADA, Comanda.Estat.PREPARADA},
+    Comanda.Estat.LLIURADA: set(),
+    Comanda.Estat.CANCELLADA: set(),
+}
+
+
+class CanviEstat(models.Model):
+    """Historial de la comanda: cada estat pel qual passa i quan (US8).
+
+    El primer registre és el de `rebuda`, quan es confirma la comanda.
+    """
+
+    comanda = models.ForeignKey(
+        Comanda,
+        on_delete=models.CASCADE,
+        related_name="canvis_estat",
+    )
+    estat = models.CharField(max_length=10, choices=Comanda.Estat.choices)
+    moment = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["moment", "id"]
+        verbose_name = "canvi d'estat"
+        verbose_name_plural = "canvis d'estat"
+
+    def __str__(self):
+        return f"Comanda {self.comanda_id}: {self.get_estat_display()}"
+
+
+class Notificacio(models.Model):
+    """Avís a l'usuari quan la seva comanda canvia d'estat (US8).
+
+    Es crea a cada canvi d'estat, inclosa la confirmació de la comanda. El text
+    es desa ja escrit, amb el nom del repartidor si n'hi ha.
+    """
+
+    usuari = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="notificacions",
+    )
+    comanda = models.ForeignKey(
+        Comanda,
+        on_delete=models.CASCADE,
+        related_name="notificacions",
+    )
+    text = models.TextField()
+    llegida = models.BooleanField(default=False)
+    creada = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-creada", "-id"]
+        verbose_name = "notificació"
+        verbose_name_plural = "notificacions"
+
+    def __str__(self):
+        return f"{self.usuari}: {self.text}"
+
 
 class LiniaComanda(models.Model):
     """Un llibre d'una comanda. Cada línia correspon a un exemplar."""
