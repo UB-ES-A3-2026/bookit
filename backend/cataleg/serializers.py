@@ -158,3 +158,40 @@ class ExemplarsCatalegSerializer(LlibreCatalegSerializer):
         exemplar.quantitat = validated_data["exemplars"]
         exemplar.save(update_fields=["quantitat"])
         return exemplar
+
+class BibliotecaAmbEstocSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    nom = serializers.CharField(read_only=True)
+    carrer = serializers.CharField(read_only=True)
+    numero_porta = serializers.CharField(read_only=True)
+    latitud = serializers.FloatField(read_only=True, allow_null=True)
+    longitud = serializers.FloatField(read_only=True, allow_null=True)
+    exemplars = serializers.IntegerField(read_only=True)
+    distancia_km = serializers.FloatField(read_only=True, required=False)
+
+    def to_representation(self, exemplar):
+        usuari_biblioteca = exemplar.biblioteca
+        biblioteca = usuari_biblioteca.biblioteca
+
+        dades = {
+            "id": usuari_biblioteca.id,
+            "nom": biblioteca.nom,
+            "carrer": biblioteca.carrer,
+            "numero_porta": biblioteca.numero_porta,
+            "latitud": (
+                float(biblioteca.latitud)
+                if biblioteca.latitud is not None
+                else None
+            ),
+            "longitud": (
+                float(biblioteca.longitud)
+                if biblioteca.longitud is not None
+                else None
+            ),
+            "exemplars": exemplar.quantitat,
+        }
+
+        if hasattr(exemplar, "distancia_km"):
+            dades["distancia_km"] = exemplar.distancia_km
+
+        return dades
