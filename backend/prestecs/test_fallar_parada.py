@@ -288,3 +288,121 @@ def test_id_inexistent_retorna_404(dades_parada):
         format="json",
     )
     assert resposta.status_code == status.HTTP_404_NOT_FOUND
+
+
+# En backend/prestecs/test_fallar_parada.py (actualiza el import de models y añade al final)
+from datetime import time
+from prestecs.models import CanviEstat, Comanda, Notificacio, Parada, Ruta
+
+
+def test_fallar_parada_en_cami_replanifica_la_comanda():
+    repartidor = crea_repartidor()
+    lector = crea_usuari()
+    biblioteca = crea_biblioteca()
+    comanda = Comanda.objects.create(
+        usuari=lector,
+        biblioteca=biblioteca,
+        repartidor=repartidor,
+        estat=Comanda.Estat.EN_CAMI,
+        data_lliurament=date(2026, 11, 24),
+        hora_inici_lliurament=time(10, 0),
+        hora_fi_lliurament=time(12, 0),
+    )
+    ruta = Ruta.objects.create(repartidor=repartidor, data=date(2026, 11, 24))
+    parada = Parada.objects.create(
+        ruta=ruta,
+        comanda=comanda,
+        tipus=Parada.Tipus.LLIVRAMENT,
+        ordre=1,
+    )
+
+    resposta = client_repartidor(repartidor).post(
+        url_fallar(parada),
+        {"motiu": "Destinatari absent"},
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_200_OK
+    parada.refresh_from_db()
+    comanda.refresh_from_db()
+    assert parada.estat == Parada.Estat.FALLIDA
+    assert comanda.estat == Comanda.Estat.PREPARADA
+    assert comanda.repartidor is None
+    assert comanda.data_lliurament is None
+    assert comanda.hora_inici_lliurament is None
+    assert comanda.hora_fi_lliurament is None
+    assert CanviEstat.objects.filter(
+        comanda=comanda, estat=Comanda.Estat.PREPARADA
+    ).count() == 1
+    assert Notificacio.objects.filter(comanda=comanda, usuari=lector).count() == 1
+
+
+def test_repetir_fallida_idempotent_no_duplica_replanificacio():
+    repartidor = crea_repartidor()
+    lector = crea_usuari()
+    biblioteca = crea_biblioteca()
+    comanda = Comanda.objects.create(
+        usuari=lector,
+        biblioteca=biblioteca,
+        repartidor=repartidor,
+        estat=Comanda.Estat.EN_CAMI,
+        data_lliurament=date(2026, 11, 24),
+    )
+    ruta = Ruta.objects.create(repartidor=repartidor, data=date(2026, 11, 24))
+    parada = Parada.objects.create(
+        ruta=ruta,
+        comanda=comanda,
+        tipus=Parada.Tipus.LLIVRAMENT,
+        ordre=1,
+    )
+    client = client_repartidor(repartidor)
+
+    primera = client.post(
+        url_fallar(parada),
+        {"motiu": "Destinatari absent"},
+        format="json",
+    )
+    segona = client.post(
+        url_fallar(parada),
+        {"motiu": "Destinatari absent"},
+        format="json",
+    )
+
+    assert primera.status_code == status.HTTP_200_OK
+    assert segona.status_code == status.HTTP_200_OK
+    assert CanviEstat.objects.filter(
+        comanda=comanda, estat=Comanda.Estat.PREPARADA
+    ).count() == 1
+    assert Notificacio.objects.filter(comanda=comanda).count() == 1
+
+
+def test_fallida_sense_motiu_no_replanifica_la_comanda():
+    repartidor = crea_repartidor()
+    lector = crea_usuari()
+    biblioteca = crea_biblioteca()
+    comanda = Comanda.objects.create(
+        usuari=lector,
+        biblioteca=biblioteca,
+        repartidor=repartidor,
+        estat=Comanda.Estat.EN_CAMI,
+        data_lliurament=date(2026, 11, 24),
+    )
+    ruta = Ruta.objects.create(repartidor=repartidor, data=date(2026, 11, 24))
+    parada = Parada.objects.create(
+        ruta=ruta,
+        comanda=comanda,
+        tipus=Parada.Tipus.LLIVRAMENT,
+        ordre=1,
+    )
+
+    resposta = client_repartidor(repartidor).post(
+        url_fallar(parada),
+        {},
+        format="json",
+    )
+
+    assert resposta.status_code == status.HTTP_400_BAD_REQUEST
+    comanda.refresh_from_db()
+    assert comanda.estat == Comanda.Estat.EN_CAMI
+    assert comanda.repartidor == repartidor
+    assert comanda.data_lliurament == date(2026, 11, 24)

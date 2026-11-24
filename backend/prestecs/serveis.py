@@ -5,6 +5,8 @@ from django.utils import timezone
 
 from cataleg.models import ExemplarBiblioteca
 from prestecs.models import CanviEstat, Comanda, LiniaComanda, Notificacio
+from prestecs.assignacio import assigna_comanda
+from prestecs.models import Parada
 
 Estat = Comanda.Estat
 
@@ -232,5 +234,55 @@ def fallar_parada(parada, motiu):
         parada.estat = Parada.Estat.FALLIDA
         parada.motiu = motiu
         parada.save(update_fields=["estat", "motiu"])
+
+    return parada
+
+
+def fallar_parada(parada, motiu):
+    from prestecs.assignacio import assigna_comanda
+    from prestecs.models import Parada
+
+    with transaction.atomic():
+        parada = (
+            Parada.objects.select_for_update()
+            .select_related("ruta", "comanda")
+            .get(pk=parada.pk)
+        )
+
+        if parada.estat == Parada.Estat.FALLIDA:
+            if parada.motiu == motiu:
+                return parada
+            raise ParadaFallarJaFallida(parada.motiu)
+
+        if parada.estat in (
+            Parada.Estat.COMPLETADA,
+            Parada.Estat.CANCELLADA,
+        ):
+            raise ParadaEnEstatTerminal()
+
+        parada.estat = Parada.Estat.FALLIDA
+        parada.motiu = motiu
+        parada.save(update_fields=["estat", "motiu"])
+
+        if parada.comanda.estat == Comanda.Estat.EN_CAMI:
+            canvia_estat(
+                parada.comanda,
+                Comanda.Estat.PREPARADA,
+                des_de=[Comanda.Estat.EN_CAMI],
+            )
+            parada.comanda.repartidor = None
+            parada.comanda.data_lliurament = None
+            parada.comanda.hora_inici_lliurament = None
+            parada.comanda.hora_fi_lliurament = None
+            parada.comanda.save(
+                update_fields=[
+                    "repartidor",
+                    "data_lliurament",
+                    "hora_inici_lliurament",
+                    "hora_fi_lliurament",
+                    "actualitzada",
+                ]
+            )
+            assigna_comanda(parada.comanda)
 
     return parada
