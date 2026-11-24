@@ -24,8 +24,8 @@ async function prepararComanda(page) {
         rol: "usuari",
       }),
     );
-    sessionStorage.setItem(
-      "bookit.comanda",
+    localStorage.setItem(
+      "bookit.comanda.25",
       JSON.stringify([
         {
           id: 7,

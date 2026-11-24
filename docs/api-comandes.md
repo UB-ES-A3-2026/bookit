@@ -19,6 +19,7 @@ Aquest document és la base de les comandes. Les US7 (tipus de lliurament), US8 
 | `POST /api/prestecs/comandes/<id>/cancellar/` | Cancel·la una comanda que encara no ha sortit. | US20-T1 |
 | `GET /api/prestecs/biblioteca/comandes/` | Llista les comandes pendents de la biblioteca. | US10 (aquest document) |
 | `POST /api/prestecs/biblioteca/comandes/<id>/preparada/` | Marca una comanda com a llesta per a recollida. | US15-T1 |
+| `POST /api/prestecs/biblioteca/comandes/<id>/recollida/` | Lliura a l'usuari una comanda de recollida. | US7-T8 |
 | `GET /api/prestecs/notificacions/` | Llista les notificacions de l'usuari. | US8-T3 |
 | `POST /api/prestecs/notificacions/<id>/llegida/` | Marca una notificació com a llegida. | US8-T3 |
 | `POST /api/prestecs/notificacions/llegides/` | Marca totes les notificacions com a llegides. | US8-T3 |
@@ -43,7 +44,7 @@ Tots els endpoints requereixen la capçalera `Authorization: Bearer <access>` (v
 | `rebuda` | Rebuda | En confirmar la comanda. És l'estat inicial. |
 | `preparada` | Preparada | Quan la biblioteca la marca com a "Llesta per a recollida" (US15). |
 | `en_cami` | En camí | Quan el repartidor la recull a la biblioteca (US12 i US13). |
-| `lliurada` | Lliurada | Quan el repartidor marca el lliurament com a completat (US13). Es creen els préstecs dels llibres (US19). |
+| `lliurada` | Lliurada | Quan el repartidor marca el lliurament com a completat (US13) o, si és una recollida, quan la biblioteca la lliura a l'usuari (US7-T8). Es creen els préstecs dels llibres (US19). |
 | `cancellada` | Cancel·lada | Quan l'usuari la cancel·la abans que surti (US20). |
 
 ### Canvis d'estat permesos
@@ -51,7 +52,7 @@ Tots els endpoints requereixen la capçalera `Authorization: Bearer <access>` (v
 | Des de | Pot passar a |
 |---|---|
 | `rebuda` | `preparada`, `cancellada` |
-| `preparada` | `en_cami`, `cancellada` |
+| `preparada` | `en_cami`, `cancellada`. Si és una recollida a la biblioteca: `lliurada`, `cancellada` (US7-T8) |
 | `en_cami` | `lliurada`, o tornar a `preparada` si la parada falla i cal tornar-la a planificar (US13) |
 | `lliurada` | Cap: és un estat final. |
 | `cancellada` | Cap: és un estat final. |
@@ -295,8 +296,9 @@ han sortit (`en_cami`) o s'han lliurat no hi surten. Sense paginació. Si no n'h
 Ordre: per `data_lliurament`, de la més propera a la més llunyana. Les que encara no tenen data surten al final. Amb
 la mateixa data, primer la més antiga.
 
-Cada comanda té el format de [Comanda](#comanda) més el camp `usuari` (`id` i `nom`), perquè la biblioteca sàpiga de
-qui és.
+Cada comanda té el format de [Comanda](#comanda), però només amb el camp `tipus_lliurament` dels de la US7, perquè la
+biblioteca sàpiga quines comandes es recullen a la biblioteca. També hi ha el camp `usuari` (`id` i `nom`), perquè
+sàpiga de qui és.
 
 ```json
 [
@@ -308,6 +310,7 @@ qui és.
     "llibres": [
       { "id": 9, "titol": "Solitud", "autor": "Víctor Català", "portada": "" }
     ],
+    "tipus_lliurament": "domicili",
     "data_lliurament": "2026-11-20",
     "creada": "2026-11-16T16:20:00Z"
   }
@@ -343,6 +346,34 @@ resposta ja porta la `data_lliurament`.
 Una comanda d'una altra biblioteca rep el mateix 404 que una d'inexistent, perquè una biblioteca no pugui saber res
 de les comandes de les altres.
 
+## Lliurar una comanda de recollida
+
+`POST /api/prestecs/biblioteca/comandes/<id>/recollida/`
+
+Quan l'usuari ve a buscar una comanda de recollida, la biblioteca la marca com a lliurada (US7-T8). Només ho pot fer
+la biblioteca de la comanda, amb el compte actiu; un usuari o un repartidor reben el 403 de
+[Autenticació i permisos](#autenticació-i-permisos). La petició no porta cos.
+
+Una comanda de recollida no passa per `en_cami`: va directament de `preparada` a `lliurada`. En lliurar-la, l'usuari
+rep la notificació de lliurament (US8) i es creen els préstecs dels llibres (US19).
+
+### Resposta correcta
+
+**200 OK**. La comanda amb el format de [Comanda](#comanda) i l'estat `lliurada`.
+
+### Errors
+
+| Cas | Estat | Resposta |
+|---|---|---|
+| La comanda no existeix o és d'una altra biblioteca | 404 | Cos sense contingut rellevant. |
+| La comanda és a domicili | 409 | `{"detail": "Aquesta comanda és a domicili: la lliura el repartidor."}` |
+| La comanda és `rebuda` | 409 | `{"detail": "Aquesta comanda encara no està llesta per a recollida."}` |
+| La comanda ja és `lliurada` | 409 | `{"detail": "Aquesta comanda ja està lliurada."}` |
+| La comanda és `cancellada` | 409 | `{"detail": "Aquesta comanda no es pot lliurar perquè està cancel·lada."}` |
+
+Si la biblioteca la lliura alhora que l'usuari la cancel·la, només es fa una de les dues accions. L'altra rep el seu
+409.
+
 ## Cancel·lar una comanda
 
 `POST /api/prestecs/comandes/<id>/cancellar/`
@@ -368,80 +399,6 @@ mentrestant, aquell exemplar no s'hi torna.
 
 El missatge de quan la comanda ja ha sortit és literal dels criteris d'acceptació de la US20.
 
-## Les meves comandes
-
-`GET /api/prestecs/comandes/`
-
-**200 OK**. Una llista amb totes les comandes de l'usuari, de la més nova a la més antiga, amb el format de
-[Comanda](#comanda). Hi surten totes, també les lliurades i les cancel·lades, perquè l'usuari en vegi l'estat. Si no
-en té cap, la llista és buida.
-
-```json
-[
-  {
-    "id": 12,
-    "estat": "en_cami",
-    "biblioteca": { "id": 3, "nom": "Biblioteca Montbau" },
-    "llibres": [{ "id": 9, "titol": "Solitud", "autor": "Víctor Català", "portada": "" }],
-    "data_lliurament": "2026-11-20",
-    "creada": "2026-11-16T16:20:00Z"
-  }
-]
-```
-
-## Notificacions de l'usuari
-
-### Llistar les notificacions
-
-`GET /api/prestecs/notificacions/`
-
-**200 OK**. Les notificacions de l'usuari, de la més nova a la més antiga. Si no en té cap, la llista és buida. Per
-mostrar quantes n'hi ha de noves a la capçalera, el frontend compta les que tenen `llegida` a `false`.
-
-| Camp | Tipus | Descripció |
-|---|---|---|
-| `id` | enter | Identificador de la notificació. |
-| `comanda` | enter | `id` de la comanda a la qual fa referència. |
-| `text` | text | El text de la notificació (vegeu [Notificacions](#notificacions)). |
-| `llegida` | booleà | Si l'usuari ja l'ha llegida. |
-| `creada` | text | Data i hora en què es va crear (ISO 8601). |
-
-```json
-[
-  {
-    "id": 31,
-    "comanda": 12,
-    "text": "La teva comanda ja està preparada i aviat sortirà cap a casa teva",
-    "llegida": false,
-    "creada": "2026-11-17T09:05:00Z"
-  },
-  {
-    "id": 30,
-    "comanda": 12,
-    "text": "La teva comanda s'ha rebut correctament. La biblioteca ja l'està preparant",
-    "llegida": true,
-    "creada": "2026-11-16T16:20:00Z"
-  }
-]
-```
-
-### Marcar una notificació com a llegida
-
-`POST /api/prestecs/notificacions/<id>/llegida/`
-
-La petició no porta cos. **200 OK** amb la notificació, ja amb `llegida` a `true`. Si ja estava llegida, la resposta
-és la mateixa. Una notificació que no existeix o que és d'un altre usuari rep un **404**.
-
-### Marcar totes les notificacions com a llegides
-
-`POST /api/prestecs/notificacions/llegides/`
-
-La petició no porta cos. **200 OK** amb el nombre de notificacions que s'han marcat ara:
-
-```json
-{ "marcades": 3 }
-```
-
 ## Assignació a un repartidor
 
 No té endpoint propi: el backend assigna les comandes `preparada` als repartidors (US14-T3), i la ruta del dia del
@@ -463,8 +420,11 @@ moment, d'aquests camps les respostes de l'API només mostren la `data_lliuramen
 
 ## Flux del frontend
 
-1. L'usuari afegeix llibres a la comanda des dels resultats de la cerca o del detall del llibre (US6-T6). Cada llibre
-   s'afegeix amb la biblioteca que l'ofereix; si n'hi ha de biblioteques diferents, es fan comandes diferents.
+1. L'usuari afegeix llibres a la comanda des del detall del llibre (US5), on cada biblioteca amb estoc té el seu botó
+   "Afegir a la comanda". Des dels resultats de la cerca, el botó porta al detall, perquè la cerca no diu de quina
+   biblioteca és cada llibre (US6-T12). Una comanda només pot tenir llibres d'una biblioteca: per demanar-ne d'una
+   altra, cal confirmar-la o treure'n els llibres primer.
+   La comanda es desa al navegador (`localStorage`) per a cada usuari, i es conserva encara que es tanqui la pestanya.
 2. Abans d'enviar, el frontend avisa si se supera el límit amb el mateix missatge. L'usuari tria domicili (amb
    l'adreça del perfil o una altra) o recollida, i veu el cost de cada opció (US7-T3).
 3. En confirmar, envia el `POST`. Si rep un 400, mostra els missatges i marca els llibres de `sense_estoc` amb l'opció

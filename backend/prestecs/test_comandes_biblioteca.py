@@ -76,6 +76,8 @@ def test_mostra_les_comandes_de_la_biblioteca_amb_l_usuari_i_els_llibres(client,
             "usuari": {"id": lector.pk, "nom": "Anna Puig"},
             "biblioteca": {"id": biblioteca.pk, "nom": "Biblioteca Montbau"},
             "llibres": [{"id": llibre.pk, "titol": "Solitud", "autor": "Víctor Català", "portada": ""}],
+            # La biblioteca ha de saber quines comandes es recullen a la biblioteca (US7-T8).
+            "tipus_lliurament": "domicili",
             "data_lliurament": "2026-11-20",
             "creada": resposta.json()[0]["creada"],
         }

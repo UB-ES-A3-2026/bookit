@@ -75,13 +75,29 @@ function canviaPagina(novaPagina) {
   router.push({ name: "cerca", query: { q: textCercat.value, pagina: novaPagina } });
 }
 
+function rutaDetall(llibre) {
+  return {
+    name: "detall-llibre",
+    params: { id: llibre.id },
+    query: {
+      titol: llibre.titol,
+      autor: llibre.autor,
+      portada: llibre.portada || "",
+      cerca: textCercat.value,
+      pagina: pagina.value,
+    },
+  };
+}
+
+// Un llibre pot ser a diverses biblioteques: l'usuari tria de quina el vol al
+// detall del llibre (US5), on cada biblioteca té el seu botó per afegir-lo.
 function afegeixALaComanda(llibre) {
   if (!sessio.autenticat) {
     router.push({ name: "inici-sessio" });
     return;
   }
 
-  comanda.afegirLlibre(llibre);
+  router.push(rutaDetall(llibre));
 }
 
 function apuntaAEspera(llibre) {
@@ -187,20 +203,7 @@ watch(() => [textCercat.value, pagina.value], cerca, { immediate: true });
                       : "No disponible"
                 }}
               </button>
-              <RouterLink
-                class="detall-link"
-                :to="{
-                  name: 'detall-llibre',
-                  params: { id: llibre.id },
-                  query: {
-                    titol: llibre.titol,
-                    autor: llibre.autor,
-                    portada: llibre.portada || '',
-                    cerca: textCercat,
-                    pagina,
-                  },
-                }"
-              >
+              <RouterLink class="detall-link" :to="rutaDetall(llibre)">
                 Veure biblioteques
               </RouterLink>
             </div>

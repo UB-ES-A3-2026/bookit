@@ -79,6 +79,10 @@ class Comanda(models.Model):
 
     def pot_passar_a(self, nou_estat):
         """Diu si la comanda pot canviar de l'estat actual a `nou_estat`."""
+        if self.tipus_lliurament == self.TipusLliurament.RECOLLIDA and self.estat == self.Estat.PREPARADA:
+            # Una comanda de recollida no surt de la biblioteca: la biblioteca la
+            # lliura a l'usuari quan la ve a buscar (US7-T8).
+            return nou_estat in TRANSICIONS_RECOLLIDA_PREPARADA
         return nou_estat in TRANSICIONS[self.estat]
 
 
@@ -92,6 +96,8 @@ TRANSICIONS = {
     Comanda.Estat.LLIURADA: set(),
     Comanda.Estat.CANCELLADA: set(),
 }
+# Una comanda de recollida preparada no passa per "en camí".
+TRANSICIONS_RECOLLIDA_PREPARADA = {Comanda.Estat.LLIURADA, Comanda.Estat.CANCELLADA}
 
 
 class CanviEstat(models.Model):
