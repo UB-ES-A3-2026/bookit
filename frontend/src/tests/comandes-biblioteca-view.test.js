@@ -131,6 +131,17 @@ describe("Comandes pendents", () => {
 
     expect(router.currentRoute.value.name).toBe("home");
   });
+
+  it("una comanda de recollida diu que es recull a la biblioteca en lloc de la data", async () => {
+    servei.llistaComandesBiblioteca.mockResolvedValue([
+      { ...comanda(12, "preparada", null), tipus_lliurament: "recollida" },
+      { ...comanda(4, "preparada", null), tipus_lliurament: "domicili" },
+    ]);
+    await renderitza();
+
+    const dates = wrapper.findAll(".data-lliurament").map((data) => data.text());
+    expect(dates).toEqual(["Recollida a la biblioteca", "Sense data"]);
+  });
 });
 
 describe("Llesta per a recollida", () => {
