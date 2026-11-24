@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from django.utils import timezone
+from django.shortcuts import get_object_or_404
 
 from cataleg.permisos import EsBibliotecaActiva
 from prestecs.assignacio import assigna_comanda
@@ -16,6 +17,7 @@ from prestecs.serializers import (
     ConfirmacioComandaSerializer,
     NotificacioSerializer,
     ParadaRutaSerializer,
+    ParadaCompletadaSerializer,
 )
 from prestecs.rutes import (
     DadesRutaInconsistents,
@@ -26,6 +28,10 @@ from prestecs.serveis import (
     TransicioNoPermesa,
     canvia_estat,
     confirma_comanda,
+    completa_parada,
+    ParadaAmbComandaInvalida,
+    ParadaEnEstatTerminal,
+    ParadaJaCompletada,
 )
 from usuaris.permisos import EsRepartidorValidat
 
@@ -164,3 +170,30 @@ class NotificacionsLlegidesView(generics.GenericAPIView):
     def post(self, request):
         marcades = request.user.notificacions.filter(llegida=False).update(llegida=True)
         return Response({"marcades": marcades})
+
+
+class CompletarParadaView(APIView):
+    permission_classes = [EsRepartidorValidat]
+
+    def post(self, request, pk):
+        parada = get_object_or_404(
+            Parada.objects.select_related("ruta", "comanda"),
+            pk=pk,
+            ruta__repartidor=request.user,
+        )
+
+        try:
+            parada = completa_parada(parada)
+        except ParadaJaCompletada as error:
+            return Response(
+                {"detail": str(error)},
+                status=status.HTTP_409_CONFLICT,
+            )
+        except (ParadaEnEstatTerminal, ParadaAmbComandaInvalida) as error:
+            return Response(
+                {"detail": str(error)},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        dades = ParadaCompletadaSerializer(parada).data
+        return Response(dades, status=status.HTTP_200_OK)
