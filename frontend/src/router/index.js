@@ -2,13 +2,28 @@ import { createRouter, createWebHistory } from "vue-router";
 import { useSessioStore } from "../stores/sessio.js";
 import AfegirLlibreView from "../views/AfegirLlibreView.vue";
 import CatalegView from "../views/CatalegView.vue";
+import ComandaView from "../views/ComandaView.vue";
 import HomeView from "../views/HomeView.vue";
 import LoginView from "../views/LoginView.vue";
 import RegisterConfirmationView from "../views/RegisterConfirmationView.vue";
 import RegisterView from "../views/RegisterView.vue";
 import RoleHomeView from "../views/RoleHomeView.vue";
+import FrangesView from "../views/FrangesView.vue";
 import SearchView from "../views/SearchView.vue";
 import VerifyLibraryView from "../views/VerifyLibraryView.vue";
+
+// Les franges només són per als repartidors.
+export function nomesRepartidors() {
+  const sessio = useSessioStore();
+
+  if (!sessio.autenticat) {
+    return { name: "inici-sessio" };
+  }
+  if (sessio.rol !== "repartidor") {
+    return { name: "home" };
+  }
+  return true;
+}
 
 // El catàleg només és per a biblioteques. Sense sessió es demana iniciar-la i
 // amb un altre rol es torna a l'inici.
@@ -18,7 +33,20 @@ export function nomesBiblioteques() {
   if (!sessio.autenticat) {
     return { name: "inici-sessio" };
   }
+
   if (sessio.rol !== "biblioteca") {
+    return { name: "home" };
+  }
+  return true;
+}
+
+export function nomesUsuaris() {
+  const sessio = useSessioStore();
+
+  if (!sessio.autenticat) {
+    return { name: "inici-sessio" };
+  }
+  if (sessio.rol !== "usuari") {
     return { name: "home" };
   }
   return true;
@@ -66,6 +94,13 @@ const router = createRouter({
       meta: { titol: "Espai del repartidor" },
     },
     {
+      path: "/repartidor/franges",
+      name: "franges-repartidor",
+      component: FrangesView,
+      meta: { titol: "Franges de disponibilitat" },
+      beforeEnter: nomesRepartidors,
+    },
+    {
       path: "/cataleg",
       name: "cataleg",
       component: CatalegView,
@@ -78,6 +113,13 @@ const router = createRouter({
       component: AfegirLlibreView,
       meta: { titol: "Afegir un llibre" },
       beforeEnter: nomesBiblioteques,
+    },
+    {
+      path: "/comanda",
+      name: "comanda",
+      component: ComandaView,
+      meta: { titol: "La meva comanda" },
+      beforeEnter: nomesUsuaris,
     },
     {
       path: "/verificacio/biblioteca/:uidb64/:token",
