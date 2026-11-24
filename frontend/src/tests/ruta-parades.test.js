@@ -269,3 +269,245 @@ describe("marcar una parada com a fallida", () => {
     );
   });
 });
+
+// US13-T6: casos addicionals dels botons i del motiu obligatori.
+
+function promesaPendent() {
+  let resol;
+  const promesa = new Promise((resolve) => {
+    resol = resolve;
+  });
+  return { promesa, resol };
+}
+
+async function obreIFormulari(indexParada, text) {
+  await boto(indexParada, "Fallida").trigger("click");
+  await parades()[indexParada].find("textarea").setValue(text);
+  await parades()[indexParada].find("form").trigger("submit");
+  await flushPromises();
+}
+
+describe("estat de cada parada", () => {
+  it("els botons indiquen el número de parada per als lectors de pantalla", async () => {
+    servei.llistaRutaAvui.mockResolvedValue(ruta());
+    await renderitza();
+
+    expect(parades()[1].find(".boto-completada").attributes("aria-label")).toBe(
+      "Marcar la parada 2 com a completada",
+    );
+    expect(parades()[1].find(".boto-fallida").attributes("aria-label")).toBe(
+      "Marcar la parada 2 com a fallida",
+    );
+  });
+
+  it("tracta com a pendent una parada sense estat_parada", async () => {
+    const sensEstat = parada(18, 1, "recollida");
+    delete sensEstat.estat_parada;
+    servei.llistaRutaAvui.mockResolvedValue([sensEstat]);
+    await renderitza();
+
+    expect(parades()[0].find(".boto-completada").exists()).toBe(true);
+  });
+
+  it("mostra una parada cancel·lada sense botons ni motiu", async () => {
+    servei.llistaRutaAvui.mockResolvedValue([
+      parada(18, 1, "recollida", { estat_parada: "cancellada" }),
+      parada(19, 2, "lliurament"),
+    ]);
+    await renderitza();
+
+    expect(parades()[0].find(".accions-parada").exists()).toBe(false);
+    expect(parades()[0].find(".estat-parada").text()).toBe("Cancel·lada");
+    expect(parades()[0].find(".motiu").exists()).toBe(false);
+    expect(parades()[1].find(".accions-parada").exists()).toBe(true);
+  });
+});
+
+describe("mentre s'envia una acció", () => {
+  it("desactiva tots els botons i no permet enviar dues vegades", async () => {
+    const pendent = promesaPendent();
+    servei.llistaRutaAvui.mockResolvedValue(ruta());
+    servei.completaParada.mockReturnValue(pendent.promesa);
+    await renderitza();
+
+    await boto(0, "Completada").trigger("click");
+
+    expect(parades()[0].find(".boto-completada").text()).toBe("Desant...");
+    for (const element of wrapper.findAll(".accions-parada button")) {
+      expect(element.attributes("disabled")).toBeDefined();
+    }
+    await parades()[0].find(".boto-completada").trigger("click");
+    expect(servei.completaParada).toHaveBeenCalledTimes(1);
+
+    pendent.resol({ id: 18, estat: "completada" });
+    await flushPromises();
+
+    for (const element of wrapper.findAll(".accions-parada button")) {
+      expect(element.attributes("disabled")).toBeUndefined();
+    }
+  });
+
+  it("desactiva Confirmar i Cancel·lar mentre s'envia la fallida", async () => {
+    const pendent = promesaPendent();
+    servei.llistaRutaAvui.mockResolvedValue(ruta());
+    servei.fallaParada.mockReturnValue(pendent.promesa);
+    await renderitza();
+
+    await boto(1, "Fallida").trigger("click");
+    await parades()[1].find("textarea").setValue("Biblioteca tancada");
+    await parades()[1].find("form").trigger("submit");
+
+    const botons = parades()[1].findAll("form button");
+    expect(botons[0].text()).toBe("Desant...");
+    for (const element of botons) {
+      expect(element.attributes("disabled")).toBeDefined();
+    }
+
+    pendent.resol({ id: 19, estat: "fallida" });
+    await flushPromises();
+  });
+});
+
+describe("motiu obligatori de la parada fallida", () => {
+  it("el camp és obligatori, té una etiqueta i limita la longitud a 500", async () => {
+    servei.llistaRutaAvui.mockResolvedValue(ruta());
+    await renderitza();
+
+    await boto(1, "Fallida").trigger("click");
+    const camp = parades()[1].find("textarea");
+
+    expect(camp.attributes("required")).toBeDefined();
+    expect(camp.attributes("maxlength")).toBe("500");
+    expect(parades()[1].find(`label[for="${camp.attributes("id")}"]`).exists()).toBe(true);
+    expect(camp.attributes("aria-invalid")).toBe("false");
+  });
+
+  it("no envia un motiu buit i relaciona l'error amb el camp", async () => {
+    servei.llistaRutaAvui.mockResolvedValue(ruta());
+    await renderitza();
+
+    await obreIFormulari(1, "");
+
+    const camp = parades()[1].find("textarea");
+    const error = parades()[1].find(".error-camp");
+    expect(servei.fallaParada).not.toHaveBeenCalled();
+    expect(error.text()).toBe("Cal indicar el motiu.");
+    expect(camp.attributes("aria-describedby")).toBe(error.attributes("id"));
+  });
+
+  it("no envia un motiu de més de 500 caràcters", async () => {
+    servei.llistaRutaAvui.mockResolvedValue(ruta());
+    await renderitza();
+
+    await obreIFormulari(1, "a".repeat(501));
+
+    expect(servei.fallaParada).not.toHaveBeenCalled();
+    expect(parades()[1].find(".error-camp").text()).toBe(
+      "El motiu no pot tenir més de 500 caràcters.",
+    );
+  });
+
+  it("accepta un motiu d'exactament 500 caràcters", async () => {
+    servei.llistaRutaAvui.mockResolvedValue(ruta());
+    servei.fallaParada.mockResolvedValue({ id: 19, estat: "fallida" });
+    await renderitza();
+
+    await obreIFormulari(1, "a".repeat(500));
+
+    expect(servei.fallaParada).toHaveBeenCalledWith(19, "a".repeat(500));
+  });
+
+  it("després d'un motiu buit, un motiu vàlid s'envia i tanca el formulari", async () => {
+    servei.llistaRutaAvui.mockResolvedValue(ruta());
+    servei.fallaParada.mockResolvedValue({ id: 19, estat: "fallida" });
+    await renderitza();
+
+    await obreIFormulari(1, "  ");
+    await parades()[1].find("textarea").setValue("Biblioteca tancada");
+    await parades()[1].find("form").trigger("submit");
+    await flushPromises();
+
+    expect(servei.fallaParada).toHaveBeenCalledWith(19, "Biblioteca tancada");
+    expect(wrapper.find("textarea").exists()).toBe(false);
+    expect(wrapper.find(".error-camp").exists()).toBe(false);
+  });
+
+  it("en cancel·lar i tornar a obrir, el motiu i l'error comencen buits", async () => {
+    servei.llistaRutaAvui.mockResolvedValue(ruta());
+    await renderitza();
+
+    await obreIFormulari(1, "");
+    await parades()[1].find("textarea").setValue("Text a mig escriure");
+    await boto(1, "Cancel·lar").trigger("click");
+    await boto(1, "Fallida").trigger("click");
+
+    expect(parades()[1].find("textarea").element.value).toBe("");
+    expect(parades()[1].find(".error-camp").exists()).toBe(false);
+  });
+
+  it("només hi ha un formulari obert alhora", async () => {
+    servei.llistaRutaAvui.mockResolvedValue(ruta());
+    await renderitza();
+
+    await boto(1, "Fallida").trigger("click");
+    await boto(0, "Fallida").trigger("click");
+
+    expect(wrapper.findAll("textarea")).toHaveLength(1);
+    expect(parades()[0].find("textarea").exists()).toBe(true);
+    expect(parades()[1].find(".boto-completada").exists()).toBe(true);
+  });
+
+  it("si la xarxa falla, manté el formulari obert amb el motiu i mostra l'error", async () => {
+    servei.llistaRutaAvui.mockResolvedValue(ruta());
+    servei.fallaParada.mockRejectedValue(new Error("Network Error"));
+    await renderitza();
+
+    await obreIFormulari(1, "Biblioteca tancada");
+
+    expect(parades()[1].find("textarea").element.value).toBe("Biblioteca tancada");
+    expect(parades()[1].find(".error-parada").text()).toBe(
+      "No s'ha pogut actualitzar la parada. Torna-ho a provar.",
+    );
+  });
+
+  it("torna a l'inici si la sessió ha caducat (401)", async () => {
+    servei.llistaRutaAvui.mockResolvedValue(ruta());
+    servei.fallaParada.mockRejectedValue(errorHttp(401));
+    await renderitza();
+
+    await obreIFormulari(1, "Biblioteca tancada");
+
+    expect(router.currentRoute.value.name).toBe("home");
+  });
+});
+
+describe("missatges després de les accions", () => {
+  it("si la recàrrega falla després de completar, manté la llista i la confirmació", async () => {
+    servei.llistaRutaAvui
+      .mockResolvedValueOnce(ruta())
+      .mockRejectedValueOnce(new Error("Network Error"));
+    servei.completaParada.mockResolvedValue({ id: 18, estat: "completada" });
+    await renderitza();
+
+    await boto(0, "Completada").trigger("click");
+    await flushPromises();
+
+    expect(parades()).toHaveLength(2);
+    expect(wrapper.find(".missatge-exit").text()).toBe("Parada 1 marcada com a completada.");
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+  });
+
+  it("la confirmació anterior desapareix en obrir el formulari de fallida", async () => {
+    servei.llistaRutaAvui.mockResolvedValue(ruta());
+    servei.completaParada.mockResolvedValue({ id: 18, estat: "completada" });
+    await renderitza();
+
+    await boto(0, "Completada").trigger("click");
+    await flushPromises();
+    expect(wrapper.find(".missatge-exit").exists()).toBe(true);
+
+    await boto(1, "Fallida").trigger("click");
+
+    expect(wrapper.find(".missatge-exit").exists()).toBe(false);
+  });
+});
