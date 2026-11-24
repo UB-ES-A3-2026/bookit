@@ -76,6 +76,10 @@ def test_mostra_les_comandes_amb_l_estat_la_biblioteca_i_els_llibres(client, lec
                 {"id": llibres[0].pk, "titol": "La plaça del Diamant", "autor": "Mercè Rodoreda", "portada": ""},
                 {"id": llibres[1].pk, "titol": "Solitud", "autor": "Víctor Català", "portada": ""},
             ],
+            # Camps de la US7. La comanda es crea directament, sense passar per la confirmació.
+            "tipus_lliurament": "domicili",
+            "adreca_lliurament": "",
+            "cost_enviament": "0.00",
             "data_lliurament": None,
             "creada": resposta.json()[0]["creada"],
         }

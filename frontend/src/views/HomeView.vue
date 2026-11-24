@@ -49,6 +49,19 @@ function cercaLlibres() {
       <nav class="header-actions" aria-label="Compte">
         <template v-if="sessio.autenticat">
           <RouterLink
+            class="addresses-link"
+            :to="{ name: 'adreces' }"
+          >
+            Les meves adreces
+          </RouterLink>
+          <RouterLink
+            v-if="sessio.rol === 'usuari'"
+            class="loans-link"
+            :to="{ name: 'prestecs' }"
+          >
+            Els meus préstecs
+          </RouterLink>
+          <RouterLink
             v-if="sessio.rol === 'biblioteca'"
             class="catalog-link"
             :to="{ name: 'cataleg' }"
@@ -239,7 +252,8 @@ function cercaLlibres() {
   color: #980000;
 }
 
-.catalog-link {
+.catalog-link,
+.loans-link {
   padding: 0.65rem 1.2rem;
   border-radius: 0.55rem;
   color: #fff;
@@ -250,8 +264,26 @@ function cercaLlibres() {
   white-space: nowrap;
 }
 
+.addresses-link {
+  padding: 0.65rem 1.2rem;
+  border: 1px solid #980000;
+  border-radius: 0.55rem;
+  color: #980000;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.addresses-link:hover,
+.addresses-link:focus-visible {
+  color: #720000;
+  background: #fbeaea;
+}
+
 .catalog-link:hover,
-.catalog-link:focus-visible {
+.catalog-link:focus-visible,
+.loans-link:hover,
+.loans-link:focus-visible {
   background: #720000;
 }
 
@@ -549,6 +581,12 @@ function cercaLlibres() {
     justify-content: flex-end;
     gap: 0.75rem;
     font-size: 0.85rem;
+  }
+
+  .addresses-link,
+  .catalog-link,
+  .logout-button {
+    padding: 0.45rem 0.55rem;
   }
 
   .hero-section {
