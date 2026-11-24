@@ -5,6 +5,8 @@ from usuaris.validacions import (
     MATRICULA_INVALIDA,
     SEGURETAT_SOCIAL_INVALIDA,
     TELEFON_INVALID,
+    ADRECA_FORA_ZONA_SERVEI,
+    PREFIXOS_CP_CATALUNYA,
     es_dni_nie_valid,
     es_matricula_valida,
     es_num_seguretat_social_valid,
@@ -14,6 +16,9 @@ from usuaris.validacions import (
     valida_matricula,
     valida_num_seguretat_social,
     valida_telefon,
+    valida_codi_postal_zona,
+    normalitza_codi_postal,
+    es_codi_postal_catalunya,
 )
 
 __all__ = [
@@ -21,6 +26,8 @@ __all__ = [
     "MATRICULA_INVALIDA",
     "SEGURETAT_SOCIAL_INVALIDA",
     "TELEFON_INVALID",
+    "ADRECA_FORA_ZONA_SERVEI",
+    "PREFIXOS_CP_CATALUNYA",
     "es_dni_nie_valid",
     "es_matricula_valida",
     "es_num_seguretat_social_valid",
@@ -30,4 +37,7 @@ __all__ = [
     "valida_matricula",
     "valida_num_seguretat_social",
     "valida_telefon",
+    "valida_codi_postal_zona",
+    "normalitza_codi_postal",
+    "es_codi_postal_catalunya",
 ]

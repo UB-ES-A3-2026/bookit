@@ -4,6 +4,9 @@ Una comanda preparada (llesta per a recollida, US15) s'assigna al primer forat
 lliure d'un repartidor validat. Cada lliurament ocupa `DURADA_LLIURAMENT_MINUTS`
 i ha de cabre sencer dins d'una franja de disponibilitat del repartidor, sense
 trepitjar els altres lliuraments que ja té aquell dia.
+
+Les comandes de recollida no s'assignen: no les porta cap repartidor, sinó que
+l'usuari les recull a la biblioteca (US7-T8, US14-T10).
 """
 
 from datetime import datetime, timedelta
@@ -29,7 +32,8 @@ def assigna_comanda(comanda, primer_dia=None):
     aquell dia.
 
     Retorna `True` si l'ha assignada. Si la comanda no està preparada, ja té
-    repartidor o no hi ha cap forat, no la toca i retorna `False`.
+    repartidor, és de recollida a la biblioteca o no hi ha cap forat, no la toca i
+    retorna `False`.
     """
     primer_dia = primer_dia or timezone.localdate() + timedelta(days=1)
     durada = timedelta(minutes=settings.DURADA_LLIURAMENT_MINUTS)
@@ -43,7 +47,11 @@ def assigna_comanda(comanda, primer_dia=None):
             .order_by("pk")
         )
         actual = Comanda.objects.select_for_update().get(pk=comanda.pk)
-        if actual.estat != Comanda.Estat.PREPARADA or actual.repartidor_id is not None:
+        if (
+            actual.estat != Comanda.Estat.PREPARADA
+            or actual.repartidor_id is not None
+            or actual.tipus_lliurament == Comanda.TipusLliurament.RECOLLIDA
+        ):
             return False
 
         for dies in range(DIES_A_BUSCAR):
@@ -73,13 +81,16 @@ def assigna_comanda(comanda, primer_dia=None):
 
 
 def assigna_pendents(primer_dia=None):
-    """Prova d'assignar totes les comandes preparades que encara no tenen repartidor.
+    """Prova d'assignar totes les comandes a domicili preparades que encara no tenen repartidor.
 
-    Les més antigues van primer. Retorna quantes s'han assignat i quantes no.
+    Les més antigues van primer. Retorna quantes s'han assignat i quantes no. Les
+    comandes de recollida no hi compten, perquè no s'assignen mai.
     """
     assignades = sense_repartidor = 0
     pendents = Comanda.objects.filter(
-        estat=Comanda.Estat.PREPARADA, repartidor__isnull=True
+        estat=Comanda.Estat.PREPARADA,
+        repartidor__isnull=True,
+        tipus_lliurament=Comanda.TipusLliurament.DOMICILI,
     ).order_by("creada", "id")
     for comanda in pendents:
         if assigna_comanda(comanda, primer_dia):

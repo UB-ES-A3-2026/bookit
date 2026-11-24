@@ -1,9 +1,15 @@
 """Operacions de les comandes que van més enllà d'un sol model."""
 
+from datetime import timedelta
+from decimal import Decimal
+
+from django.conf import settings
 from django.db import transaction
+from django.db.models import F
+from django.utils import timezone
 
 from cataleg.models import ExemplarBiblioteca
-from prestecs.models import CanviEstat, Comanda, LiniaComanda, Notificacio
+from prestecs.models import CanviEstat, Comanda, LiniaComanda, Notificacio, Prestec
 
 Estat = Comanda.Estat
 
@@ -38,7 +44,20 @@ class LlibresSenseEstoc(Exception):
         self.ids_llibres = ids_llibres
 
 
-def confirma_comanda(usuari, biblioteca, llibres):
+def cost_enviament(tipus_lliurament):
+    """Cost en euros del lliurament (US7). La recollida a la biblioteca és gratuïta."""
+    if tipus_lliurament == Comanda.TipusLliurament.RECOLLIDA:
+        return Decimal("0.00")
+    return settings.COST_ENVIAMENT_DOMICILI
+
+
+def confirma_comanda(
+    usuari,
+    biblioteca,
+    llibres,
+    tipus_lliurament=Comanda.TipusLliurament.DOMICILI,
+    adreca_lliurament="",
+):
     """Crea la comanda i reserva un exemplar de cada llibre a la biblioteca.
 
     Si algun llibre no té exemplars disponibles, no es crea res i es llança
@@ -70,7 +89,13 @@ def confirma_comanda(usuari, biblioteca, llibres):
             exemplar.quantitat -= 1
         ExemplarBiblioteca.objects.bulk_update(exemplars.values(), ["quantitat"])
 
-        comanda = Comanda.objects.create(usuari=usuari, biblioteca=biblioteca)
+        comanda = Comanda.objects.create(
+            usuari=usuari,
+            biblioteca=biblioteca,
+            tipus_lliurament=tipus_lliurament,
+            adreca_lliurament=adreca_lliurament,
+            cost_enviament=cost_enviament(tipus_lliurament),
+        )
         LiniaComanda.objects.bulk_create(
             LiniaComanda(comanda=comanda, llibre=llibre) for llibre in llibres
         )
@@ -101,7 +126,8 @@ def canvia_estat(comanda, nou_estat, repartidor=None, des_de=None):
     """Canvia l'estat de la comanda, en guarda el canvi a l'historial i n'avisa l'usuari (US8).
 
     `repartidor` és qui porta la comanda quan passa a "en camí", perquè la
-    notificació en digui el nom.
+    notificació en digui el nom. Quan passa a "lliurada", també es creen els
+    préstecs dels seus llibres (US19).
 
     `des_de` limita encara més els estats des dels quals es pot fer el canvi. Per
     exemple, la biblioteca només pot marcar com a preparada una comanda rebuda,
@@ -121,8 +147,61 @@ def canvia_estat(comanda, nou_estat, repartidor=None, des_de=None):
         actual.estat = nou_estat
         actual.save(update_fields=["estat", "actualitzada"])
         CanviEstat.objects.create(comanda=actual, estat=nou_estat)
+        if nou_estat == Estat.LLIURADA:
+            # Dins de la mateixa transacció: si no es poden crear els préstecs,
+            # la comanda no queda lliurada.
+            crea_prestecs(actual)
         notifica(actual, repartidor)
 
     comanda.estat = actual.estat
     comanda.actualitzada = actual.actualitzada
     return comanda
+
+
+def cancella_comanda(comanda):
+    """Cancel·la la comanda i torna els seus exemplars a la biblioteca (US20).
+
+    Només es pot cancel·lar una comanda que encara no ha sortit (rebuda o
+    preparada); si no, es llança `TransicioNoPermesa` i no es toca res. El canvi
+    d'estat i la devolució dels exemplars van junts: o es fan tots dos o cap.
+
+    Si la biblioteca ha tret el llibre del seu catàleg mentrestant, no se li torna
+    l'exemplar, perquè ja no l'ofereix.
+    """
+    with transaction.atomic():
+        canvia_estat(comanda, Comanda.Estat.CANCELLADA)
+
+        llibres = comanda.linies.values_list("llibre_id", flat=True)
+        # Bloquejats en el mateix ordre que en confirmar una comanda (per llibre),
+        # perquè una cancel·lació i una confirmació alhora no s'esperin mútuament.
+        exemplars = list(
+            ExemplarBiblioteca.objects.select_for_update()
+            .filter(biblioteca_id=comanda.biblioteca_id, llibre_id__in=llibres)
+            .order_by("llibre_id")
+            .values_list("pk", flat=True)
+        )
+        ExemplarBiblioteca.objects.filter(pk__in=exemplars).update(quantitat=F("quantitat") + 1)
+    return comanda
+
+
+def crea_prestecs(comanda, data_inici=None):
+    """Crea un préstec per cada llibre d'una comanda que s'acaba de lliurar (US19).
+
+    El préstec comença el dia del lliurament i dura `DURADA_PRESTEC_DIES`. Si la
+    comanda ja tenia els préstecs creats, no en crea de nous i retorna els que hi ha.
+    """
+    data_inici = data_inici or timezone.localdate()
+    data_limit = data_inici + timedelta(days=settings.DURADA_PRESTEC_DIES)
+
+    with transaction.atomic():
+        # En l'ordre de la comanda, perquè els préstecs surtin en el mateix ordre.
+        for linia in comanda.linies.filter(prestec__isnull=True).order_by("pk"):
+            Prestec.objects.create(
+                linia=linia,
+                usuari=comanda.usuari,
+                llibre=linia.llibre,
+                biblioteca=comanda.biblioteca,
+                data_inici=data_inici,
+                data_limit=data_limit,
+            )
+    return list(Prestec.objects.filter(linia__comanda=comanda))

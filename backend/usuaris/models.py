@@ -1,9 +1,12 @@
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser
+from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from usuaris.validacions import (
+    valida_codi_postal_zona,
     valida_dni_nie,
     valida_matricula,
     valida_num_seguretat_social,
@@ -75,6 +78,39 @@ class Biblioteca(models.Model):
         related_name="biblioteca",
     )
     nom = models.CharField(max_length=150)
+    carrer = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+    )
+    numero_porta = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+    )
+    latitud = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(-90),
+            MaxValueValidator(90),
+        ],
+    )
+    longitud = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(-180),
+            MaxValueValidator(180),
+        ],
+    )
+
+    def __str__(self):
+        return self.nom
 
     def save(self, *args, **kwargs):
         if self._state.adding:
@@ -201,4 +237,54 @@ class FranjaDisponibilitat(models.Model):
             and self.hora_inici <= inici.time()
             and fi.time() <= self.hora_fi
         )
+
+
+class Adreca(models.Model):
+    usuari = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="adreces",
+    )
+    municipi = models.CharField(max_length=100, verbose_name="municipi")
+    carrer = models.CharField(max_length=255, verbose_name="carrer")
+    pis = models.CharField(max_length=20, verbose_name="pis")
+    codi_postal = models.CharField(max_length=5, verbose_name="codi postal", validators=[valida_codi_postal_zona])
+    latitud = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(-90),
+            MaxValueValidator(90),
+        ],
+    )
+    longitud = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(-180),
+            MaxValueValidator(180),
+        ],
+    )
+    predeterminada = models.BooleanField(
+        default=False,
+        verbose_name="predeterminada",
+    )
+
+    class Meta:
+        verbose_name = "adreça"
+        verbose_name_plural = "adreces"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["usuari"],
+                condition=models.Q(predeterminada=True),
+                name="una_adreca_predeterminada_per_usuari",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.carrer}, pis {self.pis}, {self.municipi}"
 
