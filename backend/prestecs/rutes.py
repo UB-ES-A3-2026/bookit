@@ -118,9 +118,21 @@ def calcula_i_desaa_ordre_ruta(ruta):
 
     with transaction.atomic():
         ruta_bloquejada = Ruta.objects.select_for_update().get(pk=ruta.pk)
-        parades = list(
+
+        list(
             Parada.objects.select_for_update()
-            .select_related("comanda")
+            .filter(ruta=ruta_bloquejada)
+            .values_list("pk", flat=True)
+        )
+
+        parades = list(
+            Parada.objects.select_related(
+                "comanda",
+                "comanda__usuari",
+                "comanda__biblioteca",
+                "comanda__biblioteca__biblioteca",
+            )
+            .prefetch_related("comanda__linies__llibre")
             .filter(ruta=ruta_bloquejada)
             .order_by("id")
         )

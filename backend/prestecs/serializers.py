@@ -85,3 +85,45 @@ class ConfirmacioComandaSerializer(serializers.Serializer):
         if len(ids) > settings.LIMIT_LLIBRES_COMANDA:
             raise serializers.ValidationError(LIMIT_SUPERAT)
         return [llibres[id_llibre] for id_llibre in ids]
+
+class LlibreParadaSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    titol = serializers.CharField(read_only=True)
+    autor = serializers.CharField(read_only=True)
+    portada = serializers.CharField(read_only=True)
+
+
+class ParadaRutaSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    ordre = serializers.IntegerField(read_only=True)
+    tipus = serializers.CharField(read_only=True)
+    comanda = serializers.IntegerField(source="comanda_id", read_only=True)
+    estat = serializers.CharField(source="comanda.estat", read_only=True)
+    llibres = serializers.SerializerMethodField()
+    adreca = serializers.SerializerMethodField()
+
+    def get_llibres(self, parada):
+        linies = parada.comanda.linies.all()
+        llibres = [linia.llibre for linia in linies]
+        return LlibreParadaSerializer(llibres, many=True).data
+
+    def get_adreca(self, parada):
+        comanda = parada.comanda
+
+        if parada.tipus == "recollida":
+            return {
+                "biblioteca": {
+                    "id": comanda.biblioteca_id,
+                    "nom": comanda.biblioteca.biblioteca.nom,
+                },
+                "text": None,
+                "latitud": None,
+                "longitud": None,
+            }
+
+        return {
+            "biblioteca": None,
+            "text": comanda.usuari.address,
+            "latitud": None,
+            "longitud": None,
+        }
