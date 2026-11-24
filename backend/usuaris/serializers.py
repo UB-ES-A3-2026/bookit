@@ -18,9 +18,12 @@ from rest_framework_simplejwt.serializers import (
     TokenRefreshSerializer,
 )
 
-from usuaris.models import Biblioteca, FranjaDisponibilitat, PerfilRepartidor, Usuari
+from usuaris.models import Adreca, Biblioteca, FranjaDisponibilitat, PerfilRepartidor, Usuari
 from usuaris.validacions import (
+    ADRECA_FORA_ZONA_SERVEI,
+    normalitza_codi_postal,
     normalitza,
+    valida_codi_postal_zona,
     valida_dni_nie,
     valida_matricula,
     valida_num_seguretat_social,
@@ -573,3 +576,45 @@ class FrangesSerializer(serializers.Serializer):
                     f"{seguent['hora_fi']:%H:%M} es trepitgen."
                 )
         return franges
+
+
+class AdrecaSerializer(serializers.ModelSerializer):
+    predeterminada = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = Adreca
+        fields = (
+            "id",
+            "municipi",
+            "carrer",
+            "pis",
+            "codi_postal",
+            "predeterminada",
+        )
+        read_only_fields = ("id", "predeterminada")
+
+    def validate_codi_postal(self, value):
+        codi_postal = normalitza_codi_postal(value)
+        try:
+            valida_codi_postal_zona(codi_postal)
+        except DjangoValidationError:
+            raise serializers.ValidationError(ADRECA_FORA_ZONA_SERVEI)
+        return codi_postal
+
+    def validate(self, attrs):
+        codi_postal = attrs.get("codi_postal")
+
+        if codi_postal is None and self.instance is not None:
+            codi_postal = self.instance.codi_postal
+
+        if codi_postal is not None:
+            codi_postal = normalitza_codi_postal(codi_postal)
+            try:
+                valida_codi_postal_zona(codi_postal)
+            except DjangoValidationError:
+                raise serializers.ValidationError(
+                    {"codi_postal": [ADRECA_FORA_ZONA_SERVEI]}
+                )
+            attrs["codi_postal"] = codi_postal
+
+        return attrs
