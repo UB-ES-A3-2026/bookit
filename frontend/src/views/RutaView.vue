@@ -3,9 +3,15 @@ import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import logoImage from "../assets/bookit-logo.jpg";
 import { useSessioStore } from "../stores/sessio.js";
-import { llistaRutaAvui } from "../services/ruta.js";
+import { completaParada, fallaParada, llistaRutaAvui } from "../services/ruta.js";
 
 const TIPUS = { recollida: "Recollida", lliurament: "Lliurament" };
+const ESTATS_PARADA = {
+  completada: "Completada",
+  fallida: "Fallida",
+  cancellada: "Cancel·lada",
+};
+const MAX_MOTIU = 500;
 const ESTATS = {
   rebuda: "Rebuda",
   preparada: "Preparada",
@@ -20,6 +26,14 @@ const sessio = useSessioStore();
 const parades = ref([]);
 const carregant = ref(true);
 const error = ref("");
+
+// Estat de les accions sobre les parades (US13-T5).
+const enviant = ref(null);
+const paradaFallant = ref(null);
+const motiu = ref("");
+const errorMotiu = ref("");
+const errorsParada = ref({});
+const missatge = ref("");
 
 // L'API ja les envia ordenades; es tornen a ordenar per `ordre` perquè la
 // posició que es veu sigui sempre la de la ruta.
@@ -42,6 +56,119 @@ function llocParada(parada) {
 function tancaSessio() {
   sessio.tancarSessio();
   router.push({ name: "home" });
+}
+
+// Una parada sense `estat_parada` es tracta com a pendent.
+function estaPendent(parada) {
+  return (parada.estat_parada ?? "pendent") === "pendent";
+}
+
+function obreFallida(parada) {
+  paradaFallant.value = parada.id;
+  motiu.value = "";
+  errorMotiu.value = "";
+  missatge.value = "";
+  errorsParada.value = { ...errorsParada.value, [parada.id]: "" };
+}
+
+function tancaFallida() {
+  paradaFallant.value = null;
+  motiu.value = "";
+  errorMotiu.value = "";
+}
+
+function textErrorAccio(errorPeticio) {
+  const estat = errorPeticio.response?.status;
+  const detall = errorPeticio.response?.data?.detail;
+  if (estat === 404) {
+    return "Aquesta parada ja no és a la teva ruta.";
+  }
+  if (estat === 409 && typeof detall === "string") {
+    return detall;
+  }
+  return "No s'ha pogut actualitzar la parada. Torna-ho a provar.";
+}
+
+// Després d'una acció es torna a demanar la ruta: completar una parada canvia
+// l'estat de la comanda i una parada fallida torna a planificar la comanda.
+async function recarregaRuta() {
+  try {
+    parades.value = await llistaRutaAvui();
+  } catch {
+    // Es manté la llista actual; el missatge de l'acció ja s'ha mostrat.
+  }
+}
+
+async function executaAccio(parada, accio, textExit, gestionaError) {
+  enviant.value = parada.id;
+  missatge.value = "";
+  // Una acció nova fa que els errors de les accions anteriors ja no valguin.
+  errorsParada.value = {};
+
+  try {
+    await accio();
+    missatge.value = textExit;
+    await recarregaRuta();
+    return true;
+  } catch (errorPeticio) {
+    if (gestionaError?.(errorPeticio)) {
+      return false;
+    }
+    const estat = errorPeticio.response?.status;
+    if (estat === 401 || estat === 403) {
+      router.push({ name: "home" });
+      return false;
+    }
+    errorsParada.value = { ...errorsParada.value, [parada.id]: textErrorAccio(errorPeticio) };
+    if (estat === 404) {
+      await recarregaRuta();
+    }
+    return false;
+  } finally {
+    enviant.value = null;
+  }
+}
+
+async function marcaCompletada(parada) {
+  if (paradaFallant.value === parada.id) {
+    tancaFallida();
+  }
+  await executaAccio(
+    parada,
+    () => completaParada(parada.id),
+    `Parada ${parada.ordre} marcada com a completada.`,
+  );
+}
+
+async function confirmaFallida(parada) {
+  const text = motiu.value.trim();
+  if (!text) {
+    errorMotiu.value = "Cal indicar el motiu.";
+    return;
+  }
+  if (text.length > MAX_MOTIU) {
+    errorMotiu.value = `El motiu no pot tenir més de ${MAX_MOTIU} caràcters.`;
+    return;
+  }
+  errorMotiu.value = "";
+
+  const fet = await executaAccio(
+    parada,
+    () => fallaParada(parada.id, text),
+    `Parada ${parada.ordre} marcada com a fallida.`,
+    (errorPeticio) => {
+      // Un motiu rebutjat pel backend es mostra al costat del camp.
+      const errorCamp = errorPeticio.response?.data?.motiu;
+      if (errorPeticio.response?.status !== 400 || !errorCamp) {
+        return false;
+      }
+      errorMotiu.value = Array.isArray(errorCamp) ? errorCamp[0] : errorCamp;
+      return true;
+    },
+  );
+  if (fet) {
+    tancaFallida();
+  }
 }
 
 async function carregaRuta() {
@@ -114,6 +241,7 @@ onMounted(carregaRuta);
 
       <template v-else>
         <p class="resum">{{ textParades(parades.length) }}</p>
+        <p v-if="missatge" class="missatge-exit" role="status">{{ missatge }}</p>
 
         <ol class="llista-parades" aria-label="Parades de la ruta d'avui">
           <li
@@ -143,6 +271,82 @@ onMounted(carregaRuta);
                   <span class="autor"> · {{ llibre.autor }}</span>
                 </li>
               </ul>
+
+              <div v-if="estaPendent(parada)" class="accions-parada">
+                <div v-if="paradaFallant !== parada.id" class="botons-parada">
+                  <button
+                    type="button"
+                    class="boto-completada"
+                    :disabled="enviant !== null"
+                    :aria-label="`Marcar la parada ${parada.ordre} com a completada`"
+                    @click="marcaCompletada(parada)"
+                  >
+                    {{ enviant === parada.id ? "Desant..." : "Completada" }}
+                  </button>
+                  <button
+                    type="button"
+                    class="boto-fallida"
+                    :disabled="enviant !== null"
+                    :aria-label="`Marcar la parada ${parada.ordre} com a fallida`"
+                    @click="obreFallida(parada)"
+                  >
+                    Fallida
+                  </button>
+                </div>
+
+                <form
+                  v-else
+                  class="form-fallida"
+                  novalidate
+                  @submit.prevent="confirmaFallida(parada)"
+                >
+                  <label :for="`motiu-${parada.id}`">Motiu de la parada fallida</label>
+                  <textarea
+                    :id="`motiu-${parada.id}`"
+                    v-model="motiu"
+                    rows="3"
+                    :maxlength="MAX_MOTIU"
+                    required
+                    :aria-invalid="errorMotiu ? 'true' : 'false'"
+                    :aria-describedby="errorMotiu ? `error-motiu-${parada.id}` : undefined"
+                    placeholder="Per exemple: no hi havia ningú al domicili."
+                  ></textarea>
+                  <p
+                    v-if="errorMotiu"
+                    :id="`error-motiu-${parada.id}`"
+                    class="error-camp"
+                    role="alert"
+                  >
+                    {{ errorMotiu }}
+                  </p>
+                  <div class="botons-parada">
+                    <button type="submit" class="boto-fallida" :disabled="enviant !== null">
+                      {{ enviant === parada.id ? "Desant..." : "Confirmar fallida" }}
+                    </button>
+                    <button
+                      type="button"
+                      class="secondary-button"
+                      :disabled="enviant !== null"
+                      @click="tancaFallida"
+                    >
+                      Cancel·lar
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <p
+                v-else
+                class="estat-parada"
+                :class="`estat-parada-${parada.estat_parada}`"
+              >
+                {{ ESTATS_PARADA[parada.estat_parada] ?? parada.estat_parada }}
+                <span v-if="parada.motiu" class="motiu"> · {{ parada.motiu }}</span>
+              </p>
+
+              <p v-if="errorsParada[parada.id]" class="error-parada" role="alert">
+                {{ errorsParada[parada.id] }}
+              </p>
             </div>
           </li>
         </ol>
@@ -371,5 +575,112 @@ h1 {
 
 .autor {
   color: #4d4541;
+}
+
+.missatge-exit {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.55rem;
+  color: #1d5a36;
+  background: #e6f2ea;
+  font-weight: 700;
+}
+
+.accions-parada {
+  margin-top: 1rem;
+}
+
+.botons-parada {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.boto-completada,
+.boto-fallida {
+  padding: 0.6rem 1.1rem;
+  border: 0;
+  border-radius: 0.55rem;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.boto-completada {
+  background: #1d5a36;
+}
+
+.boto-completada:hover,
+.boto-completada:focus-visible {
+  background: #154429;
+}
+
+.boto-fallida {
+  background: #980000;
+}
+
+.boto-fallida:hover,
+.boto-fallida:focus-visible {
+  background: #740000;
+}
+
+.accions-parada button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.form-fallida {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.form-fallida label {
+  font-weight: 700;
+}
+
+.form-fallida textarea {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #dfd1bd;
+  border-radius: 0.55rem;
+  font: inherit;
+  resize: vertical;
+}
+
+.form-fallida textarea[aria-invalid="true"] {
+  border-color: #980000;
+}
+
+.error-camp,
+.error-parada {
+  margin: 0.5rem 0 0;
+  color: #870000;
+  font-weight: 700;
+}
+
+.estat-parada {
+  display: inline-block;
+  margin: 1rem 0 0;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  color: #4d4541;
+  background: #efe5d6;
+  font-size: 0.85rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.estat-parada-completada {
+  color: #1d5a36;
+  background: #e6f2ea;
+}
+
+.estat-parada-fallida {
+  color: #870000;
+  background: #f8e3e3;
+}
+
+.motiu {
+  font-weight: 400;
 }
 </style>

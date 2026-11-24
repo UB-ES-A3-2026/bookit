@@ -121,6 +121,8 @@ Exemple amb dues parades d'una mateixa comanda:
     "tipus": "recollida",
     "comanda": 12,
     "estat": "preparada",
+    "estat_parada": "pendent",
+    "motiu": "",
     "llibres": [
       {
         "id": 7,
@@ -145,6 +147,8 @@ Exemple amb dues parades d'una mateixa comanda:
     "tipus": "lliurament",
     "comanda": 12,
     "estat": "preparada",
+    "estat_parada": "pendent",
+    "motiu": "",
     "llibres": [
       {
         "id": 7,
@@ -172,6 +176,8 @@ Exemple amb dues parades d'una mateixa comanda:
 | `tipus` | text | No | Sí | `recollida` o `lliurament`. |
 | `comanda` | enter | No | Sí | Identificador de la comanda associada. |
 | `estat` | text | No | Sí | Estat actual de la comanda. |
+| `estat_parada` | text | No | Sí | Estat de la parada: `pendent`, `completada`, `fallida` o `cancellada`. |
+| `motiu` | text | No | Sí | Motiu d'una parada fallida; text buit en els altres casos. |
 | `llibres` | llista | No | Sí | Llibres de la comanda: `id`, `titol`, `autor` i `portada`. |
 | `adreca` | objecte | No | Sí | Ubicació de la parada i dades de biblioteca quan correspon. |
 

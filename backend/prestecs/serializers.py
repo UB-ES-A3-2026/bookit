@@ -100,6 +100,10 @@ class ParadaRutaSerializer(serializers.Serializer):
     tipus = serializers.CharField(read_only=True)
     comanda = serializers.IntegerField(source="comanda_id", read_only=True)
     estat = serializers.CharField(source="comanda.estat", read_only=True)
+    # Estat propi de la parada (US13-T5): el frontend amaga els botons de les
+    # parades que ja s'han completat o han fallat.
+    estat_parada = serializers.CharField(source="estat", read_only=True)
+    motiu = serializers.CharField(read_only=True)
     llibres = serializers.SerializerMethodField()
     adreca = serializers.SerializerMethodField()
 
