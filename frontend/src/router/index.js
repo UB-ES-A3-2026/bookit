@@ -3,6 +3,7 @@ import { useSessioStore } from "../stores/sessio.js";
 import AfegirLlibreView from "../views/AfegirLlibreView.vue";
 import CatalegView from "../views/CatalegView.vue";
 import HomeView from "../views/HomeView.vue";
+import MevesComandesView from "../views/MevesComandesView.vue";
 import LoginView from "../views/LoginView.vue";
 import PrestecsView from "../views/PrestecsView.vue";
 import RegisterConfirmationView from "../views/RegisterConfirmationView.vue";
@@ -26,8 +27,9 @@ export function nomesBiblioteques() {
   return true;
 }
 
-export function nomsUsuaris() {
+export function nomesUsuaris() {
   const sessio = useSessioStore();
+
   if (!sessio.autenticat) {
     return { name: "inici-sessio" };
   }
@@ -53,6 +55,13 @@ const router = createRouter({
       name: "home",
       component: HomeView,
       meta: { titol: "Inici" },
+    },
+    {
+      path: "/comandes",
+      name: "meves-comandes",
+      component: MevesComandesView,
+      meta: { titol: "Les meves comandes" },
+      beforeEnter: nomesUsuaris,
     },
     {
       path: "/registre",
@@ -109,7 +118,7 @@ const router = createRouter({
       name: "prestecs",
       component: PrestecsView,
       meta: { titol: "Els meus préstecs" },
-      beforeEnter: nomsUsuaris,
+      beforeEnter: nomesUsuaris,
     },
   ],
 });
