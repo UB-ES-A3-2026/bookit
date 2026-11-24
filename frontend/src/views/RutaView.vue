@@ -102,7 +102,8 @@ async function recarregaRuta() {
 async function executaAccio(parada, accio, textExit, gestionaError) {
   enviant.value = parada.id;
   missatge.value = "";
-  errorsParada.value = { ...errorsParada.value, [parada.id]: "" };
+  // Una acció nova fa que els errors de les accions anteriors ja no valguin.
+  errorsParada.value = {};
 
   try {
     await accio();

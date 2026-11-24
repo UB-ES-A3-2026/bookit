@@ -132,6 +132,23 @@ describe("marcar una parada com a completada", () => {
     expect(servei.llistaRutaAvui).toHaveBeenCalledTimes(1);
   });
 
+  it("en fer una altra acció esborra l'error d'una parada anterior", async () => {
+    servei.llistaRutaAvui.mockResolvedValue(ruta());
+    servei.completaParada
+      .mockRejectedValueOnce(errorHttp(409, { detail: "La comanda no permet completar aquest lliurament." }))
+      .mockResolvedValueOnce({ id: 18, estat: "completada" });
+    await renderitza();
+
+    await boto(1, "Completada").trigger("click");
+    await flushPromises();
+    expect(parades()[1].find(".error-parada").exists()).toBe(true);
+
+    await boto(0, "Completada").trigger("click");
+    await flushPromises();
+
+    expect(wrapper.find(".error-parada").exists()).toBe(false);
+  });
+
   it("avisa si la parada ja no és a la ruta (404) i torna a carregar-la", async () => {
     servei.llistaRutaAvui.mockResolvedValueOnce(ruta()).mockResolvedValueOnce(ruta());
     servei.completaParada.mockRejectedValue(errorHttp(404));
