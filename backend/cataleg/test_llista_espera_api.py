@@ -196,3 +196,64 @@ def test_camp_usuari_del_cos_no_substitueix_lusuari_autenticat():
     entrada = LlistaEspera.objects.get()
     assert entrada.usuari == usuari
     assert entrada.llibre == llibre
+
+
+def test_dos_usuaris_poden_apuntar_se_al_mateix_llibre():
+    llibre = crear_llibre()
+    primer = crear_usuari(
+        "primer@example.com",
+        carnet="USR-101",
+    )
+    segon = crear_usuari(
+        "segon@example.com",
+        carnet="USR-102",
+    )
+
+    resposta_primer = client_amb_token(primer).post(url_llista(llibre))
+    resposta_segon = client_amb_token(segon).post(url_llista(llibre))
+
+    assert resposta_primer.status_code == status.HTTP_201_CREATED
+    assert resposta_segon.status_code == status.HTTP_201_CREATED
+    assert LlistaEspera.objects.filter(llibre=llibre).count() == 2
+    assert set(
+        LlistaEspera.objects.filter(llibre=llibre).values_list(
+            "usuari_id",
+            flat=True,
+        )
+    ) == {primer.id, segon.id}
+
+
+def test_un_usuari_pot_apuntar_se_a_dos_llibre_diferents():
+    usuari = crear_usuari()
+    primer_llibre = crear_llibre()
+    segon_llibre = Llibre.objects.create(
+        titol="Un altre llibre",
+        autor="Autor de prova",
+        isbn="9788429740028",
+    )
+    client = client_amb_token(usuari)
+
+    resposta_primer = client.post(url_llista(primer_llibre))
+    resposta_segon = client.post(url_llista(segon_llibre))
+
+    assert resposta_primer.status_code == status.HTTP_201_CREATED
+    assert resposta_segon.status_code == status.HTTP_201_CREATED
+    assert LlistaEspera.objects.filter(usuari=usuari).count() == 2
+    assert set(
+        LlistaEspera.objects.filter(usuari=usuari).values_list(
+            "llibre_id",
+            flat=True,
+        )
+    ) == {primer_llibre.id, segon_llibre.id}
+
+
+def test_resposta_post_no_exposa_lusuari():
+    usuari = crear_usuari()
+    llibre = crear_llibre()
+
+    resposta = client_amb_token(usuari).post(url_llista(llibre))
+
+    assert resposta.status_code == status.HTTP_201_CREATED
+    assert set(resposta.data) == {"llibre", "data_alta"}
+    assert resposta.data["llibre"] == llibre.id
+    assert "usuari" not in resposta.data
