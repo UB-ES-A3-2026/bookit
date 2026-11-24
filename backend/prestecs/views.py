@@ -170,10 +170,11 @@ class ComandesBibliotecaView(generics.ListAPIView):
 class ComandaLlestaView(generics.GenericAPIView):
     """La biblioteca marca una comanda seva com a llesta per a recollida (US15-T1).
 
-    "Llesta per a recollida" és l'estat `preparada` (US8). En aquest moment
-    s'assigna a un repartidor si n'hi ha cap amb un forat a les seves franges
-    (US14). Si no, es queda preparada fins que l'ordre `assigna_comandes` la pugui
-    assignar.
+    "Llesta per a recollida" és l'estat `preparada` (US8). Si és a domicili, en
+    aquest moment s'assigna a un repartidor si n'hi ha cap amb un forat a les seves
+    franges (US14). Si no, es queda preparada fins que l'ordre `assigna_comandes` la
+    pugui assignar. Les comandes de recollida no s'assignen: les lliura la mateixa
+    biblioteca (US7-T8).
     """
 
     permission_classes = [EsBibliotecaActiva]
