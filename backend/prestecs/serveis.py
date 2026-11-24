@@ -186,3 +186,41 @@ def completa_parada(parada):
         parada.save(update_fields=["estat", "completada_el"])
 
     return parada
+
+class ParadaFallarJaFallida(Exception):
+    def __init__(self, motiu):
+        super().__init__("La parada ja està fallida.")
+        self.motiu = motiu
+
+
+class ParadaEnEstatTerminal(Exception):
+    def __init__(self):
+        super().__init__("La parada no es pot marcar com a fallida.")
+
+
+def fallar_parada(parada, motiu):
+    from prestecs.models import Parada
+
+    with transaction.atomic():
+        parada = (
+            Parada.objects.select_for_update()
+            .select_related("ruta")
+            .get(pk=parada.pk)
+        )
+
+        if parada.estat == Parada.Estat.FALLIDA:
+            if parada.motiu == motiu:
+                return parada
+            raise ParadaFallarJaFallida(parada.motiu)
+
+        if parada.estat in (
+            Parada.Estat.COMPLETADA,
+            Parada.Estat.CANCELLADA,
+        ):
+            raise ParadaEnEstatTerminal()
+
+        parada.estat = Parada.Estat.FALLIDA
+        parada.motiu = motiu
+        parada.save(update_fields=["estat", "motiu"])
+
+    return parada

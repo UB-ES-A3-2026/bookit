@@ -217,6 +217,11 @@ class Parada(models.Model):
         null=True,
         blank=True,
     )
+    motiu = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+    )
 
     class Meta:
         ordering = ["ordre", "id"]
