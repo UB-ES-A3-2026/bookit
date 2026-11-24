@@ -11,6 +11,7 @@ from prestecs.views import (
     NotificacioLlegidaView,
     NotificacionsLlegidesView,
     NotificacionsView,
+    PrestecsView,
 )
 
 app_name = "prestecs"
@@ -19,6 +20,7 @@ urlpatterns = [
     path("comandes/", ComandesView.as_view(), name="comandes"),
     path("comandes/cost-enviament/", CostEnviamentView.as_view(), name="cost-enviament"),
     path("comandes/<int:pk>/cancellar/", CancellarComandaView.as_view(), name="cancellar-comanda"),
+    path("prestecs/", PrestecsView.as_view(), name="prestecs"),
     path("notificacions/", NotificacionsView.as_view(), name="notificacions"),
     path(
         "notificacions/<int:pk>/llegida/",

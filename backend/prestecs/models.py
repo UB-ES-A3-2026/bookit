@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from cataleg.models import Llibre
 
@@ -173,3 +174,61 @@ class LiniaComanda(models.Model):
 
     def __str__(self):
         return f"{self.llibre} (comanda {self.comanda_id})"
+
+
+class Prestec(models.Model):
+    """Un llibre que l'usuari té en préstec (US19).
+
+    Es crea un préstec per cada línia quan la comanda es lliura. El préstec dura
+    fins que l'usuari torna el llibre (`data_devolucio`), i ho ha de fer abans de
+    la data límit.
+    """
+
+    linia = models.OneToOneField(
+        LiniaComanda,
+        on_delete=models.PROTECT,
+        related_name="prestec",
+    )
+    usuari = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="prestecs",
+    )
+    llibre = models.ForeignKey(
+        Llibre,
+        on_delete=models.PROTECT,
+        related_name="prestecs",
+    )
+    biblioteca = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        limit_choices_to={"role": "biblioteca"},
+        on_delete=models.PROTECT,
+        related_name="prestecs_biblioteca",
+    )
+    data_inici = models.DateField()
+    data_limit = models.DateField()
+    # Buida mentre l'usuari encara té el llibre. La devolució és la US9.
+    data_devolucio = models.DateField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["data_limit", "id"]
+        verbose_name = "préstec"
+        verbose_name_plural = "préstecs"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(data_limit__gte=models.F("data_inici")),
+                name="prestec_acaba_despres_de_comencar",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.llibre} a {self.usuari} fins al {self.data_limit:%d/%m/%Y}"
+
+    @property
+    def retornat(self):
+        return self.data_devolucio is not None
+
+    def termini_superat(self, avui=None):
+        """Diu si l'usuari encara té el llibre i ja ha passat la data límit."""
+        avui = avui or timezone.localdate()
+        return not self.retornat and self.data_limit < avui

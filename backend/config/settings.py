@@ -154,6 +154,10 @@ COST_ENVIAMENT_DOMICILI = Decimal(env.str("COST_ENVIAMENT_DOMICILI", default="2.
 # confirmar amb el Product Owner.
 DURADA_LLIURAMENT_MINUTS = env.int("DURADA_LLIURAMENT_MINUTS", default=30)
 
+# Dies que dura un préstec des que es lliura la comanda (US19). Pendent de confirmar
+# amb el Product Owner.
+DURADA_PRESTEC_DIES = env.int("DURADA_PRESTEC_DIES", default=30)
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",

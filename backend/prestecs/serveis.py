@@ -1,13 +1,15 @@
 """Operacions de les comandes que van més enllà d'un sol model."""
 
+from datetime import timedelta
 from decimal import Decimal
 
 from django.conf import settings
 from django.db import transaction
 from django.db.models import F
+from django.utils import timezone
 
 from cataleg.models import ExemplarBiblioteca
-from prestecs.models import CanviEstat, Comanda, LiniaComanda, Notificacio
+from prestecs.models import CanviEstat, Comanda, LiniaComanda, Notificacio, Prestec
 
 Estat = Comanda.Estat
 
@@ -124,7 +126,8 @@ def canvia_estat(comanda, nou_estat, repartidor=None, des_de=None):
     """Canvia l'estat de la comanda, en guarda el canvi a l'historial i n'avisa l'usuari (US8).
 
     `repartidor` és qui porta la comanda quan passa a "en camí", perquè la
-    notificació en digui el nom.
+    notificació en digui el nom. Quan passa a "lliurada", també es creen els
+    préstecs dels seus llibres (US19).
 
     `des_de` limita encara més els estats des dels quals es pot fer el canvi. Per
     exemple, la biblioteca només pot marcar com a preparada una comanda rebuda,
@@ -144,6 +147,10 @@ def canvia_estat(comanda, nou_estat, repartidor=None, des_de=None):
         actual.estat = nou_estat
         actual.save(update_fields=["estat", "actualitzada"])
         CanviEstat.objects.create(comanda=actual, estat=nou_estat)
+        if nou_estat == Estat.LLIURADA:
+            # Dins de la mateixa transacció: si no es poden crear els préstecs,
+            # la comanda no queda lliurada.
+            crea_prestecs(actual)
         notifica(actual, repartidor)
 
     comanda.estat = actual.estat
@@ -175,3 +182,26 @@ def cancella_comanda(comanda):
         )
         ExemplarBiblioteca.objects.filter(pk__in=exemplars).update(quantitat=F("quantitat") + 1)
     return comanda
+
+
+def crea_prestecs(comanda, data_inici=None):
+    """Crea un préstec per cada llibre d'una comanda que s'acaba de lliurar (US19).
+
+    El préstec comença el dia del lliurament i dura `DURADA_PRESTEC_DIES`. Si la
+    comanda ja tenia els préstecs creats, no en crea de nous i retorna els que hi ha.
+    """
+    data_inici = data_inici or timezone.localdate()
+    data_limit = data_inici + timedelta(days=settings.DURADA_PRESTEC_DIES)
+
+    with transaction.atomic():
+        # En l'ordre de la comanda, perquè els préstecs surtin en el mateix ordre.
+        for linia in comanda.linies.filter(prestec__isnull=True).order_by("pk"):
+            Prestec.objects.create(
+                linia=linia,
+                usuari=comanda.usuari,
+                llibre=linia.llibre,
+                biblioteca=comanda.biblioteca,
+                data_inici=data_inici,
+                data_limit=data_limit,
+            )
+    return list(Prestec.objects.filter(linia__comanda=comanda))

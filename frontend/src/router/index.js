@@ -9,6 +9,7 @@ import HomeView from "../views/HomeView.vue";
 import LlibreDetallView from "../views/LlibreDetallView.vue";
 import MevesComandesView from "../views/MevesComandesView.vue";
 import LoginView from "../views/LoginView.vue";
+import PrestecsView from "../views/PrestecsView.vue";
 import RegisterConfirmationView from "../views/RegisterConfirmationView.vue";
 import RegisterView from "../views/RegisterView.vue";
 import RoleHomeView from "../views/RoleHomeView.vue";
@@ -168,6 +169,13 @@ const router = createRouter({
       name: "detall-llibre",
       component: LlibreDetallView,
       meta: { titol: "Detall del llibre" },
+    },
+    {
+      path: "/prestecs",
+      name: "prestecs",
+      component: PrestecsView,
+      meta: { titol: "Els meus préstecs" },
+      beforeEnter: nomesUsuaris,
     },
   ],
 });

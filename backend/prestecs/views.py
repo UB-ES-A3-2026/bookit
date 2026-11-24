@@ -6,7 +6,7 @@ from rest_framework.response import Response
 
 from cataleg.permisos import EsBibliotecaActiva
 from prestecs.assignacio import assigna_comanda
-from prestecs.models import Comanda
+from prestecs.models import Comanda, Prestec
 from prestecs.permisos import EsUsuariActiu
 from prestecs.serializers import (
     SENSE_ESTOC,
@@ -14,6 +14,7 @@ from prestecs.serializers import (
     ComandaSerializer,
     ConfirmacioComandaSerializer,
     NotificacioSerializer,
+    PrestecSerializer,
 )
 from prestecs.serveis import (
     LlibresSenseEstoc,
@@ -196,3 +197,22 @@ def missatge_no_llesta(estat_actual):
         return "Aquesta comanda ja està llesta per a recollida."
     estat = Comanda.Estat(estat_actual).label.lower()
     return f"Aquesta comanda no es pot marcar com a llesta perquè està {estat}."
+
+
+class PrestecsView(generics.ListAPIView):
+    """Llibres que l'usuari autenticat té en préstec (US19-T2).
+
+    Només surten els que encara no ha tornat, ordenats per data límit, del més
+    proper al més llunyà. Contracte a `docs/api-prestecs.md`.
+    """
+
+    serializer_class = PrestecSerializer
+    permission_classes = [EsUsuariActiu]
+    pagination_class = None
+
+    def get_queryset(self):
+        return (
+            Prestec.objects.filter(usuari=self.request.user, data_devolucio__isnull=True)
+            .select_related("llibre", "biblioteca__biblioteca")
+            .order_by("data_limit", "id")
+        )
