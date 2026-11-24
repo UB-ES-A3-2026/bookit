@@ -36,6 +36,8 @@ Ja hi ha els projectes de backend i frontend i la base de dades PostgreSQL; Djan
 - Tests del backend (des de `backend/`, amb la base de dades aixecada i el `.env` a l'arrel):
   `pip install -r requirements-dev.txt` i `pytest`. pytest-django crea i esborra una base de dades `test_<nom>`.
   Tests de projecte a `backend/tests/`; els de cada app, al `tests.py` de l'app o en fitxers `test_*.py`.
+  Els tests fan servir `config/settings_tests.py`: la configuració de `settings.py` amb una clau fixa, perquè
+  no depenguin del `DJANGO_SECRET_KEY` del `.env` de cadascú.
 - Tests E2E amb Playwright (des de `frontend/`): `npx playwright install chromium` la primera vegada i
   `npm run test:e2e`. Els tests són a `frontend/e2e/` (`*.spec.js`) i aixequen Vite si no n'hi ha cap al port 5173.
 - Tests unitaris del frontend amb Vitest: des de `frontend/`, executeu `npm run test` un cop s'hagi completat US0-T21 i el script estigui configurat.
@@ -47,13 +49,18 @@ Ja hi ha els projectes de backend i frontend i la base de dades PostgreSQL; Djan
   Comprovació: `python manage.py check`. Servidor: `python manage.py runserver`.
 - Apps del backend (una per mòdul): `usuaris`, `cataleg`, `prestecs`. Cada app té el seu `urls.py`
   inclòs a `config/urls.py` sota `/api/<app>/`.
-- No executeu `migrate` fins que existeixi el model d'usuari (US1-T1).
+- El contenidor del backend executa `migrate` en arrencar (US1-T15). Fora de Docker, cal executar
+  `python manage.py migrate` després d'aixecar la base de dades.
 - Base de dades (des de l'arrel): `cp .env.example .env` (canvieu la contrasenya) i `docker compose up -d --wait db`.
   `docker compose ps` ha de mostrar `healthy`. Connexió a `127.0.0.1:5432` (o el `POSTGRES_PORT` del `.env`).
 - Frontend (des de `frontend/`): `npm ci` i `npm run dev` (http://localhost:5173).
 - Entorn complet amb Docker (des de l'arrel): `docker compose up -d --build --wait` aixeca `db`, `backend`
   (http://localhost:8000) i `frontend` (http://localhost:5173). Dins de Docker el backend usa `POSTGRES_HOST=db`.
   Tests del backend al contenidor: `docker compose exec backend pytest`.
+- Sense `DJANGO_DEBUG=True` s'aplica la configuració de producció: HTTPS, cookies segures i un
+  `DJANGO_SECRET_KEY` real obligatori (si no, Django no arrenca). Cal aquesta variable al `.env` per treballar
+  en local fora de Docker; el `docker-compose.yml` i la CI ja la defineixen. Els valors de producció són a la
+  secció "Desplegament" del README.
 
 ## Àrees sensibles
 Explica el pla i espera confirmació abans de tocar:

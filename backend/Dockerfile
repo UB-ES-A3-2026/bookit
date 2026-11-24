@@ -16,5 +16,6 @@ COPY . .
 
 EXPOSE 8000
 
-# Servidor de desenvolupament; es recarrega quan canvia el codi muntat des de ./backend.
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# En arrencar, aplica les migracions pendents i aixeca el servidor de desenvolupament,
+# que es recarrega quan canvia el codi muntat des de ./backend. Si migrate falla, el servidor no arrenca.
+CMD ["sh", "-c", "python manage.py migrate --noinput && exec python manage.py runserver 0.0.0.0:8000"]

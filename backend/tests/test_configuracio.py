@@ -1,5 +1,7 @@
 """Tests de la configuració del projecte: pytest-django i connexió a la base de dades."""
 
+from pathlib import Path
+
 import pytest
 from django.conf import settings
 from django.db import connection
@@ -25,3 +27,15 @@ def test_fa_servir_una_base_de_dades_de_proves():
 def test_ruta_inexistent_retorna_404(client):
     resposta = client.get("/api/no-existeix/")
     assert resposta.status_code == 404
+
+
+def test_els_tokens_es_signen_amb_una_clau_prou_llarga():
+    """PyJWT avisa si la clau té menys de 32 bytes (C23)."""
+    from rest_framework_simplejwt.settings import api_settings
+
+    assert len(api_settings.SIGNING_KEY.encode()) >= 32
+
+
+def test_existeix_la_carpeta_dels_fitxers_estatics():
+    """Si no hi és, WhiteNoise avisa a cada petició (C23)."""
+    assert Path(settings.STATIC_ROOT).is_dir()

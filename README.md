@@ -14,6 +14,10 @@ Projecte d'Enginyeria del Software (UB), treballat amb Scrum i tauler Kanban.
 | `AGENTS.md` | Instruccions del projecte per als agents d'IA |
 | `docs/plantilla-especificacio.md` | Plantilla per especificar tasques als agents |
 | `docs/api-registre.md` | Contracte de l'API de registre entre backend i frontend (US1) |
+| `docs/casos-prova-us0.md` | Casos de prova de la navegació com a convidat (US0) |
+| `docs/prova-manual-us0.md` | Resultats de la prova manual i validació amb el Product Owner (US0) |
+| `docs/casos-prova-us1.md` | Casos de prova del registre d'usuari (US1) |
+| `docs/prova-manual-us1.md` | Resultats de la prova manual i validació amb el Product Owner (US1) |
 | `.github/pull_request_template.md` | Plantilla de PR amb la Definition of Done ampliada |
 | `.github/workflows/ci.yml` | CI amb GitHub Actions: tests del backend i build i tests del frontend a cada PR |
 | `.vscode/` | Configuració compartida de VS Code: extensions recomanades i format en desar |
@@ -24,7 +28,7 @@ Projecte d'Enginyeria del Software (UB), treballat amb Scrum i tauler Kanban.
 - **Frontend**: framework Vue 3 (Vite, Vue Router, Pinia, axios).
 - **Base de dades**: PostgreSQL 16, executat amb Docker. Accés amb l'ORM de Django i migracions.
 - **Entorn de desenvolupament**: VS Code com a IDE, Docker Compose (backend + frontend + PostgreSQL) i variables d'entorn en un fitxer `.env`.
-- **Control de versions i CI**: GitHub i GitHub Actions per executar els tests a cada pull request (sense desplegament de moment).
+- **Control de versions i CI**: GitHub i GitHub Actions per executar els tests a cada pull request i preparar el desplegament del frontend, el backend i la base de dades segons la secció "Desplegament".
 - **Tests**: pytest-django (backend), Vitest (frontend) i Playwright (E2E).
 
 ### Configuració de VS Code
@@ -68,7 +72,14 @@ docker compose ps                  # els tres serveis han de sortir "healthy"
 - Tests del backend dins del contenidor: `docker compose exec backend pytest`.
 - Logs: `docker compose logs -f backend` (o `frontend`).
 - Si canvieu `requirements*.txt` o `package.json`, reconstruïu la imatge: `docker compose up -d --build -V`.
-- El contenidor no executa `migrate`: no s'ha de fer fins que existeixi el model d'usuari (US1-T1).
+- El frontend només pot cridar l'API des dels orígens de `CORS_ALLOWED_ORIGINS` del `.env`. Si el vostre `.env`
+  és anterior a US1-T17, afegiu-hi la variable de `.env.example`.
+- En arrencar, el contenidor del backend aplica les migracions pendents (`migrate`) abans d'aixecar el servidor.
+  Si creeu migracions noves, reinicieu-lo (`docker compose restart backend`) o executeu
+  `docker compose exec backend python manage.py migrate`.
+- Per carregar el catàleg de demostració (biblioteques, llibres, exemplars i valoracions), executeu:
+  `docker compose exec backend python manage.py carrega_dades_exemple`.
+  L'ordre és idempotent i es pot repetir sense duplicar dades.
 
 ## Tests del frontend
 
@@ -208,7 +219,7 @@ El contracte de l'endpoint de registre és a `docs/api-registre.md`. La T5 (toke
 | T1 | Model d'usuari personalitzat (`AbstractUser`) amb correu únic com a identificador, nom, adreça, número de carnet únic i rol (Usuari / Repartidor / Biblioteca). S'ha de fer abans de la primera migració del projecte. | Backend | C3 | Roger | Backlog |
 | T2 | Crear i aplicar la migració inicial a la base de dades PostgreSQL (taula d'usuaris). | Backend | T1, C7 | Roger | Backlog |
 | T3 | Serializer de registre amb validacions segons `docs/api-registre.md`: camps obligatoris, format del correu, format del carnet, unicitat del correu i del carnet, i contrasenya. | Backend | T1 | Alejandro | Backlog |
-| T4 | Endpoint `POST /api/auth/register/` segons `docs/api-registre.md`, amb els missatges d'error exactes dels criteris ("Aquest correu electrònic ja està registrat", "Aquest usuari ja està registrat", "El format d'aquest carnet no es vàlid"). | Backend | T2, T3 | Alejandro | Backlog |
+| T4 | Endpoint `POST /api/auth/register/` segons `docs/api-registre.md`, amb els missatges d'error exactes dels criteris ("Aquest correu electrònic ja està registrat", "Aquest usuari ja està registrat", "El format d'aquest carnet no és vàlid"). | Backend | T2, T3 | Alejandro | Backlog |
 | T6 | Tests unitaris del backend: registre correcte, correu duplicat, carnet duplicat, camps buits, format invàlid. | Backend | T4 | Alejandro | Backlog |
 | T7 | Maquetar el formulari de registre (responsive) amb el selector de tipus de compte (Usuari / Repartidor / Biblioteca). | Frontend | US0-T9 | Sergi Garcia | Backlog |
 | T8 | Validació al client: camps obligatoris, format del correu, coincidència de contrasenyes. | Frontend | T7 | Sergi Garcia | Backlog |
@@ -345,3 +356,90 @@ El contracte de l'endpoint de registre és a `docs/api-registre.md`. La T5 (toke
 | D9 | Correu i portades en producció | DevOps | D3, US1.2-T12, US17-T5 | | Backlog |
 | D10 | Prova de l'aplicació desplegada | QA | D7, D8 | | Backlog |
 | D11 | Documentar el desplegament | DevOps | D7 | | Backlog |
+
+
+
+
+
+## Desplegament
+
+La decisió d'equip per al desplegament de l'aplicació és la següent:
+
+| Component | Servei triat | Motiu | Alternativa descartada |
+|---|---|---|---|
+| Frontend (Vue 3 + Vite) | Render Static Site | Servei gratuït i senzill d'utilitzar per desplegar un frontend estàtic. | Vercel i Netlify: no s'han triat perquè l'equip ha acordat utilitzar Render per al frontend. |
+| Backend (Django + DRF) | Render Web Service | Servei gratuït i senzill d'utilitzar per desplegar una aplicació web amb Django. | Azure: més complex per a un projecte petit. |
+| Base de dades (PostgreSQL 16) | Neon | Servei gratuït, senzill d'utilitzar i compatible amb PostgreSQL i amb l'ORM de Django. | Firebase: és NoSQL i no encaixa amb l'ORM de Django; Azure: més complex per a un projecte petit; Render PostgreSQL: el servei gratuït caduca als 30 dies. |
+
+Aquesta és una decisió de l'equip per a aquest projecte. Es revisarà si canvien les condicions, els plans gratuïts o les necessitats de l'aplicació.
+
+### Limitacions conegudes
+
+- Els serveis gratuïts poden tenir limitacions d'ús, rendiment, emmagatzematge o disponibilitat: [verificar segons el pla vigent abans del desplegament].
+- Render PostgreSQL no s'utilitzarà perquè el servei gratuït caduca als 30 dies.
+
+### Backend a Render Web Service
+
+El backend Django s'executa en producció amb Gunicorn i utilitza WhiteNoise per servir els fitxers estàtics.
+
+A la configuració del servei de Render, l'ordre de compilació ha d'instal·lar les dependències del backend:
+
+pip install -r backend/requirements.txt
+
+cd backend && python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
+
+### Frontend a Render Static Site
+
+El frontend es publica com a lloc estàtic: Render fa el build de Vue i serveix els fitxers de `frontend/dist`. Configuració del servei:
+
+| Camp a Render | Valor |
+|---|---|
+| Root Directory | `frontend` |
+| Build Command | `npm ci && npm run build` |
+| Publish Directory | `dist` |
+| Variable `VITE_API_URL` | `https://<backend>.onrender.com`, sense `/api` al final |
+
+`VITE_API_URL` s'incrusta al codi en fer el build, així que si es canvia cal tornar a desplegar el frontend. Si no està definida, el build de Render s'atura amb un error, perquè el frontend publicat no busqui l'API a `localhost`.
+
+Perquè rutes com `/registre` funcionin en recarregar la pàgina o en obrir-les des d'un enllaç, cal afegir aquesta regla a "Redirects/Rewrites":
+
+| Source | Destination | Action |
+|---|---|---|
+| `/*` | `/index.html` | Rewrite |
+
+Sense la regla, Render busca un fitxer `/registre` que no existeix i respon 404. Amb la regla, sempre serveix `index.html` i és Vue Router qui mostra la pàgina. Els fitxers que sí existeixen (JavaScript, CSS, imatges) es continuen servint normalment.
+
+Per provar el build de producció en local abans de desplegar (des de `frontend/`):
+
+```bash
+VITE_API_URL=http://localhost:8000 npm run build
+npm run preview
+```
+
+### Variables d'entorn del desplegament
+
+Variables del Render Web Service del backend. `<backend>` i `<frontend>` són els noms dels serveis a Render. Els secrets es posen només al panell de Render, mai al repositori.
+
+| Variable | Valor a Render |
+|---|---|
+| `DJANGO_DEBUG` | `False` |
+| `DJANGO_SECRET_KEY` | Clau aleatòria de 32 caràcters com a mínim |
+| `DJANGO_ALLOWED_HOSTS` | `<backend>.onrender.com` |
+| `CORS_ALLOWED_ORIGINS` | `https://<frontend>.onrender.com` |
+| `CSRF_TRUSTED_ORIGINS` | `https://<frontend>.onrender.com` |
+| `DJANGO_PROXY_HTTPS` | `True`, perquè Render acaba l'HTTPS abans d'arribar a Django |
+| `FRONTEND_URL` | `https://<frontend>.onrender.com`, sense `/` al final. És l'adreça dels enllaços dels correus |
+| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Dades de connexió de Neon |
+| `POSTGRES_HOST` | Host directe de Neon, sense `-pooler` |
+| `EMAIL_HOST`, `EMAIL_PORT` | Servidor SMTP. Amb Brevo: `smtp-relay.brevo.com` i `2525` (el 2525 per si el pla gratuït de Render bloqueja els ports SMTP habituals) |
+| `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` | Login i clau SMTP del proveïdor de correu |
+| `EMAIL_USE_TLS` | `True` |
+| `DEFAULT_FROM_EMAIL` | Remitent verificat al proveïdor, p. ex. `bookit <adreça@exemple.cat>` |
+
+Amb `DJANGO_DEBUG=False`, les cookies segures, la redirecció a HTTPS, HSTS i `POSTGRES_SSLMODE=require` s'activen sols. Si s'afegeix un domini propi, cal afegir-lo a les variables de domini.
+
+### Pendent
+
+- [Configurar les variables d'entorn del desplegament](#variables-dentorn-del-desplegament).
+- [Configurar la CI/CD](#cicd).
+- [Documentar la configuració dels serveis de desplegament](#configuració-dels-serveis-de-desplegament).
