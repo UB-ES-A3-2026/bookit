@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -50,6 +51,22 @@ class Comanda(models.Model):
     )
     # On es porta la comanda. Buida si l'usuari la recull a la biblioteca.
     adreca_lliurament = models.TextField(blank=True, default="")
+    # Ubicació de `adreca_lliurament` per al mapa de la ruta (US12-T13). Es
+    # geocodifica en confirmar la comanda; queda buida si no s'ha pogut fer.
+    latitud_lliurament = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+    )
+    longitud_lliurament = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+    )
     # En euros. Es desa en confirmar la comanda, perquè no canviï si després
     # canvia la tarifa.
     cost_enviament = models.DecimalField(max_digits=6, decimal_places=2, default=0)
