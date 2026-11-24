@@ -2,7 +2,14 @@
 
 from django.urls import path
 
-from prestecs.views import ComandaLlestaView, ComandesView, RutaAvuiView
+from prestecs.views import (
+    ComandesView,
+    ComandaLlestaView,
+    NotificacioLlegidaView,
+    NotificacionsLlegidesView,
+    NotificacionsView,
+    RutaAvuiView,
+)
 
 app_name = "prestecs"
 
@@ -17,5 +24,16 @@ urlpatterns = [
         "repartidor/ruta-avui/",
         RutaAvuiView.as_view(),
         name="ruta-avui-repartidor",
+    ),
+    path("notificacions/", NotificacionsView.as_view(), name="notificacions"),
+    path(
+        "notificacions/<int:pk>/llegida/",
+        NotificacioLlegidaView.as_view(),
+        name="notificacio-llegida",
+    ),
+    path(
+        "notificacions/llegides/",
+        NotificacionsLlegidesView.as_view(),
+        name="notificacions-llegides",
     ),
 ]

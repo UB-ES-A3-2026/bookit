@@ -13,6 +13,9 @@ vi.mock("axios", () => ({
   },
 }));
 
+// Les notificacions tenen els seus tests: aquí no fa falta el client de l'API.
+vi.mock("../services/notificacions.js", () => ({}));
+
 vi.mock("vue-router", () => ({
   useRoute: () => route,
   useRouter: () => ({ push }),
