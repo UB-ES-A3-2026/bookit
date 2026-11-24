@@ -3,13 +3,14 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db import transaction
 
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 
 from cataleg.permisos import EsBibliotecaActiva
 from prestecs.assignacio import assigna_comanda
-from prestecs.models import Comanda, Parada, Ruta
+from prestecs.models import Comanda, Parada, Ruta, CanviEstat, Notificacio
 from prestecs.permisos import EsUsuariActiu
 from prestecs.serializers import (
     SENSE_ESTOC,
