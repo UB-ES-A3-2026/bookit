@@ -185,7 +185,13 @@ class Ruta(models.Model):
 class Parada(models.Model):
     class Tipus(models.TextChoices):
         RECOLLIDA = "recollida", "Recollida"
-        LLIVRAMENT = "lliurament", "Lliurament"
+        LLIURAMENT = "lliurament", "Lliurament"
+
+    class Estat(models.TextChoices):
+        PENDENT = "pendent", "Pendent"
+        COMPLETADA = "completada", "Completada"
+        FALLIDA = "fallida", "Fallida"
+        CANCELLADA = "cancellada", "Cancel·lada"
 
     ruta = models.ForeignKey(
         Ruta,
@@ -202,6 +208,16 @@ class Parada(models.Model):
         choices=Tipus.choices,
     )
     ordre = models.PositiveSmallIntegerField()
+
+    estat = models.CharField(
+        max_length=11,
+        choices=Estat.choices,
+        default=Estat.PENDENT,
+    )
+    completada_el = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         ordering = ["ordre", "id"]
@@ -220,3 +236,5 @@ class Parada(models.Model):
 
     def __str__(self):
         return f"{self.get_tipus_display()} - comanda {self.comanda_id} ({self.ordre})"
+
+

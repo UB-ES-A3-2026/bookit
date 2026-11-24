@@ -135,3 +135,11 @@ class NotificacioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notificacio
         fields = ("id", "comanda", "text", "llegida", "creada")
+
+class ParadaCompletadaSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    ordre = serializers.IntegerField(read_only=True)
+    tipus = serializers.CharField(read_only=True)
+    estat = serializers.CharField(read_only=True)
+    completada_el = serializers.DateTimeField(read_only=True)
+    comanda = serializers.IntegerField(source="comanda_id", read_only=True)
