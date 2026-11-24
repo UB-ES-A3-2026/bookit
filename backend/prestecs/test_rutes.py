@@ -98,7 +98,7 @@ def test_es_pot_crear_una_ruta_amb_diverses_parades(repartidor, comanda):
     segona = Parada.objects.create(
         ruta=ruta,
         comanda=comanda,
-        tipus=Parada.Tipus.LLIVRAMENT,
+        tipus=Parada.Tipus.LLIURAMENT,
         ordre=2,
     )
     tercera = Parada.objects.create(
@@ -157,7 +157,7 @@ def test_dues_parades_no_poden_tenir_el_mateix_ordre(repartidor, comanda):
         Parada.objects.create(
             ruta=ruta,
             comanda=comanda,
-            tipus=Parada.Tipus.LLIVRAMENT,
+            tipus=Parada.Tipus.LLIURAMENT,
             ordre=1,
         )
 
@@ -192,7 +192,7 @@ def test_la_mateixa_comanda_pot_tenir_recollida_i_lliurament(repartidor, comanda
     lliurament = Parada.objects.create(
         ruta=ruta,
         comanda=comanda,
-        tipus=Parada.Tipus.LLIVRAMENT,
+        tipus=Parada.Tipus.LLIURAMENT,
         ordre=2,
     )
 
@@ -207,7 +207,7 @@ def test_les_parades_surten_ordenades_per_ordre(repartidor, comanda):
     tercera = Parada.objects.create(
         ruta=ruta,
         comanda=comanda,
-        tipus=Parada.Tipus.LLIVRAMENT,
+        tipus=Parada.Tipus.LLIURAMENT,
         ordre=3,
     )
     primera = Parada.objects.create(
@@ -252,7 +252,7 @@ def test_la_recollida_surt_abans_del_lliurament(repartidor, comanda):
     lliurament = Parada.objects.create(
         ruta=ruta,
         comanda=comanda,
-        tipus=Parada.Tipus.LLIVRAMENT,
+        tipus=Parada.Tipus.LLIURAMENT,
         ordre=1,
     )
     recollida = Parada.objects.create(
@@ -284,7 +284,7 @@ def test_una_ruta_buida_retorna_llista_buida(repartidor):
     "tipus",
     [
         Parada.Tipus.RECOLLIDA,
-        Parada.Tipus.LLIVRAMENT,
+        Parada.Tipus.LLIURAMENT,
     ],
 )
 def test_ruta_amb_un_sol_tipus_de_parada_s_ordena(repartidor, comanda, tipus):
@@ -331,7 +331,7 @@ def test_multiples_llibre_intercalats_repecten_la_precedencia(
     lliurament_un = Parada.objects.create(
         ruta=ruta,
         comanda=comanda,
-        tipus=Parada.Tipus.LLIVRAMENT,
+        tipus=Parada.Tipus.LLIURAMENT,
         ordre=1,
     )
     recollida_dos = Parada.objects.create(
@@ -349,7 +349,7 @@ def test_multiples_llibre_intercalats_repecten_la_precedencia(
     lliurament_dos = Parada.objects.create(
         ruta=ruta,
         comanda=altre,
-        tipus=Parada.Tipus.LLIVRAMENT,
+        tipus=Parada.Tipus.LLIURAMENT,
         ordre=4,
     )
 
@@ -378,7 +378,7 @@ def test_l_algoritme_es_determinista_repetit(repartidor, comanda):
     lliurament = Parada.objects.create(
         ruta=ruta,
         comanda=comanda,
-        tipus=Parada.Tipus.LLIVRAMENT,
+        tipus=Parada.Tipus.LLIURAMENT,
         ordre=3,
     )
 
@@ -403,7 +403,7 @@ def test_persistencia_desada_a_la_base_de_dades(repartidor, comanda):
     lliurament = Parada.objects.create(
         ruta=ruta,
         comanda=comanda,
-        tipus=Parada.Tipus.LLIVRAMENT,
+        tipus=Parada.Tipus.LLIURAMENT,
         ordre=9,
     )
     recollida = Parada.objects.create(
@@ -430,7 +430,7 @@ def test_llivraments_sense_recollida_no_es_poden_liar(repartidor, comanda):
     lliurament = Parada.objects.create(
         ruta=ruta,
         comanda=comanda,
-        tipus=Parada.Tipus.LLIVRAMENT,
+        tipus=Parada.Tipus.LLIURAMENT,
         ordre=1,
     )
 
@@ -484,7 +484,7 @@ def test_la_precedencia_guanya_al_criteri_secundari(repartidor, comanda):
     lliurament = Parada.objects.create(
         ruta=ruta,
         comanda=comanda,
-        tipus=Parada.Tipus.LLIVRAMENT,
+        tipus=Parada.Tipus.LLIURAMENT,
         ordre=1,
     )
     recollida = Parada.objects.create(
@@ -523,7 +523,7 @@ def test_tres_comandes_intercalades_tenen_precedencia(repartidor, comanda):
             Parada.objects.create(
                 ruta=ruta,
                 comanda=comanda_actual,
-                tipus=Parada.Tipus.LLIVRAMENT,
+                tipus=Parada.Tipus.LLIURAMENT,
                 ordre=index + 1,
             )
         )
@@ -553,6 +553,6 @@ def test_tres_comandes_intercalades_tenen_precedencia(repartidor, comanda):
             parada
             for parada in parades
             if parada.comanda_id == comanda_actual.id
-            and parada.tipus == Parada.Tipus.LLIVRAMENT
+            and parada.tipus == Parada.Tipus.LLIURAMENT
         )
         assert posicions[recollida.id] < posicions[lliurament.id]
