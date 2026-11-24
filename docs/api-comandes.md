@@ -34,7 +34,7 @@ Tots els endpoints requereixen la capçalera `Authorization: Bearer <access>` (v
 |---|---|---|
 | Sense la capçalera `Authorization`, o amb un token invàlid o caducat | 401 | La de `docs/api-auth.md`. |
 | Fer servir les rutes de comandes o de notificacions de l'usuari sense el rol `usuari` (biblioteca o repartidor) | 403 | `{"detail": "No té permisos per realitzar aquesta acció."}` |
-| Consultar les comandes de la biblioteca sense ser una biblioteca activa | 403 | `{"detail": "No té permisos per realitzar aquesta acció."}` |
+| Fer servir una ruta `/biblioteca/` sense ser una biblioteca activa | 403 | `{"detail": "No té permisos per realitzar aquesta acció."}` |
 
 ## Estats de la comanda
 
@@ -315,6 +315,31 @@ qui és.
 ```
 
 Una biblioteca només veu les seves comandes.
+
+## Marcar una comanda com a llesta per a recollida
+
+`POST /api/prestecs/biblioteca/comandes/<id>/preparada/`
+
+La biblioteca marca una comanda seva com a "Llesta per a recollida" (US15), que és l'estat `preparada` (P4). Només
+ho pot fer una biblioteca amb el compte actiu; un usuari o un repartidor reben el 403 de
+[Autenticació i permisos](#autenticació-i-permisos). La petició no porta cos.
+
+Un cop preparada, la comanda ja es pot assignar a un repartidor (US14) i l'usuari en rep la notificació (US8).
+
+### Resposta correcta
+
+**200 OK**. La comanda amb el format de [Comanda](#comanda) i l'estat `preparada`.
+
+### Errors
+
+| Cas | Estat | Resposta |
+|---|---|---|
+| La comanda no existeix o és d'una altra biblioteca | 404 | Cos sense contingut rellevant. |
+| La comanda ja és `preparada` | 409 | `{"detail": "Aquesta comanda ja està llesta per a recollida."}` |
+| La comanda és `en_cami`, `lliurada` o `cancellada` | 409 | `{"detail": "Aquesta comanda no es pot marcar com a llesta perquè està en camí."}` (o `lliurada`, `cancel·lada`) |
+
+Una comanda d'una altra biblioteca rep el mateix 404 que una d'inexistent, perquè una biblioteca no pugui saber res
+de les comandes de les altres.
 
 ## Flux del frontend
 

@@ -3,7 +3,10 @@ import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import logoImage from "../assets/bookit-logo.jpg";
 import { useSessioStore } from "../stores/sessio.js";
-import { llistaComandesBiblioteca } from "../services/comandesBiblioteca.js";
+import {
+  llistaComandesBiblioteca,
+  marcaComandaPreparada,
+} from "../services/comandesBiblioteca.js";
 import { formataData, formataDia, textEstat } from "../utils/comandes.js";
 
 const router = useRouter();
@@ -12,19 +15,28 @@ const sessio = useSessioStore();
 const comandes = ref([]);
 const carregant = ref(true);
 const error = ref("");
+// Comanda que s'està marcant com a llesta i missatges d'error de cada comanda.
+const marcant = ref(null);
+const errorsComanda = ref({});
 
 function tancaSessio() {
   sessio.tancarSessio();
   router.push({ name: "home" });
 }
 
-async function carregaComandes() {
-  carregant.value = true;
-  error.value = "";
+async function carregaComandes({ silenciosa = false } = {}) {
+  if (!silenciosa) {
+    carregant.value = true;
+    error.value = "";
+  }
 
   try {
     comandes.value = await llistaComandesBiblioteca();
   } catch (errorPeticio) {
+    // Si falla el refresc després d'una acció, es manté la llista que hi ha.
+    if (silenciosa) {
+      return;
+    }
     // Un compte que no és una biblioteca activa no pot veure aquesta pàgina.
     if (errorPeticio.response?.status === 403) {
       router.push({ name: "home" });
@@ -36,7 +48,55 @@ async function carregaComandes() {
   }
 }
 
-onMounted(carregaComandes);
+function textErrorMarcar(errorPeticio) {
+  const estat = errorPeticio.response?.status;
+  if (estat === 409) {
+    return (
+      errorPeticio.response.data?.detail ??
+      "Aquesta comanda ja no es pot marcar com a llesta."
+    );
+  }
+  if (estat === 404) {
+    return "Aquesta comanda ja no existeix.";
+  }
+  return "No s'ha pogut marcar la comanda com a llesta. Torna-ho a provar més tard.";
+}
+
+async function marcaLlesta(comanda) {
+  if (marcant.value !== null) {
+    return;
+  }
+  marcant.value = comanda.id;
+  const errors = { ...errorsComanda.value };
+  delete errors[comanda.id];
+  errorsComanda.value = errors;
+
+  try {
+    const actualitzada = await marcaComandaPreparada(comanda.id);
+    // La resposta no porta l'usuari: es conserva el que ja teníem.
+    comandes.value = comandes.value.map((actual) =>
+      actual.id === comanda.id ? { ...actual, ...actualitzada } : actual,
+    );
+  } catch (errorPeticio) {
+    const estat = errorPeticio.response?.status;
+    if (estat === 403) {
+      router.push({ name: "home" });
+      return;
+    }
+    errorsComanda.value = {
+      ...errorsComanda.value,
+      [comanda.id]: textErrorMarcar(errorPeticio),
+    };
+    // Amb un 409 o un 404 la llista que es veu està desfasada: es torna a demanar.
+    if (estat === 409 || estat === 404) {
+      await carregaComandes({ silenciosa: true });
+    }
+  } finally {
+    marcant.value = null;
+  }
+}
+
+onMounted(() => carregaComandes());
 </script>
 
 <template>
@@ -71,7 +131,7 @@ onMounted(carregaComandes);
 
       <div v-else-if="error" class="estat estat-error" role="alert">
         <p>{{ error }}</p>
-        <button type="button" class="secondary-button" @click="carregaComandes">
+        <button type="button" class="secondary-button" @click="carregaComandes()">
           Tornar-ho a provar
         </button>
       </div>
@@ -115,6 +175,24 @@ onMounted(carregaComandes);
               <span class="autor"> · {{ llibre.autor }}</span>
             </li>
           </ul>
+
+          <div
+            v-if="comanda.estat === 'rebuda' || errorsComanda[comanda.id]"
+            class="accions-comanda"
+          >
+            <button
+              v-if="comanda.estat === 'rebuda'"
+              type="button"
+              class="primary-button"
+              :disabled="marcant !== null"
+              @click="marcaLlesta(comanda)"
+            >
+              {{ marcant === comanda.id ? "Marcant..." : "Llesta per a recollida" }}
+            </button>
+            <p v-if="errorsComanda[comanda.id]" class="error-comanda" role="alert">
+              {{ errorsComanda[comanda.id] }}
+            </p>
+          </div>
         </li>
       </ol>
     </section>
@@ -323,6 +401,43 @@ h1 {
 
 .autor {
   color: #4d4541;
+}
+
+.accions-comanda {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #efe5d6;
+}
+
+.primary-button {
+  padding: 0.6rem 1.1rem;
+  border: 0;
+  border-radius: 0.55rem;
+  color: #fff;
+  background: #980000;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary-button:hover:not(:disabled),
+.primary-button:focus-visible {
+  background: #740000;
+}
+
+.primary-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.error-comanda {
+  margin: 0;
+  color: #870000;
+  font-weight: 700;
 }
 
 .avis-cancellada {

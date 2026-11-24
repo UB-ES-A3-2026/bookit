@@ -14,7 +14,13 @@ from prestecs.serializers import (
     ConfirmacioComandaSerializer,
     NotificacioSerializer,
 )
-from prestecs.serveis import LlibresSenseEstoc, confirma_comanda, cost_enviament
+from prestecs.serveis import (
+    LlibresSenseEstoc,
+    TransicioNoPermesa,
+    canvia_estat,
+    confirma_comanda,
+    cost_enviament,
+)
 
 
 class ComandesView(generics.GenericAPIView):
@@ -129,3 +135,32 @@ class ComandesBibliotecaView(generics.ListAPIView):
             .prefetch_related("linies__llibre")
             .order_by(F("data_lliurament").asc(nulls_last=True), "creada", "id")
         )
+
+
+class ComandaLlestaView(generics.GenericAPIView):
+    """La biblioteca marca una comanda seva com a llesta per a recollida (US15-T1).
+
+    "Llesta per a recollida" és l'estat `preparada` (US8). A partir d'aquí la
+    comanda es pot assignar a un repartidor (US14).
+    """
+
+    permission_classes = [EsBibliotecaActiva]
+
+    def get_queryset(self):
+        # Una comanda d'una altra biblioteca rep el mateix 404 que una que no existeix.
+        return Comanda.objects.filter(biblioteca=self.request.user)
+
+    def post(self, request, pk):
+        comanda = self.get_object()
+        try:
+            canvia_estat(comanda, Comanda.Estat.PREPARADA, des_de=[Comanda.Estat.REBUDA])
+        except TransicioNoPermesa as error:
+            return Response({"detail": missatge_no_llesta(error.estat_actual)}, status=status.HTTP_409_CONFLICT)
+        return Response(ComandaSerializer(comanda).data)
+
+
+def missatge_no_llesta(estat_actual):
+    if estat_actual == Comanda.Estat.PREPARADA:
+        return "Aquesta comanda ja està llesta per a recollida."
+    estat = Comanda.Estat(estat_actual).label.lower()
+    return f"Aquesta comanda no es pot marcar com a llesta perquè està {estat}."
