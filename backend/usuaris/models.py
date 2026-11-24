@@ -206,3 +206,4 @@ class Adreca(models.Model):
 
     def __str__(self):
         return f"{self.carrer}, pis {self.pis}, {self.municipi}"
+

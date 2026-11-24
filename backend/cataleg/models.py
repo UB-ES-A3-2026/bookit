@@ -84,3 +84,32 @@ class ExemplarBiblioteca(models.Model):
 
     def __str__(self):
         return f"{self.llibre} - {self.biblioteca}"
+
+class LlistaEspera(models.Model):
+    usuari = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="llistes_espera",
+    )
+    llibre = models.ForeignKey(
+        Llibre,
+        on_delete=models.CASCADE,
+        related_name="llistes_espera",
+    )
+    data_alta = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="data d'alta",
+    )
+
+    class Meta:
+        verbose_name = "entrada de la llista d'espera"
+        verbose_name_plural = "entrades de la llista d'espera"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["usuari", "llibre"],
+                name="una_entrada_llista_espera_per_usuari_i_llibre",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.usuari} - {self.llibre}"
