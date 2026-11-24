@@ -18,6 +18,15 @@ export function formataData(data) {
   return `${dia}/${mes}/${any}`;
 }
 
+// Quan es lliura la comanda. Les de recollida no tenen data perquè no les porta
+// cap repartidor: l'usuari les recull a la biblioteca (US14-T10).
+export function textLliurament(comanda) {
+  if (comanda.data_lliurament) {
+    return formataData(comanda.data_lliurament);
+  }
+  return comanda.tipus_lliurament === "recollida" ? "Recollida a la biblioteca" : "Sense data";
+}
+
 // Dia local d'un moment ISO 8601, amb el mateix format que formataData.
 export function formataDia(moment) {
   return new Date(moment).toLocaleDateString("ca-ES", {
