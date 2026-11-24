@@ -31,6 +31,7 @@ Tots els endpoints requereixen la capçalera `Authorization: Bearer <access>` (v
 |---|---|---|
 | Sense la capçalera `Authorization`, o amb un token invàlid o caducat | 401 | La de `docs/api-auth.md`. |
 | Crear una comanda amb un usuari que no té el rol `usuari` (biblioteca o repartidor) | 403 | `{"detail": "No té permisos per realitzar aquesta acció."}` |
+| Fer servir una ruta `/biblioteca/` sense ser una biblioteca activa | 403 | `{"detail": "No té permisos per realitzar aquesta acció."}` |
 
 ## Estats de la comanda
 
@@ -42,7 +43,38 @@ Tots els endpoints requereixen la capçalera `Authorization: Bearer <access>` (v
 | `lliurada` | Lliurada | Quan el repartidor marca el lliurament com a completat (US13). |
 | `cancellada` | Cancel·lada | Quan l'usuari la cancel·la abans que surti (US20). |
 
-Els canvis d'estat permesos i les notificacions que generen es defineixen a la US8.
+### Canvis d'estat permesos
+
+| Des de | Pot passar a |
+|---|---|
+| `rebuda` | `preparada`, `cancellada` |
+| `preparada` | `en_cami`, `cancellada` |
+| `en_cami` | `lliurada`, o tornar a `preparada` si la parada falla i cal tornar-la a planificar (US13) |
+| `lliurada` | Cap: és un estat final. |
+| `cancellada` | Cap: és un estat final. |
+
+Qualsevol altre canvi es rebutja i la comanda es queda com estava. Cada canvi es guarda a l'historial de la
+comanda amb el moment en què es fa, començant per `rebuda` en confirmar-la.
+
+### Notificacions
+
+Cada canvi d'estat, inclosa la confirmació de la comanda, crea una notificació per a l'usuari de la comanda dins de
+l'aplicació. La notificació depèn de l'estat al qual passa la comanda:
+
+| Estat nou | Text de la notificació |
+|---|---|
+| `rebuda` | `La teva comanda s'ha rebut correctament. La biblioteca ja l'està preparant` |
+| `preparada` | `La teva comanda ja està preparada i aviat sortirà cap a casa teva` |
+| `en_cami` | `En/Na {nom del repartidor} ja porta la teva comanda. Està en camí!` |
+| `lliurada` | `La teva comanda s'ha lliurat correctament. Gaudeix del teu llibre!` |
+| `cancellada` | `La teva comanda s'ha cancel·lat.` |
+
+Els textos de `rebuda`, `preparada`, `en_cami` i `lliurada` són literals dels criteris de la US8. Mentre la comanda
+no tingui repartidor assignat (US12), el text de `en_cami` és `El repartidor ja porta la teva comanda. Està en camí!`.
+Si una parada falla i la comanda torna a `preparada` (P6), l'usuari rep un altre cop el text de `preparada`.
+
+Cada notificació té el text, si l'usuari l'ha llegida i quan es va crear. L'endpoint per llistar-les i marcar-les
+com a llegides es defineix a la US8-T3.
 
 ## Comanda
 
@@ -141,6 +173,52 @@ Les validacions es fan en aquest ordre i s'aturen al primer error de cada camp: 
 llibres repetits, llibres inexistents, límit i estoc. Així, una comanda que supera el límit no rep també l'error
 d'estoc.
 
+## Marcar una comanda com a llesta per a recollida
+
+`POST /api/prestecs/biblioteca/comandes/<id>/preparada/`
+
+La biblioteca marca una comanda seva com a "Llesta per a recollida" (US15), que és l'estat `preparada` (P4). Només
+ho pot fer una biblioteca amb el compte actiu; un usuari o un repartidor reben el 403 de
+[Autenticació i permisos](#autenticació-i-permisos). La petició no porta cos.
+
+Un cop preparada, l'usuari en rep la notificació (US8) i la comanda s'assigna a un repartidor si n'hi ha cap amb un
+forat a les seves franges (vegeu [Assignació a un repartidor](#assignació-a-un-repartidor)). Si s'assigna, la
+resposta ja porta la `data_lliurament`.
+
+### Resposta correcta
+
+**200 OK**. La comanda amb el format de [Comanda](#comanda) i l'estat `preparada`.
+
+### Errors
+
+| Cas | Estat | Resposta |
+|---|---|---|
+| La comanda no existeix o és d'una altra biblioteca | 404 | Cos sense contingut rellevant. |
+| La comanda ja és `preparada` | 409 | `{"detail": "Aquesta comanda ja està llesta per a recollida."}` |
+| La comanda és `en_cami`, `lliurada` o `cancellada` | 409 | `{"detail": "Aquesta comanda no es pot marcar com a llesta perquè està en camí."}` (o `lliurada`, `cancel·lada`) |
+
+Una comanda d'una altra biblioteca rep el mateix 404 que una d'inexistent, perquè una biblioteca no pugui saber res
+de les comandes de les altres.
+
+## Assignació a un repartidor
+
+No té endpoint propi: el backend assigna les comandes `preparada` als repartidors (US14-T3), i la ruta del dia del
+repartidor (US12) es farà a partir d'aquestes assignacions.
+
+- Una comanda s'assigna quan la biblioteca la marca com a llesta. Les que en aquell moment no troben cap repartidor
+  es queden `preparada` sense assignar, i l'ordre `python manage.py assigna_comandes` les torna a provar, de la més
+  antiga a la més nova.
+- Cada lliurament ocupa `DURADA_LLIURAMENT_MINUTS` minuts (30 per defecte) i ha de cabre sencer dins d'una franja
+  de disponibilitat del repartidor (`docs/api-franges.md`), sense trepitjar els altres lliuraments que ja té aquell
+  dia. Les comandes cancel·lades deixen el seu forat lliure.
+- Es busca a partir de l'endemà i durant una setmana. Es tria el primer dia amb algun forat i, d'aquell dia, el
+  forat que comença abans. Si dos repartidors poden començar a la mateixa hora, es tria el que té menys lliuraments
+  aquell dia.
+- Només es fan servir repartidors actius amb el perfil validat.
+
+En assignar-la, la comanda guarda el repartidor, la `data_lliurament` i l'hora d'inici i de final del lliurament. De
+moment, d'aquests camps les respostes de l'API només mostren la `data_lliurament`.
+
 ## Flux del frontend
 
 1. L'usuari afegeix llibres a la comanda des dels resultats de la cerca o del detall del llibre (US6-T6). Cada llibre
@@ -163,3 +241,11 @@ s'actualitzen aquí i al model abans d'implementar la resta d'endpoints.
   la comanda, un altre la pot avançar.
 - **P4. "Llesta per a recollida".** És l'estat `preparada` de la US8, no un estat a part (US15).
 - **P5. Un exemplar per llibre.** Cada llibre de la comanda és un exemplar; no se'n poden demanar dos del mateix.
+- **P6. Parada fallida.** Quan una parada falla (US13), la comanda torna de `en_cami` a `preparada` per tornar-la
+  a planificar. Falta confirmar amb el Product Owner que tornar a planificar vol dir això.
+- **P9. Notificacions.** De moment les notificacions només es veuen dins de l'aplicació, no s'envien per correu. El
+  text de la cancel·lació i el de les comandes que es recullen a la biblioteca (US7) els ha de confirmar el Product
+  Owner; ara la recollida rep els mateixos textos que el lliurament a domicili.
+- **P10. Assignació de comandes.** Mentre el Product Owner no digui qui assigna les comandes i quan, ho fa el
+  sistema sol en marcar-les com a llestes, amb l'ordre `assigna_comandes` per a les que es queden sense repartidor.
+  Cada lliurament ocupa 30 minuts i es busca a partir de l'endemà.

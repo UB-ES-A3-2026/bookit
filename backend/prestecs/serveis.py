@@ -3,7 +3,31 @@
 from django.db import transaction
 
 from cataleg.models import ExemplarBiblioteca
-from prestecs.models import Comanda, LiniaComanda
+from prestecs.models import CanviEstat, Comanda, LiniaComanda, Notificacio
+
+Estat = Comanda.Estat
+
+# Text de la notificació segons l'estat al qual passa la comanda. Els de rebuda,
+# preparada, en camí i lliurada són literals dels criteris de la US8. El de la
+# cancel·lació no el diu cap criteri (US20).
+NOTIFICACIONS = {
+    Estat.REBUDA: "La teva comanda s'ha rebut correctament. La biblioteca ja l'està preparant",
+    Estat.PREPARADA: "La teva comanda ja està preparada i aviat sortirà cap a casa teva",
+    Estat.EN_CAMI: "En/Na {repartidor} ja porta la teva comanda. Està en camí!",
+    Estat.LLIURADA: "La teva comanda s'ha lliurat correctament. Gaudeix del teu llibre!",
+    Estat.CANCELLADA: "La teva comanda s'ha cancel·lat.",
+}
+# Mentre la comanda no tingui repartidor assignat (US12), no en podem dir el nom.
+EN_CAMI_SENSE_REPARTIDOR = "El repartidor ja porta la teva comanda. Està en camí!"
+
+
+class TransicioNoPermesa(Exception):
+    """La comanda no pot passar de l'estat actual al que es demana."""
+
+    def __init__(self, estat_actual, nou_estat):
+        super().__init__(f"Una comanda {estat_actual} no pot passar a {nou_estat}.")
+        self.estat_actual = estat_actual
+        self.nou_estat = nou_estat
 
 
 class LlibresSenseEstoc(Exception):
@@ -50,4 +74,55 @@ def confirma_comanda(usuari, biblioteca, llibres):
         LiniaComanda.objects.bulk_create(
             LiniaComanda(comanda=comanda, llibre=llibre) for llibre in llibres
         )
+        CanviEstat.objects.create(comanda=comanda, estat=comanda.estat)
+        notifica(comanda)
+    return comanda
+
+
+def text_notificacio(estat, repartidor=None):
+    """Text de la notificació d'una comanda que passa a `estat`."""
+    if estat == Estat.EN_CAMI:
+        if repartidor is None:
+            return EN_CAMI_SENSE_REPARTIDOR
+        return NOTIFICACIONS[estat].format(repartidor=repartidor.name)
+    return NOTIFICACIONS[estat]
+
+
+def notifica(comanda, repartidor=None):
+    """Avisa l'usuari de l'estat actual de la seva comanda."""
+    return Notificacio.objects.create(
+        usuari_id=comanda.usuari_id,
+        comanda=comanda,
+        text=text_notificacio(comanda.estat, repartidor),
+    )
+
+
+def canvia_estat(comanda, nou_estat, repartidor=None, des_de=None):
+    """Canvia l'estat de la comanda, en guarda el canvi a l'historial i n'avisa l'usuari (US8).
+
+    `repartidor` és qui porta la comanda quan passa a "en camí", perquè la
+    notificació en digui el nom.
+
+    `des_de` limita encara més els estats des dels quals es pot fer el canvi. Per
+    exemple, la biblioteca només pot marcar com a preparada una comanda rebuda,
+    encara que una comanda en camí també hi pugui tornar si falla la parada.
+
+    Si el canvi no està permès (vegeu `TRANSICIONS`), no es toca res i es llança
+    `TransicioNoPermesa`. La comanda es bloqueja mentre es canvia, perquè dues
+    accions alhora (per exemple, cancel·lar-la i recollir-la) no la deixin en un
+    estat incoherent: la segona veu l'estat que ha deixat la primera.
+    """
+    with transaction.atomic():
+        actual = Comanda.objects.select_for_update().get(pk=comanda.pk)
+        permes_aqui = des_de is None or actual.estat in des_de
+        if not (permes_aqui and actual.pot_passar_a(nou_estat)):
+            raise TransicioNoPermesa(actual.estat, nou_estat)
+
+        actual.estat = nou_estat
+        actual.save(update_fields=["estat", "actualitzada"])
+        CanviEstat.objects.create(comanda=actual, estat=nou_estat)
+        notifica(actual, repartidor)
+
+    comanda.estat = actual.estat
+    comanda.actualitzada = actual.actualitzada
     return comanda
