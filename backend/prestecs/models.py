@@ -158,3 +158,65 @@ class LiniaComanda(models.Model):
 
     def __str__(self):
         return f"{self.llibre} (comanda {self.comanda_id})"
+
+class Ruta(models.Model):
+    repartidor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        limit_choices_to={"role": "repartidor"},
+        on_delete=models.PROTECT,
+        related_name="rutes",
+    )
+    data = models.DateField()
+
+    class Meta:
+        verbose_name = "ruta"
+        verbose_name_plural = "rutes"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["repartidor", "data"],
+                name="una_ruta_per_repartidor_i_data",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Ruta de {self.repartidor} - {self.data:%d/%m/%Y}"
+
+
+class Parada(models.Model):
+    class Tipus(models.TextChoices):
+        RECOLLIDA = "recollida", "Recollida"
+        LLIVRAMENT = "lliurament", "Lliurament"
+
+    ruta = models.ForeignKey(
+        Ruta,
+        on_delete=models.CASCADE,
+        related_name="parades",
+    )
+    comanda = models.ForeignKey(
+        Comanda,
+        on_delete=models.PROTECT,
+        related_name="parades",
+    )
+    tipus = models.CharField(
+        max_length=11,
+        choices=Tipus.choices,
+    )
+    ordre = models.PositiveSmallIntegerField()
+
+    class Meta:
+        ordering = ["ordre", "id"]
+        verbose_name = "parada"
+        verbose_name_plural = "parades"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["ruta", "ordre"],
+                name="una_parada_per_ordre_i_ruta",
+            ),
+            models.UniqueConstraint(
+                fields=["ruta", "comanda", "tipus"],
+                name="una_parada_per_comanda_tipus_i_ruta",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.get_tipus_display()} - comanda {self.comanda_id} ({self.ordre})"
