@@ -101,7 +101,7 @@ class LlibreCatalegBibliotecaView(
 
 
 class ExemplarsCatalegBibliotecaView(LlibreCatalegBibliotecaMixin, generics.UpdateAPIView):
-    """Canvia el nombre d'exemplars d'un llibre del catàleg (US17-T4)."""
+    """ Canvia el nombre d'exemplars d'un llibre del catàleg (US17-T4)."""
 
     serializer_class = ExemplarsCatalegSerializer
     http_method_names = ["patch", "options"]
