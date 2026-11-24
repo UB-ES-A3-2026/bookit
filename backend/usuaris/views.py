@@ -5,6 +5,7 @@ import binascii
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from rest_framework import generics
@@ -12,10 +13,13 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
-from usuaris.models import Usuari
+from usuaris.models import FranjaDisponibilitat, Usuari
+from usuaris.permisos import EsRepartidorValidat
 from usuaris.serializers import (
     CAMP_OBLIGATORI,
     BibliotecaRegistreSerializer,
+    FranjaSerializer,
+    FrangesSerializer,
     RepartidorRegistreSerializer,
     UsuariActualSerializer,
     UsuariRegistreSerializer,
@@ -147,3 +151,34 @@ class VerificacioBibliotecaView(generics.GenericAPIView):
             {"detail": "El compte de biblioteca s'ha verificat correctament."},
             status=HTTP_200_OK,
         )
+
+
+class FrangesRepartidorView(generics.GenericAPIView):
+    """Franges de disponibilitat del repartidor autenticat (US14-T2).
+
+    GET les retorna i PUT les substitueix totes per les que s'envien, perquè el
+    repartidor desa l'horari de la setmana sencer d'una vegada. Contracte a
+    `docs/api-franges.md`.
+    """
+
+    serializer_class = FrangesSerializer
+    permission_classes = [EsRepartidorValidat]
+
+    def resposta(self, perfil):
+        return Response({"franges": FranjaSerializer(perfil.franges.all(), many=True).data})
+
+    def get(self, request):
+        return self.resposta(request.user.perfil_repartidor)
+
+    def put(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        perfil = request.user.perfil_repartidor
+        with transaction.atomic():
+            perfil.franges.all().delete()
+            FranjaDisponibilitat.objects.bulk_create(
+                FranjaDisponibilitat(repartidor=perfil, **franja)
+                for franja in serializer.validated_data["franges"]
+            )
+        return self.resposta(perfil)

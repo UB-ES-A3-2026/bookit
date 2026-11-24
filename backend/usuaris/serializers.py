@@ -18,7 +18,7 @@ from rest_framework_simplejwt.serializers import (
     TokenRefreshSerializer,
 )
 
-from usuaris.models import Biblioteca, PerfilRepartidor, Usuari
+from usuaris.models import Biblioteca, FranjaDisponibilitat, PerfilRepartidor, Usuari
 from usuaris.validacions import (
     normalitza,
     valida_dni_nie,
@@ -507,3 +507,69 @@ class RepartidorRegistreSerializer(serializers.ModelSerializer):
             )
             PerfilRepartidor.objects.create(usuari=usuari, **perfil)
         return usuari
+
+
+# Missatges del contracte de les franges (docs/api-franges.md).
+DIA_INVALID = "Tria un dia de la setmana, del 0 (dilluns) al 6 (diumenge)."
+HORA_INVALIDA = "Escriu l'hora amb el format HH:MM."
+FRANJA_AL_REVES = "La franja ha d'acabar després de començar."
+FRANGES_NO_SON_LLISTA = "Envia les franges en una llista."
+ERRORS_HORA = {**ERRORS_OBLIGATORI, "invalid": HORA_INVALIDA}
+
+
+class FranjaSerializer(serializers.ModelSerializer):
+    """Una franja de disponibilitat del repartidor (US14-T2)."""
+
+    dia = serializers.ChoiceField(
+        choices=FranjaDisponibilitat.Dia.choices,
+        error_messages={**ERRORS_OBLIGATORI, "invalid_choice": DIA_INVALID},
+    )
+    hora_inici = serializers.TimeField(
+        format="%H:%M", input_formats=["%H:%M"], error_messages=ERRORS_HORA
+    )
+    hora_fi = serializers.TimeField(
+        format="%H:%M", input_formats=["%H:%M"], error_messages=ERRORS_HORA
+    )
+
+    class Meta:
+        model = FranjaDisponibilitat
+        fields = ("id", "dia", "hora_inici", "hora_fi")
+
+    def validate(self, dades):
+        if dades["hora_fi"] <= dades["hora_inici"]:
+            raise serializers.ValidationError({"hora_fi": [FRANJA_AL_REVES]})
+        return dades
+
+
+class FrangesSerializer(serializers.Serializer):
+    """Totes les franges del repartidor, que substitueixen les que tenia.
+
+    Una llista buida vol dir que el repartidor no està disponible cap dia.
+    """
+
+    franges = FranjaSerializer(many=True, allow_empty=True, error_messages=ERRORS_OBLIGATORI)
+
+    def to_internal_value(self, data):
+        # DRF posaria aquest error dins de `non_field_errors`; així surt com els
+        # altres, directament a `franges`.
+        franges = data.get("franges") if isinstance(data, dict) else None
+        if franges is not None and not isinstance(franges, list):
+            raise serializers.ValidationError({"franges": [FRANGES_NO_SON_LLISTA]})
+        return super().to_internal_value(data)
+
+    def validate_franges(self, franges):
+        """Comprova que cap franja se'n trepitgi una altra del mateix dia.
+
+        Dues franges que es toquen (de 9:00 a 13:00 i de 13:00 a 17:00) no es
+        trepitgen.
+        """
+        ordenades = sorted(franges, key=lambda franja: (franja["dia"], franja["hora_inici"]))
+        for anterior, seguent in zip(ordenades, ordenades[1:]):
+            if anterior["dia"] == seguent["dia"] and seguent["hora_inici"] < anterior["hora_fi"]:
+                dia = FranjaDisponibilitat.Dia(anterior["dia"]).label.lower()
+                raise serializers.ValidationError(
+                    f"Les franges del {dia} de {anterior['hora_inici']:%H:%M} a "
+                    f"{anterior['hora_fi']:%H:%M} i de {seguent['hora_inici']:%H:%M} a "
+                    f"{seguent['hora_fi']:%H:%M} es trepitgen."
+                )
+        return franges
