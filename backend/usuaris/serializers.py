@@ -18,9 +18,13 @@ from rest_framework_simplejwt.serializers import (
     TokenRefreshSerializer,
 )
 
-from usuaris.models import Biblioteca, FranjaDisponibilitat, PerfilRepartidor, Usuari
+from usuaris.geocodificacio import geocodifica_adreca
+from usuaris.models import Adreca, Biblioteca, FranjaDisponibilitat, PerfilRepartidor, Usuari
 from usuaris.validacions import (
+    ADRECA_FORA_ZONA_SERVEI,
+    normalitza_codi_postal,
     normalitza,
+    valida_codi_postal_zona,
     valida_dni_nie,
     valida_matricula,
     valida_num_seguretat_social,
@@ -573,3 +577,104 @@ class FrangesSerializer(serializers.Serializer):
                     f"{seguent['hora_fi']:%H:%M} es trepitgen."
                 )
         return franges
+
+
+class AdrecaSerializer(serializers.ModelSerializer):
+    predeterminada = serializers.BooleanField(read_only=True)
+    latitud = serializers.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        read_only=True,
+    )
+    longitud = serializers.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        read_only=True,
+    )
+
+    class Meta:
+        model = Adreca
+        fields = (
+            "id",
+            "municipi",
+            "carrer",
+            "pis",
+            "codi_postal",
+            "latitud",
+            "longitud",
+            "predeterminada",
+        )
+        read_only_fields = (
+            "id",
+            "latitud",
+            "longitud",
+            "predeterminada",
+        )
+
+    def validate_codi_postal(self, value):
+        codi_postal = normalitza_codi_postal(value)
+        try:
+            valida_codi_postal_zona(codi_postal)
+        except DjangoValidationError:
+            raise serializers.ValidationError(ADRECA_FORA_ZONA_SERVEI)
+        return codi_postal
+
+    def validate(self, attrs):
+        codi_postal = attrs.get("codi_postal")
+
+        if codi_postal is None and self.instance is not None:
+            codi_postal = self.instance.codi_postal
+
+        if codi_postal is not None:
+            codi_postal = normalitza_codi_postal(codi_postal)
+            try:
+                valida_codi_postal_zona(codi_postal)
+            except DjangoValidationError:
+                raise serializers.ValidationError(
+                    {"codi_postal": [ADRECA_FORA_ZONA_SERVEI]}
+                )
+            attrs["codi_postal"] = codi_postal
+
+        return attrs
+
+    def create(self, validated_data):
+        adreca = Adreca.objects.create(**validated_data)
+        coordenades = geocodifica_adreca(adreca)
+
+        adreca.latitud = None
+        adreca.longitud = None
+
+        if coordenades is not None:
+            adreca.latitud, adreca.longitud = coordenades
+
+        adreca.save(update_fields=["latitud", "longitud"])
+        return adreca
+
+    def update(self, instance, validated_data):
+        camps_ubicacio = {
+            "municipi",
+            "carrer",
+            "codi_postal",
+        }
+        ha_canviat_ubicacio = any(
+            camp in validated_data
+            and validated_data[camp] != getattr(instance, camp)
+            for camp in camps_ubicacio
+        )
+
+        for camp, valor in validated_data.items():
+            setattr(instance, camp, valor)
+        instance.save()
+
+        if ha_canviat_ubicacio:
+            coordenades = geocodifica_adreca(instance)
+
+            instance.latitud = None
+            instance.longitud = None
+
+            if coordenades is not None:
+                instance.latitud, instance.longitud = coordenades
+
+            instance.save(update_fields=["latitud", "longitud"])
+
+        return instance

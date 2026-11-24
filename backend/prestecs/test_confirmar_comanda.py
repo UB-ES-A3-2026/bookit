@@ -232,5 +232,6 @@ def test_el_limit_es_comprova_abans_que_l_estoc(client, biblioteca, llibres):
 
 
 @pytest.mark.django_db
-def test_nomes_es_pot_fer_post(client):
-    assert client.get(URL).status_code == 405
+def test_no_es_poden_modificar_ni_esborrar_les_comandes_des_d_aquesta_ruta(client):
+    assert client.put(URL, {}, format="json").status_code == 405
+    assert client.delete(URL).status_code == 405

@@ -32,6 +32,8 @@ async function clica(selector) {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  // Les altres peticions (per exemple, les notificacions de la capçalera, US8) reben una llista buida.
+  api.get.mockResolvedValue({ data: [] });
   pinia = createPinia();
   setActivePinia(pinia);
 });
@@ -50,9 +52,11 @@ const dia = (index) => wrapper.findAll(".dia")[index];
 const horesDelDia = (index) => dia(index).findAll("input").map((camp) => camp.element.value);
 
 function respon(franges) {
-  api.get.mockResolvedValue({
-    data: { franges: franges.map((dades, index) => ({ id: index + 4, ...dades })) },
-  });
+  api.get.mockImplementation(async (ruta) =>
+    ruta === RUTA_API
+      ? { data: { franges: franges.map((dades, index) => ({ id: index + 4, ...dades })) } }
+      : { data: [] },
+  );
 }
 
 async function afegeix(index, inici = "", fi = "") {
