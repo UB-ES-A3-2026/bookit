@@ -195,3 +195,7 @@ class BibliotecaAmbEstocSerializer(serializers.Serializer):
             dades["distancia_km"] = exemplar.distancia_km
 
         return dades
+
+class EntradaLlistaEsperaSerializer(serializers.Serializer):
+    llibre = serializers.IntegerField(source="llibre_id", read_only=True)
+    data_alta = serializers.DateTimeField(read_only=True)

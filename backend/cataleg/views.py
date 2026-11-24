@@ -1,33 +1,32 @@
 """Vistes de l'API del mòdul cataleg."""
 
 from django.db.models import Avg, Count, Exists, OuterRef, Q
+from django.shortcuts import get_object_or_404
 from rest_framework import generics
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import AllowAny
-from django.shortcuts import get_object_or_404
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from cataleg.authentication import AutenticacioJWTOpcional
-from cataleg.serveis import distancia_haversine_km
-from usuaris.models import Adreca, Usuari
-from rest_framework.views import APIView
-
-from cataleg.models import ExemplarBiblioteca, Llibre
-from cataleg.permisos import EsBibliotecaActiva
-from cataleg.serializers import (
-    EdicioLlibreCatalegSerializer,
-    ExemplarsCatalegSerializer,
-    LlibreCatalegSerializer,
-    LlibreCercaSerializer,
+from rest_framework.status import (
+    HTTP_200_OK,
+    HTTP_201_CREATED,
+    HTTP_204_NO_CONTENT,
 )
+from rest_framework.views import APIView
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from cataleg.models import ExemplarBiblioteca, Llibre
+from cataleg.authentication import AutenticacioJWTOpcional
+from cataleg.models import ExemplarBiblioteca, LlistaEspera, Llibre
+from cataleg.permisos import EsBibliotecaActiva
 from cataleg.serializers import (
     BibliotecaAmbEstocSerializer,
     EdicioLlibreCatalegSerializer,
+    EntradaLlistaEsperaSerializer,
     ExemplarsCatalegSerializer,
     LlibreCatalegSerializer,
     LlibreCercaSerializer,
 )
+from cataleg.serveis import distancia_haversine_km
+from usuaris.models import Adreca, Usuari
 
 
 class CercaLlibresPagination(PageNumberPagination):
@@ -226,3 +225,29 @@ class BibliotequesAmbEstocLlibreView(APIView):
             "ordenada_per_distancia": ordenada_per_distancia,
             "missatge": missatge,
         })
+
+class LlistaEsperaLlibreView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, id):
+        llibre = get_object_or_404(Llibre, pk=id)
+
+        entrada, creada = LlistaEspera.objects.get_or_create(
+            usuari=request.user,
+            llibre=llibre,
+        )
+
+        dades = EntradaLlistaEsperaSerializer(entrada).data
+        estat = HTTP_201_CREATED if creada else HTTP_200_OK
+        return Response(dades, status=estat)
+
+    def delete(self, request, id):
+        llibre = get_object_or_404(Llibre, pk=id)
+
+        LlistaEspera.objects.filter(
+            usuari=request.user,
+            llibre=llibre,
+        ).delete()
+
+        return Response(status=HTTP_204_NO_CONTENT)
