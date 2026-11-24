@@ -2,6 +2,7 @@
 import axios from "axios";
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import NotificacionsCapcalera from "../components/NotificacionsCapcalera.vue";
 import logoImage from "../assets/bookit-logo.jpg";
 import { useComandaStore } from "../stores/comanda.js";
 import { useSessioStore } from "../stores/sessio.js";
@@ -104,6 +105,7 @@ watch(() => [textCercat.value, pagina.value], cerca, { immediate: true });
         ></span>
         <span>bookit.</span>
       </RouterLink>
+      <NotificacionsCapcalera class="notificacions-cerca" />
 
       <div class="header-actions">
         <RouterLink v-if="sessio.rol === 'usuari'" class="order-link" :to="{ name: 'comanda' }">
@@ -227,6 +229,11 @@ watch(() => [textCercat.value, pagina.value], cerca, { immediate: true });
   min-height: 100svh;
   color: #241914;
   background: #f9f4eb;
+}
+
+.notificacions-cerca {
+  margin-right: 1rem;
+  margin-left: auto;
 }
 
 .site-header {
