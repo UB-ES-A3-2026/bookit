@@ -42,7 +42,7 @@ Tots els endpoints requereixen la capçalera `Authorization: Bearer <access>` (v
 |---|---|---|
 | `rebuda` | Rebuda | En confirmar la comanda. És l'estat inicial. |
 | `preparada` | Preparada | Quan la biblioteca la marca com a "Llesta per a recollida" (US15). |
-| `en_cami` | En camí | Quan el repartidor la recull a la biblioteca (US12 i US13). |
+| `en_cami` | En camí | Quan el repartidor completa la recollida a la biblioteca (US13-T10). |
 | `lliurada` | Lliurada | Quan el repartidor marca el lliurament com a completat (US13). |
 | `cancellada` | Cancel·lada | Quan l'usuari la cancel·la abans que surti (US20). |
 

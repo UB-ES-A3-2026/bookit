@@ -107,7 +107,7 @@ def test_completar_lliurament_lliu_raa_la_comanda_i_crea_notificacio():
     )
 
 
-def test_completar_recollida_no_lliu_ra_la_comanda():
+def test_completar_recollida_posa_la_comanda_en_cami():
     repartidor = crea_repartidor()
     lector = crea_usuari()
     biblioteca = crea_biblioteca()
@@ -132,8 +132,10 @@ def test_completar_recollida_no_lliu_ra_la_comanda():
     comanda.refresh_from_db()
     assert parada.estat == Parada.Estat.COMPLETADA
     assert parada.completada_el is not None
-    assert comanda.estat == Comanda.Estat.PREPARADA
-    assert not comanda.notificacions.exists()
+    assert comanda.estat == Comanda.Estat.EN_CAMI
+    assert list(comanda.notificacions.values_list("text", flat=True)) == [
+        "En/Na Repartidor de prova ja porta la teva comanda. Està en camí!"
+    ]
 
 
 def test_completar_una_parada_ja_completada_no_duplica_notificacions():

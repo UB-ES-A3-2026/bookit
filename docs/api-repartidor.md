@@ -310,6 +310,15 @@ Regles proposades:
 - no es pot completar una parada que ja no correspon a l'estat actual;
 - no es pot saltar la recollida quan es té una comanda amb aquesta dependència.
 
+Canvi d'estat de la comanda en completar una parada (US13-T10):
+
+- completar la recollida passa la comanda de `preparada` a `en_cami`, i l'usuari
+  rep la notificació amb el nom del repartidor de la ruta;
+- completar el lliurament la passa d'`en_cami` a `lliurada`;
+- si la comanda no pot fer aquest canvi (per exemple, perquè encara no s'ha
+  recollit o perquè s'ha cancel·lat), la parada no es completa i es retorna
+  **409** amb `{"detail": "La comanda no permet completar aquest lliurament."}`.
+
 ## `[proposat]` Reportar una incidència
 
 `POST /api/prestecs/repartidor/parades/<id>/incidencia/`

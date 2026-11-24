@@ -151,7 +151,14 @@ class ParadaAmbComandaInvalida(Exception):
 
 
 def completa_parada(parada):
-    """Completa una parada i completa atòmicament el lliurament associat."""
+    """Completa una parada i canvia l'estat de la comanda en la mateixa transacció.
+
+    Completar la recollida a la biblioteca passa la comanda a "en camí" i
+    completar el lliurament la passa a "lliurada" (US13-T10). En tots dos casos
+    l'usuari rep la notificació amb el nom del repartidor de la ruta (US8). Si la
+    comanda no pot fer aquest canvi, per exemple perquè s'ha cancel·lat o perquè
+    encara no s'ha recollit, la parada no es completa.
+    """
 
     from prestecs.models import Parada
 
@@ -171,15 +178,18 @@ def completa_parada(parada):
         ):
             raise ParadaEnEstatTerminal()
 
-        if parada.tipus == Parada.Tipus.LLIVRAMENT:
-            try:
-                canvia_estat(
-                    parada.comanda,
-                    Comanda.Estat.LLIURADA,
-                    repartidor=parada.ruta.repartidor,
-                )
-            except TransicioNoPermesa as error:
-                raise ParadaAmbComandaInvalida() from error
+        if parada.tipus == Parada.Tipus.RECOLLIDA:
+            nou_estat = Comanda.Estat.EN_CAMI
+        else:
+            nou_estat = Comanda.Estat.LLIURADA
+        try:
+            canvia_estat(
+                parada.comanda,
+                nou_estat,
+                repartidor=parada.ruta.repartidor,
+            )
+        except TransicioNoPermesa as error:
+            raise ParadaAmbComandaInvalida() from error
 
         parada.estat = Parada.Estat.COMPLETADA
         parada.completada_el = timezone.now()
