@@ -186,6 +186,11 @@ class Parada(models.Model):
     class Tipus(models.TextChoices):
         RECOLLIDA = "recollida", "Recollida"
         LLIVRAMENT = "lliurament", "Lliurament"
+    class Estat(models.TextChoices):
+        PENDENT = "pendent", "Pendent"
+        COMPLETADA = "completada", "Completada"
+        FALLIDA = "fallida", "Fallida"
+        CANCELLADA = "cancellada", "Cancel·lada"
 
     ruta = models.ForeignKey(
         Ruta,
@@ -202,6 +207,16 @@ class Parada(models.Model):
         choices=Tipus.choices,
     )
     ordre = models.PositiveSmallIntegerField()
+
+    estat = models.CharField(
+        max_length=11,
+        choices=Estat.choices,
+        default=Estat.PENDENT,
+    )
+    completada_el = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         ordering = ["ordre", "id"]

@@ -1,6 +1,7 @@
 """Operacions de les comandes que van més enllà d'un sol model."""
 
 from django.db import transaction
+from django.utils import timezone
 
 from cataleg.models import ExemplarBiblioteca
 from prestecs.models import CanviEstat, Comanda, LiniaComanda, Notificacio
@@ -126,3 +127,62 @@ def canvia_estat(comanda, nou_estat, repartidor=None, des_de=None):
     comanda.estat = actual.estat
     comanda.actualitzada = actual.actualitzada
     return comanda
+
+
+class ParadaJaCompletada(Exception):
+    """La parada ja ha estat completada."""
+
+    def __init__(self):
+        super().__init__("La parada ja està completada.")
+
+
+class ParadaEnEstatTerminal(Exception):
+    """La parada no es pot completar per estar fallida o cancel·lada."""
+
+    def __init__(self):
+        super().__init__("La parada no es pot completar.")
+
+
+class ParadaAmbComandaInvalida(Exception):
+    """La comanda no permet completar aquest lliurament."""
+
+    def __init__(self):
+        super().__init__("La comanda no permet completar aquest lliurament.")
+
+
+def completa_parada(parada):
+    """Completa una parada i completa atòmicament el lliurament associat."""
+
+    from prestecs.models import Parada
+
+    with transaction.atomic():
+        parada = (
+            Parada.objects.select_for_update()
+            .select_related("ruta", "comanda")
+            .get(pk=parada.pk)
+        )
+
+        if parada.estat == Parada.Estat.COMPLETADA:
+            raise ParadaJaCompletada()
+
+        if parada.estat in (
+            Parada.Estat.FALLIDA,
+            Parada.Estat.CANCELLADA,
+        ):
+            raise ParadaEnEstatTerminal()
+
+        if parada.tipus == Parada.Tipus.LLIVRAMENT:
+            try:
+                canvia_estat(
+                    parada.comanda,
+                    Comanda.Estat.LLIURADA,
+                    repartidor=parada.ruta.repartidor,
+                )
+            except TransicioNoPermesa as error:
+                raise ParadaAmbComandaInvalida() from error
+
+        parada.estat = Parada.Estat.COMPLETADA
+        parada.completada_el = timezone.now()
+        parada.save(update_fields=["estat", "completada_el"])
+
+    return parada
