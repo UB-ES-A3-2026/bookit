@@ -28,6 +28,9 @@ describe("text de la pestanya", () => {
 
     await router.push("/cerca");
     expect(document.title).toBe("Resultats de la cerca · bookit");
+
+    await router.push("/llibres/12");
+    expect(document.title).toBe("Detall del llibre · bookit");
   });
 });
 
