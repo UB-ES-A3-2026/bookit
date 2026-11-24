@@ -5,6 +5,7 @@ from django.urls import path
 from prestecs.views import (
     CancellarComandaView,
     ComandaLlestaView,
+    ComandaRecollidaView,
     ComandesBibliotecaView,
     ComandesView,
     CostEnviamentView,
@@ -41,5 +42,10 @@ urlpatterns = [
         "biblioteca/comandes/<int:pk>/preparada/",
         ComandaLlestaView.as_view(),
         name="comanda-llesta",
+    ),
+    path(
+        "biblioteca/comandes/<int:pk>/recollida/",
+        ComandaRecollidaView.as_view(),
+        name="comanda-recollida",
     ),
 ]

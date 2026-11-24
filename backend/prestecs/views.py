@@ -192,6 +192,42 @@ class ComandaLlestaView(generics.GenericAPIView):
         return Response(ComandaSerializer(comanda).data)
 
 
+class ComandaRecollidaView(generics.GenericAPIView):
+    """La biblioteca lliura una comanda de recollida a l'usuari que la ve a buscar (US7-T8).
+
+    Només les comandes de recollida que ja estan preparades (US15). La comanda passa
+    a "lliurada": l'usuari en rep l'avís (US8) i es creen els préstecs (US19).
+    """
+
+    permission_classes = [EsBibliotecaActiva]
+
+    def get_queryset(self):
+        # Una comanda d'una altra biblioteca rep el mateix 404 que una que no existeix.
+        return Comanda.objects.filter(biblioteca=self.request.user)
+
+    def post(self, request, pk):
+        comanda = self.get_object()
+        if comanda.tipus_lliurament != Comanda.TipusLliurament.RECOLLIDA:
+            return Response({"detail": ES_A_DOMICILI}, status=status.HTTP_409_CONFLICT)
+        try:
+            canvia_estat(comanda, Comanda.Estat.LLIURADA, des_de=[Comanda.Estat.PREPARADA])
+        except TransicioNoPermesa as error:
+            return Response({"detail": missatge_no_recollida(error.estat_actual)}, status=status.HTTP_409_CONFLICT)
+        return Response(ComandaSerializer(comanda).data)
+
+
+ES_A_DOMICILI = "Aquesta comanda és a domicili: la lliura el repartidor."
+
+
+def missatge_no_recollida(estat_actual):
+    if estat_actual == Comanda.Estat.REBUDA:
+        return "Aquesta comanda encara no està llesta per a recollida."
+    if estat_actual == Comanda.Estat.LLIURADA:
+        return "Aquesta comanda ja està lliurada."
+    estat = Comanda.Estat(estat_actual).label.lower()
+    return f"Aquesta comanda no es pot lliurar perquè està {estat}."
+
+
 def missatge_no_llesta(estat_actual):
     if estat_actual == Comanda.Estat.PREPARADA:
         return "Aquesta comanda ja està llesta per a recollida."
