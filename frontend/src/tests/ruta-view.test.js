@@ -271,3 +271,37 @@ describe("accés a la ruta", () => {
     expect(nomesRepartidors()).toEqual({ name: "home" });
   });
 });
+
+describe("mapa de la ruta (US12-T7)", () => {
+  it("mostra el mapa a sobre de la llista amb les parades que tenen ubicació", async () => {
+    servei.llistaRutaAvui.mockResolvedValue([
+      { ...ruta[0], adreca: { ...ruta[0].adreca, latitud: 41.386016, longitud: 2.169408 } },
+      { ...ruta[1], adreca: { ...ruta[1].adreca, latitud: 41.403629, longitud: 2.174355 } },
+      ruta[2],
+      ruta[3],
+    ]);
+    await renderitza();
+
+    expect(wrapper.find('[data-testid="mapa-parades"]').exists()).toBe(true);
+    expect(wrapper.findAll(".marcador-parada")).toHaveLength(2);
+    expect(wrapper.find(".avis-mapa").text()).toContain("2 parades no surten al mapa");
+    // Les parades sense ubicació continuen a la llista.
+    expect(parades()).toHaveLength(4);
+  });
+
+  it("sense ubicacions mostra la llista i l'avís, però no el mapa", async () => {
+    servei.llistaRutaAvui.mockResolvedValue(ruta);
+    await renderitza();
+
+    expect(wrapper.find('[data-testid="mapa-parades"]').exists()).toBe(false);
+    expect(wrapper.find(".avis-mapa").exists()).toBe(true);
+    expect(parades()).toHaveLength(4);
+  });
+
+  it("si avui no hi ha parades no mostra ni el mapa ni l'avís", async () => {
+    servei.llistaRutaAvui.mockResolvedValue([]);
+    await renderitza();
+
+    expect(wrapper.find(".mapa-parades").exists()).toBe(false);
+  });
+});
