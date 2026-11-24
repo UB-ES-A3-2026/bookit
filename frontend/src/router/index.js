@@ -9,10 +9,11 @@ import RegisterConfirmationView from "../views/RegisterConfirmationView.vue";
 import RegisterView from "../views/RegisterView.vue";
 import RoleHomeView from "../views/RoleHomeView.vue";
 import FrangesView from "../views/FrangesView.vue";
+import RutaView from "../views/RutaView.vue";
 import SearchView from "../views/SearchView.vue";
 import VerifyLibraryView from "../views/VerifyLibraryView.vue";
 
-// Les franges només són per als repartidors.
+// Les franges i la ruta només són per als repartidors.
 export function nomesRepartidors() {
   const sessio = useSessioStore();
 
@@ -98,6 +99,13 @@ const router = createRouter({
       name: "franges-repartidor",
       component: FrangesView,
       meta: { titol: "Franges de disponibilitat" },
+      beforeEnter: nomesRepartidors,
+    },
+    {
+      path: "/repartidor/ruta",
+      name: "ruta-repartidor",
+      component: RutaView,
+      meta: { titol: "La meva ruta d'avui" },
       beforeEnter: nomesRepartidors,
     },
     {
