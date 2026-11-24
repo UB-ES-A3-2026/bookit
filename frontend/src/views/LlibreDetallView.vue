@@ -1,15 +1,18 @@
 <script setup>
 import { computed, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import logoImage from "../assets/bookit-logo.jpg";
 import {
   apuntaLlistaEspera,
   llistaBibliotequesAmbEstoc,
 } from "../services/biblioteques.js";
+import { useComandaStore } from "../stores/comanda.js";
 import { useSessioStore } from "../stores/sessio.js";
 
 const route = useRoute();
+const router = useRouter();
 const sessio = useSessioStore();
+const comanda = useComandaStore();
 
 function valorQuery(valor, perDefecte = "") {
   return typeof valor === "string" ? valor : perDefecte;
@@ -40,6 +43,33 @@ let peticioDisponibilitat = 0;
 const biblioteques = computed(
   () => disponibilitat.value?.biblioteques ?? [],
 );
+const avisComanda = ref("");
+// Només els usuaris fan comandes. Sense sessió, el botó porta a iniciar-la.
+const potDemanar = computed(() => !sessio.autenticat || sessio.rol === "usuari");
+const jaALaComanda = computed(() => comanda.teLlibre(llibreId.value));
+
+function afegeixALaComanda(biblioteca) {
+  if (!sessio.autenticat) {
+    router.push({ name: "inici-sessio" });
+    return;
+  }
+
+  avisComanda.value = "";
+  if (comanda.esDUnaAltraBiblioteca(biblioteca)) {
+    avisComanda.value =
+      `La comanda només pot tenir llibres d'una biblioteca. Confirma-la o treu-ne ` +
+      `els llibres de ${comanda.biblioteca.nom} abans d'afegir-ne d'una altra.`;
+    return;
+  }
+
+  comanda.afegirLlibre({
+    id: llibreId.value,
+    titol: titol.value,
+    autor: autor.value,
+    portada: portada.value,
+    biblioteca,
+  });
+}
 const senseEstoc = computed(
   () => disponibilitat.value !== null && biblioteques.value.length === 0,
 );
@@ -204,6 +234,12 @@ watch(llibreId, carregaDisponibilitat, { immediate: true });
             {{ disponibilitat.missatge }}
           </p>
 
+          <p v-if="avisComanda" class="avis-comanda" role="alert">{{ avisComanda }}</p>
+          <p v-if="jaALaComanda" class="en-comanda" role="status">
+            Aquest llibre ja és a la teva comanda.
+            <RouterLink :to="{ name: 'comanda' }">Veure la comanda</RouterLink>
+          </p>
+
           <ul
             v-if="biblioteques.length"
             class="library-list"
@@ -224,15 +260,27 @@ watch(llibreId, carregaDisponibilitat, { immediate: true });
                 <p>{{ biblioteca.carrer }} {{ biblioteca.numero_porta }}</p>
                 <p class="stock-count">{{ textExemplars(biblioteca.exemplars) }}</p>
               </div>
-              <span
-                v-if="
-                  disponibilitat.ordenada_per_distancia &&
-                  biblioteca.distancia_km !== undefined
-                "
-                class="distance"
-              >
-                {{ textDistancia(biblioteca.distancia_km) }}
-              </span>
+              <div class="library-actions">
+                <span
+                  v-if="
+                    disponibilitat.ordenada_per_distancia &&
+                    biblioteca.distancia_km !== undefined
+                  "
+                  class="distance"
+                >
+                  {{ textDistancia(biblioteca.distancia_km) }}
+                </span>
+                <button
+                  v-if="potDemanar"
+                  type="button"
+                  class="add-button"
+                  :disabled="jaALaComanda"
+                  :aria-label="`Afegir a la comanda des de ${biblioteca.nom}`"
+                  @click="afegeixALaComanda(biblioteca)"
+                >
+                  {{ jaALaComanda ? "Afegit a la comanda" : "Afegir a la comanda" }}
+                </button>
+              </div>
             </li>
           </ul>
 
@@ -513,6 +561,54 @@ h1 {
   font-weight: 700;
 }
 
+.library-actions {
+  display: grid;
+  justify-items: end;
+  gap: 0.5rem;
+}
+
+.add-button {
+  padding: 0.55rem 0.8rem;
+  border: 0;
+  border-radius: 0.55rem;
+  color: #fff;
+  background: #980000;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.add-button:hover:not(:disabled) {
+  background: #720000;
+}
+
+.add-button:disabled {
+  color: #887b70;
+  background: #e8dfd3;
+  cursor: default;
+}
+
+.avis-comanda {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #dfc0b0;
+  border-radius: 0.55rem;
+  color: #870000;
+  background: #fff1e8;
+  font-weight: 700;
+}
+
+.en-comanda {
+  margin: 0 0 1rem;
+  color: #355f4b;
+  font-weight: 700;
+}
+
+.en-comanda a {
+  color: #870000;
+}
+
 .distance {
   padding: 0.35rem 0.55rem;
   border-radius: 99px;
@@ -628,9 +724,9 @@ h1 {
     padding: 0.85rem;
   }
 
-  .distance {
+  .library-actions {
     grid-column: 2;
-    justify-self: start;
+    justify-items: start;
   }
 
   .waitlist-panel {
