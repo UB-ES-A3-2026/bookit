@@ -36,6 +36,8 @@ Ja hi ha els projectes de backend i frontend i la base de dades PostgreSQL; Djan
 - Tests del backend (des de `backend/`, amb la base de dades aixecada i el `.env` a l'arrel):
   `pip install -r requirements-dev.txt` i `pytest`. pytest-django crea i esborra una base de dades `test_<nom>`.
   Tests de projecte a `backend/tests/`; els de cada app, al `tests.py` de l'app o en fitxers `test_*.py`.
+  Els tests fan servir `config/settings_tests.py`: la configuració de `settings.py` amb una clau fixa, perquè
+  no depenguin del `DJANGO_SECRET_KEY` del `.env` de cadascú.
 - Tests E2E amb Playwright (des de `frontend/`): `npx playwright install chromium` la primera vegada i
   `npm run test:e2e`. Els tests són a `frontend/e2e/` (`*.spec.js`) i aixequen Vite si no n'hi ha cap al port 5173.
 - Tests unitaris del frontend amb Vitest: des de `frontend/`, executeu `npm run test` un cop s'hagi completat US0-T21 i el script estigui configurat.
