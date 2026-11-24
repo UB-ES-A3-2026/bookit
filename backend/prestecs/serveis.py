@@ -105,7 +105,8 @@ def canvia_estat(comanda, nou_estat, repartidor=None):
     """Canvia l'estat de la comanda, en guarda el canvi a l'historial i n'avisa l'usuari (US8).
 
     `repartidor` és qui porta la comanda quan passa a "en camí", perquè la
-    notificació en digui el nom.
+    notificació en digui el nom. Quan passa a "lliurada", també es creen els
+    préstecs dels seus llibres (US19).
 
     Si el canvi no està permès (vegeu `TRANSICIONS`), no es toca res i es llança
     `TransicioNoPermesa`. La comanda es bloqueja mentre es canvia, perquè dues
@@ -120,6 +121,10 @@ def canvia_estat(comanda, nou_estat, repartidor=None):
         actual.estat = nou_estat
         actual.save(update_fields=["estat", "actualitzada"])
         CanviEstat.objects.create(comanda=actual, estat=nou_estat)
+        if nou_estat == Estat.LLIURADA:
+            # Dins de la mateixa transacció: si no es poden crear els préstecs,
+            # la comanda no queda lliurada.
+            crea_prestecs(actual)
         notifica(actual, repartidor)
 
     comanda.estat = actual.estat
