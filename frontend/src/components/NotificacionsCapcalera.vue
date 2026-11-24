@@ -20,10 +20,8 @@ const desant = ref(false);
 const errorCarrega = ref("");
 const errorAccio = ref("");
 
-const noves = computed(() =>
-  Array.isArray(notificacions.value)
-    ? notificacions.value.filter((notificacio) => !notificacio.llegida)
-    : [],
+const noves = computed(
+  () => notificacions.value.filter((notificacio) => !notificacio.llegida).length,
 );
 
 // Puja a cada càrrega i a cada canvi. Així es descarta una resposta antiga que
@@ -156,22 +154,12 @@ onUnmounted(() => {
     >
       Notificacions
       <span v-if="noves" class="comptador">
-        {{ noves
-        }}<span class="nomes-lector">{{
-          noves === 1 ? " nova" : " noves"
-        }}</span>
+        {{ noves }}<span class="nomes-lector">{{ noves === 1 ? " nova" : " noves" }}</span>
       </span>
     </button>
 
-    <section
-      v-show="obert"
-      :id="idPanell"
-      class="panell"
-      aria-label="Llista de notificacions"
-    >
-      <p v-if="errorAccio" class="error error-accio" role="alert">
-        {{ errorAccio }}
-      </p>
+    <section v-show="obert" :id="idPanell" class="panell" aria-label="Llista de notificacions">
+      <p v-if="errorAccio" class="error error-accio" role="alert">{{ errorAccio }}</p>
 
       <div v-if="errorCarrega" class="error error-carrega" role="alert">
         <p>{{ errorCarrega }}</p>
@@ -179,16 +167,10 @@ onUnmounted(() => {
           Tornar-ho a provar
         </button>
       </div>
-      <p
-        v-else-if="carregant && !notificacions.length"
-        class="buit"
-        role="status"
-      >
+      <p v-else-if="carregant && !notificacions.length" class="buit" role="status">
         Carregant les notificacions...
       </p>
-      <p v-else-if="!notificacions.length" class="buit">
-        No tens cap notificació.
-      </p>
+      <p v-else-if="!notificacions.length" class="buit">No tens cap notificació.</p>
 
       <template v-if="notificacions.length">
         <button
@@ -210,8 +192,7 @@ onUnmounted(() => {
           >
             <p class="text">{{ notificacio.text }}</p>
             <p class="detall">
-              Comanda {{ notificacio.comanda }} ·
-              {{ formataMoment(notificacio.creada) }}
+              Comanda {{ notificacio.comanda }} · {{ formataMoment(notificacio.creada) }}
             </p>
             <button
               v-if="!notificacio.llegida"
