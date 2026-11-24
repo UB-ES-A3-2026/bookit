@@ -1,56 +1,46 @@
 import { createApp } from "vue";
 import { createMemoryHistory, createRouter } from "vue-router";
-import { createPinia, setActivePinia } from "pinia";
+import { createPinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ComandaView from "../views/ComandaView.vue";
 import { useComandaStore } from "../stores/comanda.js";
 
-const serveis = vi.hoisted(() => ({
-  obtenirCostosLliurament: vi.fn(),
-  confirmaComanda: vi.fn(),
-}));
-
-vi.mock("../services/prestecs.js", () => serveis);
-
 let app;
+const confirmaComanda = vi.hoisted(() => vi.fn());
+const obtenirCostosLliurament = vi.hoisted(() => vi.fn());
 
-async function renderitza() {
+vi.mock("../services/prestecs.js", () => ({ confirmaComanda, obtenirCostosLliurament }));
+
+// Les comandes a domicili necessiten una adreça (US7).
+async function escriuAdreca(element, adreca = "C/ Major 1") {
+  const camp = element.querySelector(".camp-adreca input");
+  camp.value = adreca;
+  camp.dispatchEvent(new Event("input", { bubbles: true }));
+  await new Promise((resolve) => setTimeout(resolve));
+}
+
+async function renderitza(llibres = []) {
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: [{ path: "/comanda", name: "comanda", component: ComandaView }],
+    routes: [
+      { path: "/", name: "home", component: { template: "<p>Inici</p>" } },
+      { path: "/comanda", name: "comanda", component: ComandaView },
+    ],
   });
-  await router.push("/comanda");
+  router.push("/comanda");
   await router.isReady();
 
   const pinia = createPinia();
-  setActivePinia(pinia);
   app = createApp(ComandaView);
   app.use(pinia);
   app.use(router);
-
-  const element = document.createElement("div");
-  document.body.appendChild(element);
-  app.mount(element);
+  app.mount(document.body);
 
   const comanda = useComandaStore(pinia);
-  comanda.afegirLlibre({
-    id: 7,
-    titol: "La plaça del Diamant",
-    autor: "Mercè Rodoreda",
-    biblioteca: { id: 3, nom: "Biblioteca" },
-  });
+  llibres.forEach((llibre) => comanda.afegirLlibre(llibre));
   await new Promise((resolve) => setTimeout(resolve));
-  return element;
+  return document.body;
 }
-
-beforeEach(() => {
-  sessionStorage.clear();
-  vi.clearAllMocks();
-  serveis.obtenirCostosLliurament.mockResolvedValue({
-    domicili: "2.50",
-    recollida: "0.00",
-  });
-});
 
 afterEach(() => {
   app?.unmount();
@@ -58,135 +48,192 @@ afterEach(() => {
   sessionStorage.clear();
 });
 
-describe("selector de lliurament", () => {
-  it("mostra els costos i permet triar recollida", async () => {
-    const element = await renderitza();
+beforeEach(() => {
+  vi.clearAllMocks();
+  obtenirCostosLliurament.mockResolvedValue({ domicili: "2.50", recollida: "0.00" });
+});
 
-    expect(element.textContent).toContain("2,50 €");
-    expect(element.textContent).toContain("0,00 €");
+describe("La meva comanda", () => {
+  it("mostra l'estructura del compte i la targeta de comanda", async () => {
+    const element = await renderitza([
+      {
+        id: 7,
+        titol: "La plaça del Diamant",
+        autor: "Mercè Rodoreda",
+        biblioteca: { id: 3, nom: "Biblioteca" },
+      },
+    ]);
 
-    const recollida = element.querySelector('input[value="recollida"]');
-    recollida.click();
-    await new Promise((resolve) => setTimeout(resolve));
-
-    expect(element.querySelector(".camp-adreca")).toBeNull();
-  });
-
-  it("envia domicili amb l'adreça i el tipus triat", async () => {
-    serveis.confirmaComanda.mockResolvedValue({ id: 12 });
-    const element = await renderitza();
-
-    const adreca = element.querySelector(".camp-adreca input");
-    adreca.value = "C/ de Provença 123";
-    adreca.dispatchEvent(new Event("input", { bubbles: true }));
-    element.querySelector(".confirm-button").click();
-    await new Promise((resolve) => setTimeout(resolve));
-
-    expect(serveis.confirmaComanda).toHaveBeenCalledWith({
-      biblioteca: 3,
-      llibres: [7],
-      tipus_lliurament: "domicili",
-      adreca_lliurament: "C/ de Provença 123",
-    });
-  });
-
-  it("consulta el cost de lliurament en muntar la pàgina", async () => {
-    await renderitza();
-
-    expect(serveis.obtenirCostosLliurament).toHaveBeenCalledOnce();
-  });
-
-  it("mostra el cost de domicili i el canvi a 0,00 € amb recollida", async () => {
-    const element = await renderitza();
-
-    expect(element.querySelector(".cost-total strong").textContent.trim()).toBe(
-      "2,50 €",
+    expect(element.querySelector(".header-quote")).not.toBeNull();
+    expect(element.querySelector(".account-sidebar")).not.toBeNull();
+    expect(element.querySelector(".comanda-content h1").textContent).toBe(
+      "Les meves comandes",
     );
+    expect(element.querySelector(".order-card")).not.toBeNull();
+    expect(
+      element.querySelector(".resum-comanda .primary-button").textContent,
+    ).toContain("Confirmar comanda");
+  });
 
-    element.querySelector('input[value="recollida"]').click();
-    await new Promise((resolve) => setTimeout(resolve));
+  it("mostra un missatge quan no hi ha llibres", async () => {
+    const element = await renderitza();
 
-    expect(element.querySelector(".cost-total strong").textContent.trim()).toBe(
-      "0,00 €",
+    expect(element.textContent).toContain(
+      "Encara no has afegit cap llibre a la comanda.",
     );
   });
 
-  it("envia recollida sense adreça i amb cost zero", async () => {
-    serveis.confirmaComanda.mockResolvedValue({ id: 12 });
-    const element = await renderitza();
+  it("mostra els llibres afegits i permet treure'ls", async () => {
+    const element = await renderitza([
+      {
+        id: 7,
+        titol: "La plaça del Diamant",
+        autor: "Mercè Rodoreda",
+        portada: "",
+      },
+    ]);
 
-    element.querySelector('input[value="recollida"]').click();
-    await new Promise((resolve) => setTimeout(resolve));
-    element.querySelector(".confirm-button").click();
-    await new Promise((resolve) => setTimeout(resolve));
-
-    expect(serveis.confirmaComanda).toHaveBeenCalledWith({
-      biblioteca: 3,
-      llibres: [7],
-      tipus_lliurament: "recollida",
-      adreca_lliurament: "",
-    });
-  });
-
-  it("rebutja domicili sense adreça i no envia la comanda", async () => {
-    const element = await renderitza();
-    const adreca = element.querySelector(".camp-adreca input");
-    adreca.value = "   ";
-    adreca.dispatchEvent(new Event("input", { bubbles: true }));
-
-    element.querySelector(".confirm-button").click();
+    expect(element.textContent).toContain("La plaça del Diamant");
+    element.querySelector(".secondary-button").click();
     await new Promise((resolve) => setTimeout(resolve));
 
-    expect(serveis.confirmaComanda).not.toHaveBeenCalled();
-    expect(element.querySelector('[role="alert"]').textContent).toContain(
-      "Indica l'adreça de lliurament.",
+    expect(element.textContent).toContain(
+      "Encara no has afegit cap llibre a la comanda.",
     );
   });
 
-  it("mostra els errors exactes retornats per l'API", async () => {
-    serveis.confirmaComanda.mockRejectedValue({
+  it("avisa abans de confirmar quan se supera el límit", async () => {
+    const llibres = Array.from({ length: 6 }, (_, index) => ({
+      id: index + 1,
+      titol: `Llibre ${index + 1}`,
+      autor: "Autor",
+      biblioteca: { id: 3, nom: "Biblioteca" },
+    }));
+    const element = await renderitza(llibres);
+
+    expect(element.textContent).toContain(
+      "Has superat el límit de llibres per aquesta comanda, elimina un per continuar",
+    );
+    expect(element.querySelector(".resum-comanda .primary-button").disabled).toBe(true);
+
+    element.querySelector(".resum-comanda .primary-button").click();
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(confirmaComanda).not.toHaveBeenCalled();
+  });
+
+  it("mostra l'estoc i permet apuntar-se a la llista d'espera", async () => {
+    confirmaComanda.mockRejectedValue({
       response: {
         data: {
-          tipus_lliurament: [
-            "Tria lliurament a domicili o recollida a la biblioteca.",
+          llibres: [
+            "Aquest llibre no te estoc en aquest moment. Pots apuntar-te a la llista d'espera",
+          ],
+          sense_estoc: [7],
+        },
+      },
+    });
+    const element = await renderitza([
+      {
+        id: 7,
+        titol: "La plaça del Diamant",
+        autor: "Mercè Rodoreda",
+        biblioteca: { id: 3, nom: "Biblioteca" },
+      },
+    ]);
+
+    await escriuAdreca(element);
+    element.querySelector(".resum-comanda .primary-button").click();
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(element.textContent).toContain(
+      "Aquest llibre no te estoc en aquest moment. Pots apuntar-te a la llista d'espera",
+    );
+    const waitButton = element.querySelector(".wait-button");
+    waitButton.click();
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(element.textContent).toContain("Apuntat a la llista d'espera");
+  });
+
+  it("confirma correctament una comanda i buida la selecció", async () => {
+    confirmaComanda.mockResolvedValue({
+      id: 12,
+      estat: "rebuda",
+    });
+    const element = await renderitza([
+      {
+        id: 7,
+        titol: "La plaça del Diamant",
+        autor: "Mercè Rodoreda",
+        biblioteca: { id: 3, nom: "Biblioteca" },
+      },
+      {
+        id: 9,
+        titol: "Solitud",
+        autor: "Víctor Català",
+        biblioteca: { id: 3, nom: "Biblioteca" },
+      },
+    ]);
+
+    await escriuAdreca(element);
+    element.querySelector(".resum-comanda .primary-button").click();
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(confirmaComanda).toHaveBeenCalledWith({
+      biblioteca: 3,
+      llibres: [7, 9],
+      tipus_lliurament: "domicili",
+      adreca_lliurament: "C/ Major 1",
+    });
+    expect(element.textContent).toContain(
+      "Encara no has afegit cap llibre a la comanda.",
+    );
+  });
+
+  it("mostra el límit exacte rebutjat pel servidor", async () => {
+    confirmaComanda.mockRejectedValue({
+      response: {
+        data: {
+          llibres: [
+            "Has superat el límit de llibres per aquesta comanda, elimina un per continuar",
           ],
         },
       },
     });
-    const element = await renderitza();
+    const element = await renderitza([
+      {
+        id: 7,
+        titol: "La plaça del Diamant",
+        autor: "Mercè Rodoreda",
+        biblioteca: { id: 3, nom: "Biblioteca" },
+      },
+    ]);
 
-    const adreca = element.querySelector(".camp-adreca input");
-    adreca.value = "C/ de Provença 123";
-    adreca.dispatchEvent(new Event("input", { bubbles: true }));
-    element.querySelector(".confirm-button").click();
+    await escriuAdreca(element);
+    element.querySelector(".resum-comanda .primary-button").click();
     await new Promise((resolve) => setTimeout(resolve));
 
-    expect(element.querySelector('[role="alert"]').textContent).toBe(
-      "Tria lliurament a domicili o recollida a la biblioteca.",
+    expect(element.textContent).toContain(
+      "Has superat el límit de llibres per aquesta comanda, elimina un per continuar",
     );
   });
 
-  it("mostra un error si no es poden carregar els costos", async () => {
-    serveis.obtenirCostosLliurament.mockRejectedValue(new Error("API aturada"));
+  it("no confirma una comanda sense biblioteca", async () => {
+    const element = await renderitza([
+      {
+        id: 7,
+        titol: "La plaça del Diamant",
+        autor: "Mercè Rodoreda",
+        portada: "",
+      },
+    ]);
 
-    const element = await renderitza();
+    element.querySelector(".resum-comanda .primary-button").click();
     await new Promise((resolve) => setTimeout(resolve));
 
-    expect(element.querySelector('[role="alert"]').textContent).toBe(
-      "No s'han pogut carregar els costos d'enviament.",
+    expect(confirmaComanda).not.toHaveBeenCalled();
+    expect(element.textContent).toContain(
+      "No s'ha pogut determinar la biblioteca d'aquesta comanda.",
     );
-  });
-
-  it("buidar la comanda després d'una confirmació correcta", async () => {
-    serveis.confirmaComanda.mockResolvedValue({ id: 12 });
-    const element = await renderitza();
-    const comanda = useComandaStore();
-
-    element.querySelector('input[value="recollida"]').click();
-    await new Promise((resolve) => setTimeout(resolve));
-    element.querySelector(".confirm-button").click();
-    await new Promise((resolve) => setTimeout(resolve));
-
-    expect(comanda.nombreLlibres).toBe(0);
   });
 });

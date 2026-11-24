@@ -1,14 +1,26 @@
 import { defineStore } from "pinia";
 
-const COMANDA_STORAGE_KEY = "bookit.comanda";
+const ORDER_STORAGE_KEY = "bookit.comanda";
+export const LIMIT_LLIBRES_COMANDA = 5;
 
 function llegirComanda() {
-  try {
-    const dades = JSON.parse(sessionStorage.getItem(COMANDA_STORAGE_KEY));
-    return Array.isArray(dades) ? dades : [];
-  } catch {
+  const comandaDesada = sessionStorage.getItem(ORDER_STORAGE_KEY);
+
+  if (!comandaDesada) {
     return [];
   }
+
+  try {
+    const comanda = JSON.parse(comandaDesada);
+    return Array.isArray(comanda) ? comanda : [];
+  } catch {
+    sessionStorage.removeItem(ORDER_STORAGE_KEY);
+    return [];
+  }
+}
+
+function desarComanda(llibres) {
+  sessionStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(llibres));
 }
 
 export const useComandaStore = defineStore("comanda", {
@@ -18,11 +30,14 @@ export const useComandaStore = defineStore("comanda", {
 
   getters: {
     nombreLlibres: (state) => state.llibres.length,
+    superaLimit: (state) => state.llibres.length > LIMIT_LLIBRES_COMANDA,
+    teLlibre: (state) => (id) =>
+      state.llibres.some((llibre) => llibre.id === id),
   },
 
   actions: {
     afegirLlibre(llibre) {
-      if (this.llibres.some((element) => element.id === llibre.id)) {
+      if (this.teLlibre(llibre.id)) {
         return false;
       }
 
@@ -33,18 +48,18 @@ export const useComandaStore = defineStore("comanda", {
         portada: llibre.portada ?? "",
         biblioteca: llibre.biblioteca ?? null,
       });
-      sessionStorage.setItem(COMANDA_STORAGE_KEY, JSON.stringify(this.llibres));
+      desarComanda(this.llibres);
       return true;
     },
 
     eliminarLlibre(id) {
       this.llibres = this.llibres.filter((llibre) => llibre.id !== id);
-      sessionStorage.setItem(COMANDA_STORAGE_KEY, JSON.stringify(this.llibres));
+      desarComanda(this.llibres);
     },
 
     buidar() {
       this.llibres = [];
-      sessionStorage.removeItem(COMANDA_STORAGE_KEY);
+      sessionStorage.removeItem(ORDER_STORAGE_KEY);
     },
   },
 });
