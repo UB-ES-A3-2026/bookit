@@ -104,6 +104,11 @@ part del contracte i no permeten seleccionar un altre repartidor.
 Retorna una llista plana sense paginació. Les parades estan ordenades pel camp
 `ordre` calculat per US12-T2 i desat a la base de dades.
 
+Les parades d'una comanda que l'usuari ha cancel·lat (US20) no hi surten. En
+consultar la ruta, les que encara estaven pendents es marquen com a
+`cancellada` (US13-T11). Si es prova de completar-ne una, es retorna el 409 de
+parada en estat final.
+
 Si no existeix una ruta creada per al repartidor i la data local actual, retorna
 una llista buida:
 
