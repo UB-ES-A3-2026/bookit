@@ -61,7 +61,16 @@ class ComandaBibliotecaSerializer(ComandaSerializer):
     usuari = serializers.SerializerMethodField()
 
     class Meta(ComandaSerializer.Meta):
-        fields = ("id", "estat", "usuari", "biblioteca", "llibres", "data_lliurament", "creada")
+        fields = (
+            "id",
+            "estat",
+            "usuari",
+            "biblioteca",
+            "llibres",
+            "tipus_lliurament",
+            "data_lliurament",
+            "creada",
+        )
 
     def get_usuari(self, comanda):
         return {"id": comanda.usuari_id, "nom": comanda.usuari.name}
