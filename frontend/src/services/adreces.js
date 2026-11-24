@@ -17,6 +17,11 @@ export async function editaAdreca(id, dades) {
   return resposta.data;
 }
 
+export async function marcaAdrecaPredeterminada(id) {
+  const resposta = await api.post(`${RUTA_ADRECES}${id}/predeterminada/`, {});
+  return resposta.data;
+}
+
 export async function suprimeixAdreca(id) {
   await api.delete(`${RUTA_ADRECES}${id}/`);
 }

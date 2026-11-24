@@ -4,6 +4,7 @@ import {
   afegeixAdreca,
   editaAdreca,
   llistaAdreces,
+  marcaAdrecaPredeterminada,
   suprimeixAdreca,
 } from "../services/adreces.js";
 
@@ -45,6 +46,17 @@ describe("servei d'adreces", () => {
 
     await expect(editaAdreca(3, dades)).resolves.toBe(resposta.data);
     expect(api.patch).toHaveBeenCalledWith("/usuaris/adreces/3/", dades);
+  });
+
+  it("marca una adreça com a predeterminada", async () => {
+    const resposta = { data: { id: 5, predeterminada: true } };
+    api.post.mockResolvedValue(resposta);
+
+    await expect(marcaAdrecaPredeterminada(5)).resolves.toBe(resposta.data);
+    expect(api.post).toHaveBeenCalledWith(
+      "/usuaris/adreces/5/predeterminada/",
+      {},
+    );
   });
 
   it("suprimeix una adreça", async () => {

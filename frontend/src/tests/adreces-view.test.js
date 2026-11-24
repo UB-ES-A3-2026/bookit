@@ -6,6 +6,7 @@ import {
   afegeixAdreca,
   editaAdreca,
   llistaAdreces,
+  marcaAdrecaPredeterminada,
   suprimeixAdreca,
 } from "../services/adreces.js";
 
@@ -13,6 +14,7 @@ vi.mock("../services/adreces.js", () => ({
   afegeixAdreca: vi.fn(),
   editaAdreca: vi.fn(),
   llistaAdreces: vi.fn(),
+  marcaAdrecaPredeterminada: vi.fn(),
   suprimeixAdreca: vi.fn(),
 }));
 
@@ -65,7 +67,7 @@ async function esperaActualitzacio() {
 
 function obreFormulari(element) {
   const botons = [...element.querySelectorAll("button")];
-  botons.find((boto) => boto.textContent.includes("Afegir una adreça")).click();
+  botons.find((boto) => boto.textContent.includes("Afegir nova adreça")).click();
 }
 
 function ompleFormulari(element, dades = dadesAdreca) {
@@ -88,6 +90,7 @@ beforeEach(() => {
   llistaAdreces.mockResolvedValue([]);
   afegeixAdreca.mockReset();
   editaAdreca.mockReset();
+  marcaAdrecaPredeterminada.mockReset();
   suprimeixAdreca.mockReset();
   vi.spyOn(window, "confirm").mockReturnValue(true);
 });
@@ -181,6 +184,61 @@ describe("pàgina Les meves adreces", () => {
 
     expect(element.querySelector("#adreca-codi_postal-error").textContent).toContain(
       "Aquesta adreça està fora de la zona de servei",
+    );
+    expect(element.querySelector(".zone-warning").textContent).toContain(
+      "Aquesta adreça està fora de la zona de servei",
+    );
+  });
+
+  it("marca una adreça com a predeterminada i actualitza la llista", async () => {
+    const altraAdreca = {
+      ...adrecaInicial,
+      id: 2,
+      carrer: "Carrer Nou 5",
+      predeterminada: false,
+    };
+    llistaAdreces.mockResolvedValue([adrecaInicial, altraAdreca]);
+    marcaAdrecaPredeterminada.mockResolvedValue({
+      ...altraAdreca,
+      predeterminada: true,
+    });
+    const element = renderitza();
+    await esperaActualitzacio();
+
+    element
+      .querySelector('[aria-label="Fer predeterminada l\'adreça de Carrer Nou 5"]')
+      .click();
+    await esperaActualitzacio();
+
+    expect(marcaAdrecaPredeterminada).toHaveBeenCalledWith(altraAdreca.id);
+    expect(element.querySelectorAll(".default-badge")).toHaveLength(1);
+    expect(
+      element.querySelector('[aria-label="Fer predeterminada l\'adreça de Carrer Major 1"]'),
+    ).not.toBeNull();
+    expect(
+      element.querySelector('[aria-label="Fer predeterminada l\'adreça de Carrer Nou 5"]'),
+    ).toBeNull();
+  });
+
+  it("mostra el detall del backend si no pot marcar l'adreça predeterminada", async () => {
+    const altraAdreca = { ...adrecaInicial, predeterminada: false };
+    llistaAdreces.mockResolvedValue([altraAdreca]);
+    marcaAdrecaPredeterminada.mockRejectedValue({
+      response: {
+        status: 409,
+        data: { detail: "No s'ha pogut actualitzar l'adreça predeterminada." },
+      },
+    });
+    const element = renderitza();
+    await esperaActualitzacio();
+
+    element
+      .querySelector('[aria-label="Fer predeterminada l\'adreça de Carrer Major 1"]')
+      .click();
+    await esperaActualitzacio();
+
+    expect(element.querySelector('[role="alert"]').textContent).toContain(
+      "No s'ha pogut actualitzar l'adreça predeterminada.",
     );
   });
 
