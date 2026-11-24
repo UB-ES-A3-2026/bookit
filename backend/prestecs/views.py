@@ -10,6 +10,16 @@ from prestecs.permisos import EsUsuariActiu
 from prestecs.serializers import SENSE_ESTOC, ComandaSerializer, ConfirmacioComandaSerializer
 from prestecs.serveis import LlibresSenseEstoc, TransicioNoPermesa, canvia_estat, confirma_comanda
 
+from django.utils import timezone
+from rest_framework.views import APIView
+
+from prestecs.models import Parada, Ruta
+from prestecs.rutes import (
+    DadesRutaInconsistents,
+    calcula_i_desaa_ordre_ruta,
+)
+from prestecs.serializers import ParadaRutaSerializer
+from usuaris.permisos import EsRepartidorValidat
 
 class ComandesView(generics.GenericAPIView):
     """Confirma una comanda amb un o més llibres (US6-T2). Contracte a `docs/api-comandes.md`."""
@@ -68,3 +78,30 @@ def missatge_no_llesta(estat_actual):
         return "Aquesta comanda ja està llesta per a recollida."
     estat = Comanda.Estat(estat_actual).label.lower()
     return f"Aquesta comanda no es pot marcar com a llesta perquè està {estat}."
+
+class RutaAvuiView(APIView):
+    permission_classes = [EsRepartidorValidat]
+
+    def get(self, request):
+        ruta = (
+            Ruta.objects
+            .filter(
+                repartidor=request.user,
+                data=timezone.localdate(),
+            )
+            .first()
+        )
+
+        if ruta is None:
+            return Response([], status=status.HTTP_200_OK)
+
+        try:
+            parades = calcula_i_desaa_ordre_ruta(ruta)
+        except DadesRutaInconsistents:
+            return Response(
+                {"detail": "La ruta conté dades inconsistents."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        dades = ParadaRutaSerializer(parades, many=True).data
+        return Response(dades, status=status.HTTP_200_OK)
