@@ -61,6 +61,27 @@ el flux `POST /api/prestecs/biblioteca/comandes/<id>/preparada/`.
 
 # Bloc 1 — Ruta del dia (US12)
 
+## Quan es crea la ruta
+
+La ruta no es crea amb cap endpoint. Quan una comanda s'assigna a un repartidor
+(US14-T3), entra a la ruta d'aquell repartidor per al dia del lliurament
+(US12-T12):
+
+- si el repartidor encara no té ruta per a aquell dia, es crea;
+- s'hi afegeixen dues parades de la comanda: la recollida a la biblioteca i el
+  lliurament;
+- es torna a calcular l'ordre de tota la ruta (US12-T2).
+
+L'assignació i la ruta van en la mateixa transacció: si no es pot posar la
+comanda a la ruta, la comanda tampoc queda assignada. Com que l'assignació busca
+a partir de l'endemà, la ruta d'avui només té les comandes que es van assignar
+abans d'avui.
+
+Si una parada falla i la comanda es torna a planificar (US13-T3), cal treure
+abans les parades antigues de la ruta. Si la comanda torna al mateix repartidor
+i al mateix dia, les parades que encara hi siguin es reaprofiten i no es
+dupliquen.
+
 ## Consultar la ruta del dia
 
 `GET /api/prestecs/repartidor/ruta-avui/`
@@ -580,6 +601,7 @@ si el Product Owner exigeix una ruta per proximitat o un altre criteri secundari
 ## Cas sense ruta
 
 La ruta sense parades, o sense ruta creada per avui, retorna `200 OK` i `[]`.
+Passa quan el repartidor no té cap comanda assignada per a avui.
 No té un missatge d'estat propi.
 
 ## Franges
