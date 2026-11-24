@@ -21,7 +21,16 @@ class CanviEstatInline(admin.TabularInline):
 
 @admin.register(Comanda)
 class ComandaAdmin(admin.ModelAdmin):
-    list_display = ("id", "usuari", "biblioteca", "estat", "tipus_lliurament", "data_lliurament", "creada")
+    list_display = (
+        "id",
+        "usuari",
+        "biblioteca",
+        "estat",
+        "tipus_lliurament",
+        "data_lliurament",
+        "repartidor",
+        "creada",
+    )
     list_filter = ("estat", "tipus_lliurament")
     inlines = [LiniaComandaInline, CanviEstatInline]
 

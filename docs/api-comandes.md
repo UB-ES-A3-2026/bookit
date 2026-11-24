@@ -324,7 +324,9 @@ La biblioteca marca una comanda seva com a "Llesta per a recollida" (US15), que 
 ho pot fer una biblioteca amb el compte actiu; un usuari o un repartidor reben el 403 de
 [Autenticació i permisos](#autenticació-i-permisos). La petició no porta cos.
 
-Un cop preparada, la comanda ja es pot assignar a un repartidor (US14) i l'usuari en rep la notificació (US8).
+Un cop preparada, l'usuari en rep la notificació (US8) i la comanda s'assigna a un repartidor si n'hi ha cap amb un
+forat a les seves franges (vegeu [Assignació a un repartidor](#assignació-a-un-repartidor)). Si s'assigna, la
+resposta ja porta la `data_lliurament`.
 
 ### Resposta correcta
 
@@ -440,6 +442,25 @@ La petició no porta cos. **200 OK** amb el nombre de notificacions que s'han ma
 { "marcades": 3 }
 ```
 
+## Assignació a un repartidor
+
+No té endpoint propi: el backend assigna les comandes `preparada` als repartidors (US14-T3), i la ruta del dia del
+repartidor (US12) es farà a partir d'aquestes assignacions.
+
+- Una comanda s'assigna quan la biblioteca la marca com a llesta. Les que en aquell moment no troben cap repartidor
+  es queden `preparada` sense assignar, i l'ordre `python manage.py assigna_comandes` les torna a provar, de la més
+  antiga a la més nova.
+- Cada lliurament ocupa `DURADA_LLIURAMENT_MINUTS` minuts (30 per defecte) i ha de cabre sencer dins d'una franja
+  de disponibilitat del repartidor (`docs/api-franges.md`), sense trepitjar els altres lliuraments que ja té aquell
+  dia. Les comandes cancel·lades deixen el seu forat lliure.
+- Es busca a partir de l'endemà i durant una setmana. Es tria el primer dia amb algun forat i, d'aquell dia, el
+  forat que comença abans. Si dos repartidors poden començar a la mateixa hora, es tria el que té menys lliuraments
+  aquell dia.
+- Només es fan servir repartidors actius amb el perfil validat.
+
+En assignar-la, la comanda guarda el repartidor, la `data_lliurament` i l'hora d'inici i de final del lliurament. De
+moment, d'aquests camps les respostes de l'API només mostren la `data_lliurament`.
+
 ## Flux del frontend
 
 1. L'usuari afegeix llibres a la comanda des dels resultats de la cerca o del detall del llibre (US6-T6). Cada llibre
@@ -473,3 +494,6 @@ s'actualitzen aquí i al model abans d'implementar la resta d'endpoints.
 - **P9. Notificacions.** De moment les notificacions només es veuen dins de l'aplicació, no s'envien per correu. El
   text de la cancel·lació i el de les comandes que es recullen a la biblioteca (US7) els ha de confirmar el Product
   Owner; ara la recollida rep els mateixos textos que el lliurament a domicili.
+- **P10. Assignació de comandes.** Mentre el Product Owner no digui qui assigna les comandes i quan, ho fa el
+  sistema sol en marcar-les com a llestes, amb l'ordre `assigna_comandes` per a les que es queden sense repartidor.
+  Cada lliurament ocupa 30 minuts i es busca a partir de l'endemà.

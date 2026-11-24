@@ -10,8 +10,22 @@ import LoginView from "../views/LoginView.vue";
 import RegisterConfirmationView from "../views/RegisterConfirmationView.vue";
 import RegisterView from "../views/RegisterView.vue";
 import RoleHomeView from "../views/RoleHomeView.vue";
+import FrangesView from "../views/FrangesView.vue";
 import SearchView from "../views/SearchView.vue";
 import VerifyLibraryView from "../views/VerifyLibraryView.vue";
+
+// Les franges només són per als repartidors.
+export function nomesRepartidors() {
+  const sessio = useSessioStore();
+
+  if (!sessio.autenticat) {
+    return { name: "inici-sessio" };
+  }
+  if (sessio.rol !== "repartidor") {
+    return { name: "home" };
+  }
+  return true;
+}
 
 // El catàleg només és per a biblioteques. Sense sessió es demana iniciar-la i
 // amb un altre rol es torna a l'inici.
@@ -87,6 +101,13 @@ const router = createRouter({
       name: "espai-repartidor",
       component: RoleHomeView,
       meta: { titol: "Espai del repartidor" },
+    },
+    {
+      path: "/repartidor/franges",
+      name: "franges-repartidor",
+      component: FrangesView,
+      meta: { titol: "Franges de disponibilitat" },
+      beforeEnter: nomesRepartidors,
     },
     {
       path: "/cataleg",

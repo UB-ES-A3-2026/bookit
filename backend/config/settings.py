@@ -150,6 +150,10 @@ LIMIT_LLIBRES_COMANDA = env.int("LIMIT_LLIBRES_COMANDA", default=5)
 # és gratuïta. Pendent de confirmar amb el Product Owner.
 COST_ENVIAMENT_DOMICILI = Decimal(env.str("COST_ENVIAMENT_DOMICILI", default="2.50"))
 
+# Minuts que es reserven a un repartidor per cada lliurament (US14). Pendent de
+# confirmar amb el Product Owner.
+DURADA_LLIURAMENT_MINUTS = env.int("DURADA_LLIURAMENT_MINUTS", default=30)
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",

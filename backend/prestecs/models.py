@@ -54,6 +54,18 @@ class Comanda(models.Model):
     cost_enviament = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     # La biblioteca ordena les comandes pendents per aquesta data (US10).
     data_lliurament = models.DateField(null=True, blank=True)
+    # Qui porta la comanda i a quina hora, dins d'una franja de disponibilitat
+    # seva (US14). Es decideix en assignar-la (`prestecs.assignacio`).
+    repartidor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        limit_choices_to={"role": "repartidor"},
+        on_delete=models.PROTECT,
+        related_name="comandes_assignades",
+    )
+    hora_inici_lliurament = models.TimeField(null=True, blank=True)
+    hora_fi_lliurament = models.TimeField(null=True, blank=True)
     creada = models.DateTimeField(auto_now_add=True)
     actualitzada = models.DateTimeField(auto_now=True)
 
