@@ -90,6 +90,7 @@ describe("La meva comanda", () => {
         titol: "La plaça del Diamant",
         autor: "Mercè Rodoreda",
         portada: "",
+        biblioteca: { id: 3, nom: "Biblioteca" },
       },
     ]);
 
@@ -218,15 +219,13 @@ describe("La meva comanda", () => {
     );
   });
 
-  it("no confirma una comanda sense biblioteca", async () => {
-    const element = await renderitza([
-      {
-        id: 7,
-        titol: "La plaça del Diamant",
-        autor: "Mercè Rodoreda",
-        portada: "",
-      },
-    ]);
+  it("no confirma una comanda desada sense biblioteca", async () => {
+    // Una comanda desada abans que cada llibre portés la seva biblioteca (US6-T12).
+    localStorage.setItem(
+      "bookit.comanda",
+      JSON.stringify([{ id: 7, titol: "La plaça del Diamant", autor: "Mercè Rodoreda", portada: "" }]),
+    );
+    const element = await renderitza();
 
     element.querySelector(".resum-comanda .primary-button").click();
     await new Promise((resolve) => setTimeout(resolve));

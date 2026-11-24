@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from "pinia";
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useComandaStore } from "../stores/comanda.js";
 import { useSessioStore } from "../stores/sessio.js";
 import LlibreDetallView from "../views/LlibreDetallView.vue";
 
@@ -24,15 +25,18 @@ vi.mock("../services/biblioteques.js", () => ({
   apuntaLlistaEspera: mocks.apuntaLlistaEspera,
 }));
 
+const push = vi.hoisted(() => vi.fn());
+
 vi.mock("vue-router", () => ({
   useRoute: () => route,
+  useRouter: () => ({ push }),
 }));
 
-function muntaDetall({ autenticat = false } = {}) {
+function muntaDetall({ autenticat = false, rol = "usuari" } = {}) {
   const pinia = createPinia();
   setActivePinia(pinia);
   if (autenticat) {
-    useSessioStore().iniciarSessio({ accessToken: "test-token" });
+    useSessioStore().iniciarSessio({ accessToken: "test-token", usuari: { id: 25 }, rol });
   }
 
   return mount(LlibreDetallView, {
@@ -328,5 +332,62 @@ describe("detall del llibre i disponibilitat", () => {
       ),
     );
     expect(mocks.carregaBiblioteques).toHaveBeenCalledTimes(2);
+  });
+
+  describe("afegir el llibre a la comanda", () => {
+    const CENTRE = { id: 3, nom: "Biblioteca del Centre" };
+
+    async function carrega(opcions) {
+      const wrapper = muntaDetall(opcions);
+      await vi.waitFor(() => expect(wrapper.find(".library-card").exists()).toBe(true));
+      await flushPromises();
+      return wrapper;
+    }
+
+    it("cada biblioteca té el seu botó i afegeix el llibre amb aquella biblioteca", async () => {
+      const wrapper = await carrega({ autenticat: true });
+
+      await wrapper.get(".library-card .add-button").trigger("click");
+
+      expect(useComandaStore().llibres).toEqual([
+        { id: 12, titol: "La plaça del Diamant", autor: "Mercè Rodoreda", portada: "", biblioteca: CENTRE },
+      ]);
+      expect(wrapper.get(".library-card .add-button").text()).toBe("Afegit a la comanda");
+      expect(wrapper.get(".library-card .add-button").attributes("disabled")).toBeDefined();
+      expect(wrapper.get(".en-comanda").text()).toContain("Aquest llibre ja és a la teva comanda.");
+    });
+
+    it("no barreja biblioteques i explica per què", async () => {
+      const wrapper = await carrega({ autenticat: true });
+      useComandaStore().afegirLlibre({
+        id: 30,
+        titol: "Solitud",
+        autor: "Víctor Català",
+        biblioteca: { id: 8, nom: "Biblioteca Montbau" },
+      });
+
+      await wrapper.get(".library-card .add-button").trigger("click");
+
+      expect(useComandaStore().teLlibre(12)).toBe(false);
+      expect(wrapper.get(".avis-comanda").text()).toBe(
+        "La comanda només pot tenir llibres d'una biblioteca. Confirma-la o treu-ne els llibres de " +
+          "Biblioteca Montbau abans d'afegir-ne d'una altra.",
+      );
+    });
+
+    it("sense sessió, el botó porta a iniciar-la", async () => {
+      const wrapper = await carrega();
+
+      await wrapper.get(".library-card .add-button").trigger("click");
+
+      expect(push).toHaveBeenCalledWith({ name: "inici-sessio" });
+      expect(useComandaStore().nombreLlibres).toBe(0);
+    });
+
+    it.each(["biblioteca", "repartidor"])("amb el rol %s no hi ha botó", async (rol) => {
+      const wrapper = await carrega({ autenticat: true, rol });
+
+      expect(wrapper.find(".library-card .add-button").exists()).toBe(false);
+    });
   });
 });
