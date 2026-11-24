@@ -2,6 +2,7 @@
 import axios from "axios";
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import NotificacionsCapcalera from "../components/NotificacionsCapcalera.vue";
 import logoImage from "../assets/bookit-logo.jpg";
 
 const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
@@ -84,6 +85,7 @@ watch(() => [textCercat.value, pagina.value], cerca, { immediate: true });
         ></span>
         <span>bookit.</span>
       </RouterLink>
+      <NotificacionsCapcalera class="notificacions-cerca" />
 
       <RouterLink class="back-link" to="/">Torna a l'inici</RouterLink>
     </header>
@@ -173,6 +175,11 @@ watch(() => [textCercat.value, pagina.value], cerca, { immediate: true });
   min-height: 100svh;
   color: #241914;
   background: #f9f4eb;
+}
+
+.notificacions-cerca {
+  margin-right: 1rem;
+  margin-left: auto;
 }
 
 .site-header {

@@ -2,6 +2,7 @@
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useSessioStore } from "../stores/sessio.js";
+import NotificacionsCapcalera from "../components/NotificacionsCapcalera.vue";
 import bibliotecaImage from "../assets/biblioteca.jpg";
 import logoImage from "../assets/bookit-logo.jpg";
 
@@ -54,7 +55,15 @@ function cercaLlibres() {
           >
             El meu catàleg
           </RouterLink>
+          <RouterLink
+            v-if="sessio.rol === 'usuari'"
+            class="orders-link"
+            :to="{ name: 'meves-comandes' }"
+          >
+            Les meves comandes
+          </RouterLink>
           <span class="user-name">{{ nomUsuari }}</span>
+          <NotificacionsCapcalera />
           <button class="logout-button" type="button" @click="sessio.tancarSessio">
             Tancar sessió
           </button>
@@ -163,9 +172,11 @@ function cercaLlibres() {
 
 .site-header {
   position: relative;
-  z-index: 1;
+  /* Per sobre de la portada, perquè s'hi pugui desplegar el panell de notificacions. */
+  z-index: 2;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
+  column-gap: 1rem;
   align-items: center;
   min-height: 62px;
   padding: 0 max(1.25rem, calc((100% - 1170px) / 2));
@@ -242,6 +253,13 @@ function cercaLlibres() {
 .catalog-link:hover,
 .catalog-link:focus-visible {
   background: #720000;
+}
+
+.orders-link {
+  color: #980000;
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .user-name {
@@ -504,6 +522,17 @@ function cercaLlibres() {
   font-size: 0.75rem;
 }
 
+/* Amb la sessió iniciada, la cita no hi cap fins que la pantalla és ampla. */
+@media (min-width: 701px) and (max-width: 1400px) {
+  .site-header:has(.user-name) {
+    grid-template-columns: 1fr auto;
+  }
+
+  .site-header:has(.user-name) .header-quote {
+    display: none;
+  }
+}
+
 @media (max-width: 700px) {
   .site-header {
     grid-template-columns: 1fr auto;
@@ -516,6 +545,8 @@ function cercaLlibres() {
   }
 
   .header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 0.75rem;
     font-size: 0.85rem;
   }

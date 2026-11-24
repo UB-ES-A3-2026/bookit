@@ -4,7 +4,22 @@ from django.db import transaction
 from django.db.models import F
 
 from cataleg.models import ExemplarBiblioteca
-from prestecs.models import CanviEstat, Comanda, LiniaComanda
+from prestecs.models import CanviEstat, Comanda, LiniaComanda, Notificacio
+
+Estat = Comanda.Estat
+
+# Text de la notificació segons l'estat al qual passa la comanda. Els de rebuda,
+# preparada, en camí i lliurada són literals dels criteris de la US8. El de la
+# cancel·lació no el diu cap criteri (US20).
+NOTIFICACIONS = {
+    Estat.REBUDA: "La teva comanda s'ha rebut correctament. La biblioteca ja l'està preparant",
+    Estat.PREPARADA: "La teva comanda ja està preparada i aviat sortirà cap a casa teva",
+    Estat.EN_CAMI: "En/Na {repartidor} ja porta la teva comanda. Està en camí!",
+    Estat.LLIURADA: "La teva comanda s'ha lliurat correctament. Gaudeix del teu llibre!",
+    Estat.CANCELLADA: "La teva comanda s'ha cancel·lat.",
+}
+# Mentre la comanda no tingui repartidor assignat (US12), no en podem dir el nom.
+EN_CAMI_SENSE_REPARTIDOR = "El repartidor ja porta la teva comanda. Està en camí!"
 
 
 class TransicioNoPermesa(Exception):
@@ -61,11 +76,33 @@ def confirma_comanda(usuari, biblioteca, llibres):
             LiniaComanda(comanda=comanda, llibre=llibre) for llibre in llibres
         )
         CanviEstat.objects.create(comanda=comanda, estat=comanda.estat)
+        notifica(comanda)
     return comanda
 
 
-def canvia_estat(comanda, nou_estat):
-    """Canvia l'estat de la comanda i en guarda el canvi a l'historial (US8).
+def text_notificacio(estat, repartidor=None):
+    """Text de la notificació d'una comanda que passa a `estat`."""
+    if estat == Estat.EN_CAMI:
+        if repartidor is None:
+            return EN_CAMI_SENSE_REPARTIDOR
+        return NOTIFICACIONS[estat].format(repartidor=repartidor.name)
+    return NOTIFICACIONS[estat]
+
+
+def notifica(comanda, repartidor=None):
+    """Avisa l'usuari de l'estat actual de la seva comanda."""
+    return Notificacio.objects.create(
+        usuari_id=comanda.usuari_id,
+        comanda=comanda,
+        text=text_notificacio(comanda.estat, repartidor),
+    )
+
+
+def canvia_estat(comanda, nou_estat, repartidor=None):
+    """Canvia l'estat de la comanda, en guarda el canvi a l'historial i n'avisa l'usuari (US8).
+
+    `repartidor` és qui porta la comanda quan passa a "en camí", perquè la
+    notificació en digui el nom.
 
     Si el canvi no està permès (vegeu `TRANSICIONS`), no es toca res i es llança
     `TransicioNoPermesa`. La comanda es bloqueja mentre es canvia, perquè dues
@@ -80,6 +117,7 @@ def canvia_estat(comanda, nou_estat):
         actual.estat = nou_estat
         actual.save(update_fields=["estat", "actualitzada"])
         CanviEstat.objects.create(comanda=actual, estat=nou_estat)
+        notifica(actual, repartidor)
 
     comanda.estat = actual.estat
     comanda.actualitzada = actual.actualitzada
