@@ -4,6 +4,7 @@ Referència: https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from datetime import timedelta
+from decimal import Decimal
 from pathlib import Path
 
 import environ
@@ -141,6 +142,17 @@ PASSWORD_RESET_TIMEOUT = env.int("PASSWORD_RESET_TIMEOUT", default=86400)
 # Adreça del frontend, sense / al final. Es fa servir per als enllaços dels correus,
 # com el de verificació del compte de biblioteca.
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173").rstrip("/")
+
+# Nombre màxim de llibres d'una comanda (US6). Pendent de confirmar amb el Product Owner.
+LIMIT_LLIBRES_COMANDA = env.int("LIMIT_LLIBRES_COMANDA", default=5)
+
+# Cost en euros de portar una comanda a domicili (US7). La recollida a la biblioteca
+# és gratuïta. Pendent de confirmar amb el Product Owner.
+COST_ENVIAMENT_DOMICILI = Decimal(env.str("COST_ENVIAMENT_DOMICILI", default="2.50"))
+
+# Minuts que es reserven a un repartidor per cada lliurament (US14). Pendent de
+# confirmar amb el Product Owner.
+DURADA_LLIURAMENT_MINUTS = env.int("DURADA_LLIURAMENT_MINUTS", default=30)
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
