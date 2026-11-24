@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import MapaParades from "../components/MapaParades.vue";
 import logoImage from "../assets/bookit-logo.jpg";
 import { useSessioStore } from "../stores/sessio.js";
 import { llistaRutaAvui } from "../services/ruta.js";
@@ -113,6 +114,8 @@ onMounted(carregaRuta);
       </p>
 
       <template v-else>
+        <MapaParades :parades="paradesEnOrdre" :lloc-de="llocParada" :tipus="TIPUS" />
+
         <p class="resum">{{ textParades(parades.length) }}</p>
 
         <ol class="llista-parades" aria-label="Parades de la ruta d'avui">
