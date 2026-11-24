@@ -122,15 +122,21 @@ describe("Les meves comandes", () => {
   });
 
   it("mostra l'avís exacte si la comanda ja ha sortit", async () => {
-    servei.llistaMevesComandes.mockResolvedValue([comanda(15, "en_cami")]);
+    servei.llistaMevesComandes.mockResolvedValue([
+      comanda(15, "en_cami"),
+      comanda(14, "lliurada"),
+    ]);
     vi.spyOn(window, "confirm").mockReturnValue(true);
     await renderitza();
 
-    await wrapper.get(".cancel-button").trigger("click");
+    const buttons = wrapper.findAll(".cancel-button");
+    await buttons[0].trigger("click");
+    await buttons[1].trigger("click");
 
-    expect(wrapper.get('[role="alert"]').text()).toBe(
+    expect(wrapper.findAll('[role="alert"]').map((alert) => alert.text())).toEqual([
       "Aquesta comanda ja ha sortit i no es pot cancel·lar",
-    );
+      "Aquesta comanda ja ha sortit i no es pot cancel·lar",
+    ]);
     expect(window.confirm).not.toHaveBeenCalled();
     expect(servei.cancellaComanda).not.toHaveBeenCalled();
   });
