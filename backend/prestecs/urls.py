@@ -4,6 +4,7 @@ from django.urls import path
 
 from prestecs.views import (
     ComandesView,
+    CostEnviamentView,
     NotificacioLlegidaView,
     NotificacionsLlegidesView,
     NotificacionsView,
@@ -13,6 +14,7 @@ app_name = "prestecs"
 
 urlpatterns = [
     path("comandes/", ComandesView.as_view(), name="comandes"),
+    path("comandes/cost-enviament/", CostEnviamentView.as_view(), name="cost-enviament"),
     path("notificacions/", NotificacionsView.as_view(), name="notificacions"),
     path(
         "notificacions/<int:pk>/llegida/",

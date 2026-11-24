@@ -37,6 +37,21 @@ class Comanda(models.Model):
         choices=Estat.choices,
         default=Estat.REBUDA,
     )
+    class TipusLliurament(models.TextChoices):
+        # La recollida es fa a la mateixa biblioteca de la comanda (US7).
+        DOMICILI = "domicili", "Lliurament a domicili"
+        RECOLLIDA = "recollida", "Recollida a la biblioteca"
+
+    tipus_lliurament = models.CharField(
+        max_length=9,
+        choices=TipusLliurament.choices,
+        default=TipusLliurament.DOMICILI,
+    )
+    # On es porta la comanda. Buida si l'usuari la recull a la biblioteca.
+    adreca_lliurament = models.TextField(blank=True, default="")
+    # En euros. Es desa en confirmar la comanda, perquè no canviï si després
+    # canvia la tarifa.
+    cost_enviament = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     # La biblioteca ordena les comandes pendents per aquesta data (US10).
     data_lliurament = models.DateField(null=True, blank=True)
     creada = models.DateTimeField(auto_now_add=True)

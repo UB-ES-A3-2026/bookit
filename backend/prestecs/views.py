@@ -11,7 +11,7 @@ from prestecs.serializers import (
     ConfirmacioComandaSerializer,
     NotificacioSerializer,
 )
-from prestecs.serveis import LlibresSenseEstoc, confirma_comanda
+from prestecs.serveis import LlibresSenseEstoc, confirma_comanda, cost_enviament
 
 
 class ComandesView(generics.GenericAPIView):
@@ -36,10 +36,13 @@ class ComandesView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
 
         try:
+            dades = serializer.validated_data
             comanda = confirma_comanda(
                 request.user,
-                serializer.validated_data["biblioteca"],
-                serializer.validated_data["llibres"],
+                dades["biblioteca"],
+                dades["llibres"],
+                dades["tipus_lliurament"],
+                dades["adreca_lliurament"],
             )
         except LlibresSenseEstoc as error:
             # `sense_estoc` porta els id dels llibres perquè el frontend ofereixi
@@ -50,6 +53,17 @@ class ComandesView(generics.GenericAPIView):
             )
 
         return Response(ComandaSerializer(comanda).data, status=status.HTTP_201_CREATED)
+
+
+class CostEnviamentView(generics.GenericAPIView):
+    """Cost de cada tipus de lliurament, per mostrar-lo abans de confirmar (US7)."""
+
+    permission_classes = [EsUsuariActiu]
+
+    def get(self, request):
+        return Response(
+            {tipus: str(cost_enviament(tipus)) for tipus in Comanda.TipusLliurament.values}
+        )
 
 
 class NotificacionsView(generics.ListAPIView):
