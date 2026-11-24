@@ -63,31 +63,62 @@ function nomTipus(parada) {
   return props.tipus[parada.tipus] ?? parada.tipus;
 }
 
+function llistaOrdres(parades) {
+  const ordres = parades.map((parada) => String(parada.ordre));
+  return ordres.length === 1
+    ? ordres[0]
+    : `${ordres.slice(0, -1).join(", ")} i ${ordres.at(-1)}`;
+}
+
+// Parades que són al mateix lloc (per exemple, diverses recollides a la mateixa
+// biblioteca) en un sol grup, perquè els marcadors no quedin l'un sobre l'altre.
+const grups = computed(() => {
+  const perLloc = new Map();
+  for (const punt of paradesAmbUbicacio.value) {
+    const clau = `${punt.latitud.toFixed(6)},${punt.longitud.toFixed(6)}`;
+    if (!perLloc.has(clau)) {
+      perLloc.set(clau, { latitud: punt.latitud, longitud: punt.longitud, parades: [] });
+    }
+    perLloc.get(clau).parades.push(punt.parada);
+  }
+  return [...perLloc.values()];
+});
+
 // El contingut de la finestra es construeix amb nodes de text perquè l'adreça
 // l'escriu l'usuari i no s'ha d'interpretar com a HTML.
-function contingutFinestra(parada) {
+function contingutFinestra(parades) {
   const element = document.createElement("div");
-  const titol = document.createElement("strong");
-  titol.textContent = `${parada.ordre}. ${nomTipus(parada)}`;
-  const lloc = document.createElement("span");
-  lloc.textContent = props.llocDe(parada);
-  element.append(titol, document.createElement("br"), lloc);
+  parades.forEach((parada, index) => {
+    if (index > 0) {
+      element.append(document.createElement("br"));
+    }
+    const titol = document.createElement("strong");
+    titol.textContent = `${parada.ordre}. ${nomTipus(parada)}`;
+    const lloc = document.createElement("span");
+    lloc.textContent = ` · ${props.llocDe(parada)}`;
+    element.append(titol, lloc);
+  });
   return element;
 }
 
-function marcador({ parada, latitud, longitud }) {
+function marcador({ parades, latitud, longitud }) {
+  const tipus = [...new Set(parades.map((parada) => parada.tipus))];
+  const unSolTipus = tipus.length === 1;
+  const amplada = 32 + (parades.length - 1) * 22;
   const icona = L.divIcon({
-    className: `marcador-parada marcador-${parada.tipus}`,
-    html: `<span>${Number(parada.ordre)}</span>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
+    className: `marcador-parada marcador-${unSolTipus ? tipus[0] : "mixt"}`,
+    html: `<span>${parades.map((parada) => Number(parada.ordre)).join(" · ")}</span>`,
+    iconSize: [amplada, 32],
+    iconAnchor: [amplada / 2, 16],
     popupAnchor: [0, -16],
   });
+  const nom = parades.length === 1 ? "Parada" : "Parades";
+  const descripcio = unSolTipus ? `: ${nomTipus(parades[0])}` : "";
   return L.marker([latitud, longitud], {
     icon: icona,
-    title: `Parada ${parada.ordre}: ${nomTipus(parada)}`,
-    alt: `Parada ${parada.ordre}`,
-  }).bindPopup(contingutFinestra(parada));
+    title: `${nom} ${llistaOrdres(parades)}${descripcio}`,
+    alt: `${nom} ${llistaOrdres(parades)}`,
+  }).bindPopup(contingutFinestra(parades));
 }
 
 function dibuixaParades() {
@@ -104,7 +135,7 @@ function dibuixaParades() {
       { color: "#6b5d52", weight: 3, opacity: 0.7, dashArray: "6 8", interactive: false },
     ).addTo(capaParades);
   }
-  punts.forEach((punt) => marcador(punt).addTo(capaParades));
+  grups.value.forEach((grup) => marcador(grup).addTo(capaParades));
 
   mapa.fitBounds(
     L.latLngBounds(punts.map(({ latitud, longitud }) => [latitud, longitud])),
@@ -197,5 +228,10 @@ onBeforeUnmount(destrueixMapa);
 
 :deep(.marcador-lliurament) {
   background: #1d5a36;
+}
+
+/* Recollides i lliuraments al mateix lloc. */
+:deep(.marcador-mixt) {
+  background: #6b5d52;
 }
 </style>

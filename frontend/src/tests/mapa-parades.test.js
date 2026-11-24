@@ -97,6 +97,47 @@ describe("mapa de les parades", () => {
   });
 });
 
+describe("parades al mateix lloc", () => {
+  it("agrupa en un sol marcador les parades amb les mateixes coordenades", async () => {
+    await renderitza([
+      parada(18, 1, "recollida", 41.3812, 2.1698),
+      parada(19, 2, "lliurament", 41.4031, 2.1748),
+      parada(20, 3, "recollida", "41.381200", "2.169800"),
+      parada(21, 4, "lliurament", 41.3952, 2.1615),
+      parada(22, 5, "recollida", 41.3812, 2.1698),
+    ]);
+
+    expect(marcadors().map((element) => element.textContent)).toEqual(["1 · 3 · 5", "2", "4"]);
+    expect(marcadors()[0].getAttribute("title")).toBe("Parades 1, 3 i 5: Recollida");
+    expect(marcadors()[0].classList).toContain("marcador-recollida");
+  });
+
+  it("la finestra del grup llista totes les parades", async () => {
+    await renderitza([
+      parada(18, 1, "recollida", 41.3812, 2.1698),
+      parada(20, 3, "recollida", 41.3812, 2.1698),
+    ]);
+
+    marcadors()[0].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await flushPromises();
+
+    const text = document.querySelector(".leaflet-popup-content").textContent;
+    expect(text).toContain("1. Recollida · Biblioteca Central");
+    expect(text).toContain("3. Recollida · Biblioteca Central");
+  });
+
+  it("un grup amb recollides i lliuraments té un color propi i no diu el tipus", async () => {
+    await renderitza([
+      parada(18, 1, "recollida", 41.3812, 2.1698),
+      parada(19, 2, "lliurament", 41.3812, 2.1698),
+    ]);
+
+    expect(marcadors()).toHaveLength(1);
+    expect(marcadors()[0].classList).toContain("marcador-mixt");
+    expect(marcadors()[0].getAttribute("title")).toBe("Parades 1 i 2");
+  });
+});
+
 describe("parades sense ubicació", () => {
   it("no situa les parades sense coordenades i avisa que n'hi ha una", async () => {
     await renderitza([...ruta().slice(0, 2), parada(20, 3, "recollida", null, null)]);
