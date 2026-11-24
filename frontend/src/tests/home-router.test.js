@@ -14,6 +14,8 @@ const routes = [
   { path: "/adreces", name: "adreces", component: { render: () => null } },
   // La capçalera amb sessió també enllaça a les comandes de l'usuari (US8).
   { path: "/comandes", name: "meves-comandes", component: { render: () => null } },
+  // I als préstecs de l'usuari (US19).
+  { path: "/prestecs", name: "prestecs", component: { render: () => null } },
 ];
 
 const muntarAplicacio = async (autenticada = false) => {

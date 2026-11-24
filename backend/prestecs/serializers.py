@@ -2,7 +2,7 @@ from django.conf import settings
 from rest_framework import serializers
 
 from cataleg.models import Llibre
-from prestecs.models import Comanda, Notificacio
+from prestecs.models import Comanda, Notificacio, Prestec
 from usuaris.models import Usuari
 
 # Missatges del contracte (docs/api-comandes.md). Els del límit i l'estoc són
@@ -65,6 +65,24 @@ class ComandaBibliotecaSerializer(ComandaSerializer):
 
     def get_usuari(self, comanda):
         return {"id": comanda.usuari_id, "nom": comanda.usuari.name}
+
+
+class PrestecSerializer(serializers.ModelSerializer):
+    """Un llibre que l'usuari té en préstec (US19-T2)."""
+
+    llibre = LlibreComandaSerializer()
+    biblioteca = serializers.SerializerMethodField()
+    termini_superat = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Prestec
+        fields = ("id", "llibre", "biblioteca", "data_inici", "data_limit", "termini_superat")
+
+    def get_biblioteca(self, prestec):
+        return {"id": prestec.biblioteca_id, "nom": prestec.biblioteca.biblioteca.nom}
+
+    def get_termini_superat(self, prestec):
+        return prestec.termini_superat()
 
 
 class ConfirmacioComandaSerializer(serializers.Serializer):

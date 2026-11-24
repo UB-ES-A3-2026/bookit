@@ -9,3 +9,8 @@ export async function confirmaComanda(dades) {
   const resposta = await api.post("/prestecs/comandes/", dades);
   return resposta.data;
 }
+
+export async function llistaPrestecs() {
+  const resposta = await api.get("/prestecs/prestecs/");
+  return resposta.data;
+}
