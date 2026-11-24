@@ -88,6 +88,7 @@ describe("detall del llibre i disponibilitat", () => {
     expect(wrapper.text()).toContain("Biblioteca del Centre");
     expect(wrapper.text()).toContain("2 exemplars disponibles");
     expect(wrapper.get(".distance").text()).toBe("0,6 km");
+    expect(wrapper.find(".waitlist-panel").exists()).toBe(false);
   });
 
   it("mostra el missatge per a visitants i oculta les distàncies", async () => {
@@ -151,6 +152,10 @@ describe("detall del llibre i disponibilitat", () => {
     );
 
     expect(wrapper.find(".library-list").exists()).toBe(false);
+    expect(wrapper.find(".waitlist-panel").exists()).toBe(true);
+    expect(wrapper.get(".waitlist-panel .primary-button").text()).toBe(
+      "Inicia sessió",
+    );
   });
 
   it("permet apuntar-se a la llista d'espera i interpreta el codi 201", async () => {
@@ -176,6 +181,11 @@ describe("detall del llibre i disponibilitat", () => {
   });
 
   it("indica si l'usuari ja era a la llista d'espera", async () => {
+    mocks.carregaBiblioteques.mockResolvedValue({
+      biblioteques: [],
+      ordenada_per_distancia: false,
+      missatge: "Cap biblioteca te aquest llibre en estoc",
+    });
     mocks.apuntaLlistaEspera.mockResolvedValue({ status: 200, data: {} });
     const wrapper = muntaDetall({ autenticat: true });
     await vi.waitFor(() =>
@@ -191,6 +201,11 @@ describe("detall del llibre i disponibilitat", () => {
   });
 
   it("mostra un error si no es pot apuntar a la llista d'espera", async () => {
+    mocks.carregaBiblioteques.mockResolvedValue({
+      biblioteques: [],
+      ordenada_per_distancia: false,
+      missatge: "Cap biblioteca te aquest llibre en estoc",
+    });
     mocks.apuntaLlistaEspera.mockRejectedValue({
       response: { data: { detail: "No s'ha trobat." } },
     });
