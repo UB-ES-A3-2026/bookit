@@ -110,7 +110,7 @@ def test_repartidor_obte_s_ordre_avui_amb_adreces(monkeypatch):
     lliurament = Parada.objects.create(
         ruta=ruta,
         comanda=comanda,
-        tipus=Parada.Tipus.LLIVRAMENT,
+        tipus=Parada.Tipus.LLIURAMENT,
         ordre=1,
     )
     recollida = Parada.objects.create(
@@ -249,7 +249,7 @@ def test_cridar_lendpoint_dos_cops_retorna_la_mateixa_seqüencia(monkeypatch):
     lliurament = Parada.objects.create(
         ruta=ruta,
         comanda=comanda,
-        tipus=Parada.Tipus.LLIVRAMENT,
+        tipus=Parada.Tipus.LLIURAMENT,
         ordre=1,
     )
     recollida = Parada.objects.create(

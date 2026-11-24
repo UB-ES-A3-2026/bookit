@@ -42,7 +42,7 @@ def ordena_parades(parades):
     for parada in parades:
         if parada.tipus not in (
             Parada.Tipus.RECOLLIDA,
-            Parada.Tipus.LLIVRAMENT,
+            Parada.Tipus.LLIURAMENT,
         ):
             raise DadesRutaInconsistents(
                 f"Tipus de parada desconegut: {parada.tipus}"
@@ -64,7 +64,7 @@ def ordena_parades(parades):
     }
 
     for parada in parades:
-        if parada.tipus == Parada.Tipus.LLIVRAMENT:
+        if parada.tipus == Parada.Tipus.LLIURAMENT:
             recollida = parades_per_comanda_tipus.get(
                 (parada.comanda_id, Parada.Tipus.RECOLLIDA)
             )

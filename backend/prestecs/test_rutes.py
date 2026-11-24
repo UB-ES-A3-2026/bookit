@@ -422,7 +422,7 @@ def test_persistencia_desada_a_la_base_de_dades(repartidor, comanda):
     assert list(ruta.parades.all()) == [recollida, lliurament]
 
 
-def test_llivraments_sense_recollida_no_es_poden_liar(repartidor, comanda):
+def test_LLIURAMENTs_sense_recollida_no_es_poden_liar(repartidor, comanda):
     ruta = Ruta.objects.create(
         repartidor=repartidor,
         data=date(2026, 11, 24),
