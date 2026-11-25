@@ -6,7 +6,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import RegexValidator
 from django.core.mail import send_mail
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from rest_framework import serializers
@@ -32,6 +32,9 @@ from usuaris.validacions import (
 )
 
 CAMP_OBLIGATORI = "Aquest camp és obligatori."
+# Literals dels criteris d'acceptació de la US1.
+CORREU_JA_REGISTRAT = "Aquest correu electrònic ja està registrat"
+CARNET_JA_REGISTRAT = "Aquest usuari ja està registrat"
 VERIFICA_CORREU = "Verifica el teu correu"
 # Missatges de l'inici de sessió d'un repartidor que encara no pot entrar.
 MISSATGES_ESTAT_REPARTIDOR = {
@@ -124,7 +127,7 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
         validators=[
             UniqueValidator(
                 queryset=Usuari.objects.all(),
-                message="Aquest correu electrònic ja està registrat",
+                message=CORREU_JA_REGISTRAT,
                 lookup="iexact",
             )
         ],
@@ -151,7 +154,7 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
             ),
             UniqueValidator(
                 queryset=Usuari.objects.all(),
-                message="Aquest usuari ja està registrat",
+                message=CARNET_JA_REGISTRAT,
             ),
         ],
         error_messages={
@@ -198,7 +201,18 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         password = validated_data.pop("password")
-        return Usuari.objects.create_user(password=password, **validated_data)
+        try:
+            with transaction.atomic():
+                return Usuari.objects.create_user(password=password, **validated_data)
+        except IntegrityError as error:
+            # Dos registres alhora amb el mateix correu o carnet poden passar tots dos
+            # els validadors: la base de dades rebutja el segon. En lloc d'un error
+            # 500, rep el mateix missatge que si hagués arribat després (US1-T22).
+            if Usuari.objects.filter(email__iexact=validated_data["email"]).exists():
+                raise serializers.ValidationError({"correu": [CORREU_JA_REGISTRAT]}) from error
+            if Usuari.objects.filter(library_card_number=validated_data["library_card_number"]).exists():
+                raise serializers.ValidationError({"num_carnet": [CARNET_JA_REGISTRAT]}) from error
+            raise
 
 
 class IniciSessioSerializer(TokenObtainPairSerializer):
