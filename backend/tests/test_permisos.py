@@ -22,7 +22,7 @@ def test_una_vista_sense_permis_explicits_denega_una_peticio_anima():
 
     resposta = VistaProtegida.as_view()(peticio)
 
-    assert resposta.status_code == status.HTTP_403_FORBIDDEN
+    assert resposta.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 def test_registre_es_public():

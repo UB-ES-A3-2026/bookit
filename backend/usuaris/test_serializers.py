@@ -46,13 +46,11 @@ def test_ignora_els_camps_que_no_son_del_contracte():
 @pytest.mark.django_db
 def test_la_representacio_no_inclou_la_contrasenya():
     usuari = Usuari.objects.create_user(
-        "anna@example.com",
-        "una-Contrasenya-segura-9",
-        {
-            "name": "Anna Puig",
-            "address": "C/ Major 1",
-            "library_card_number": "1234567890",
-        },
+        email="anna@example.com",
+        password="ContrasenyaSegura123!",
+        name="Anna Puig",
+        address="C/ Major 1",
+        library_card_number="1234567890",
     )
 
     dades = UsuariRegistreSerializer(usuari).data

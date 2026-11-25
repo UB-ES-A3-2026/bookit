@@ -10,7 +10,7 @@ from usuaris.models import Usuari
 from usuaris.test_registre import URL, dades_valides
 
 CORREU_INVALID = "Introduïu una adreça de correu electrònic vàlida."
-CARNET_INVALID = "El format d’aquest carnet no és vàlid"
+CARNET_INVALID = "El format d'aquest carnet no és vàlid"
 
 
 @pytest.mark.django_db
@@ -20,6 +20,32 @@ CARNET_INVALID = "El format d’aquest carnet no és vàlid"
 def test_correu_amb_format_invalid_retorna_400(client, correu):
     resposta = client.post(
         URL, dades_valides(correu=correu), content_type="application/json"
+    )
+
+    assert resposta.status_code == 400
+    assert resposta.json() == {"correu": [CORREU_INVALID]}
+    assert not Usuari.objects.exists()
+
+
+def correu_de(mida):
+    return f"{'a' * (mida - len('@example.com'))}@example.com"
+
+
+@pytest.mark.django_db
+def test_correu_de_254_caracters_es_registra(client):
+    resposta = client.post(
+        URL, dades_valides(correu=correu_de(254)), content_type="application/json"
+    )
+
+    assert resposta.status_code == 201
+    assert resposta.json()["correu"] == correu_de(254)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("mida", [255, 320, 321])
+def test_correu_massa_llarg_retorna_400(client, mida):
+    resposta = client.post(
+        URL, dades_valides(correu=correu_de(mida)), content_type="application/json"
     )
 
     assert resposta.status_code == 400
@@ -89,3 +115,33 @@ def test_amb_diversos_errors_es_retornen_tots(client):
 
     assert resposta.status_code == 400
     assert set(resposta.json()) == {"nom", "correu", "num_carnet"}
+
+
+@pytest.mark.django_db
+def test_contrasenya_massa_curta_dona_el_missatge_en_catala(client):
+    resposta = client.post(
+        URL, dades_valides(contrasenya="curta1"), content_type="application/json"
+    )
+
+    assert resposta.status_code == 400
+    missatges = resposta.json()["contrasenya"]
+    assert (
+        "Aquesta contrasenya és massa curta. Ha de tenir com a mínim 8 caràcters."
+        in missatges
+    )
+    assert not any("password" in missatge.lower() for missatge in missatges)
+
+
+@pytest.mark.django_db
+def test_contrasenya_semblant_al_correu_retorna_400(client):
+    resposta = client.post(
+        URL,
+        dades_valides(
+            correu="jordi.vila@example.com", contrasenya="jordi.vila.example"
+        ),
+        content_type="application/json",
+    )
+
+    assert resposta.status_code == 400
+    assert list(resposta.json()) == ["contrasenya"]
+    assert not Usuari.objects.exists()
