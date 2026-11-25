@@ -13,6 +13,7 @@ from prestecs.views import (
     NotificacionsLlegidesView,
     NotificacionsView,
     PrestecsView,
+    RutaAvuiView,
 )
 
 app_name = "prestecs"
@@ -47,5 +48,10 @@ urlpatterns = [
         "biblioteca/comandes/<int:pk>/recollida/",
         ComandaRecollidaView.as_view(),
         name="comanda-recollida",
+    ),
+    path(
+        "repartidor/ruta-avui/",
+        RutaAvuiView.as_view(),
+        name="ruta-avui-repartidor",
     ),
 ]

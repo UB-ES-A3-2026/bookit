@@ -23,12 +23,23 @@ from prestecs.serveis import (
     canvia_estat,
     confirma_comanda,
     cost_enviament,
+    desa_coordenades_lliurament,
 )
 
 # Literal dels criteris d'acceptació de la US20.
 JA_HA_SORTIT = "Aquesta comanda ja ha sortit i no es pot cancel·lar"
 JA_CANCELLADA = "Aquesta comanda ja està cancel·lada."
 
+from django.utils import timezone
+from rest_framework.views import APIView
+
+from prestecs.models import Parada, Ruta
+from prestecs.rutes import (
+    DadesRutaInconsistents,
+    calcula_i_desaa_ordre_ruta,
+)
+from prestecs.serializers import ParadaRutaSerializer
+from usuaris.permisos import EsRepartidorValidat
 
 class ComandesView(generics.GenericAPIView):
     """Comandes de l'usuari autenticat. Contracte a `docs/api-comandes.md`.
@@ -68,6 +79,9 @@ class ComandesView(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Les coordenades són per al mapa del repartidor (US12-T13): si el
+        # geocodificador falla, la comanda es crea igualment.
+        desa_coordenades_lliurament(comanda)
         return Response(ComandaSerializer(comanda).data, status=status.HTTP_201_CREATED)
 
 
@@ -234,6 +248,33 @@ def missatge_no_llesta(estat_actual):
         return "Aquesta comanda ja està llesta per a recollida."
     estat = Comanda.Estat(estat_actual).label.lower()
     return f"Aquesta comanda no es pot marcar com a llesta perquè està {estat}."
+
+class RutaAvuiView(APIView):
+    permission_classes = [EsRepartidorValidat]
+
+    def get(self, request):
+        ruta = (
+            Ruta.objects
+            .filter(
+                repartidor=request.user,
+                data=timezone.localdate(),
+            )
+            .first()
+        )
+
+        if ruta is None:
+            return Response([], status=status.HTTP_200_OK)
+
+        try:
+            parades = calcula_i_desaa_ordre_ruta(ruta)
+        except DadesRutaInconsistents:
+            return Response(
+                {"detail": "La ruta conté dades inconsistents."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        dades = ParadaRutaSerializer(parades, many=True).data
+        return Response(dades, status=status.HTTP_200_OK)
 
 
 class PrestecsView(generics.ListAPIView):

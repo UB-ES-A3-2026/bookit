@@ -5,6 +5,9 @@ lliure d'un repartidor validat. Cada lliurament ocupa `DURADA_LLIURAMENT_MINUTS`
 i ha de cabre sencer dins d'una franja de disponibilitat del repartidor, sense
 trepitjar els altres lliuraments que ja té aquell dia.
 
+En assignar-la, la comanda entra a la ruta d'aquell dia del repartidor amb dues
+parades: la recollida a la biblioteca i el lliurament (US12-T12).
+
 Les comandes de recollida no s'assignen: no les porta cap repartidor, sinó que
 l'usuari les recull a la biblioteca (US7-T8, US14-T10).
 """
@@ -13,9 +16,11 @@ from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Max
 from django.utils import timezone
 
-from prestecs.models import Comanda
+from prestecs.models import Comanda, Parada, Ruta
+from prestecs.rutes import calcula_i_desaa_ordre_ruta
 from usuaris.models import FranjaDisponibilitat, PerfilRepartidor
 
 # Dies, a partir del primer, en què es busca un forat. Amb una setmana es passa
@@ -30,6 +35,9 @@ def assigna_comanda(comanda, primer_dia=None):
     repartidor tingui un forat, i d'aquell dia tria el forat que comença abans.
     Si n'hi ha dos a la mateixa hora, tria el repartidor amb menys lliuraments
     aquell dia.
+
+    També posa la comanda a la ruta del repartidor per a aquell dia
+    (`afegeix_a_la_ruta`). Si això falla, la comanda tampoc queda assignada.
 
     Retorna `True` si l'ha assignada. Si la comanda no està preparada, ja té
     repartidor, és de recollida a la biblioteca o no hi ha cap forat, no la toca i
@@ -74,10 +82,39 @@ def assigna_comanda(comanda, primer_dia=None):
                     "actualitzada",
                 ]
             )
+            afegeix_a_la_ruta(actual)
             for camp in ("repartidor_id", "data_lliurament", "hora_inici_lliurament", "hora_fi_lliurament"):
                 setattr(comanda, camp, getattr(actual, camp))
             return True
     return False
+
+
+def afegeix_a_la_ruta(comanda):
+    """Posa una comanda assignada a la ruta del dia del seu repartidor (US12-T12).
+
+    Si el repartidor encara no té ruta per al dia del lliurament, la crea. Hi
+    afegeix la recollida a la biblioteca i el lliurament, si encara no hi són, i
+    torna a calcular l'ordre de tota la ruta (US12-T2), que segueix l'hora de
+    lliurament de cada comanda.
+
+    Si una parada falla i la comanda es torna a planificar (US13-T3), qui la
+    replanifica ha de treure abans les parades antigues de la ruta.
+    """
+    # Es crida des de `assigna_comanda`, amb els repartidors bloquejats: dues
+    # assignacions no poden afegir parades a la mateixa ruta alhora.
+    ruta, _ = Ruta.objects.get_or_create(
+        repartidor_id=comanda.repartidor_id, data=comanda.data_lliurament
+    )
+
+    # Ordre provisional al final de la ruta: no pot coincidir amb cap altre.
+    seguent = (ruta.parades.aggregate(Max("ordre"))["ordre__max"] or 0) + 1
+    for posicio, tipus in enumerate((Parada.Tipus.RECOLLIDA, Parada.Tipus.LLIVRAMENT)):
+        Parada.objects.get_or_create(
+            ruta=ruta, comanda=comanda, tipus=tipus, defaults={"ordre": seguent + posicio}
+        )
+
+    calcula_i_desaa_ordre_ruta(ruta)
+    return ruta
 
 
 def assigna_pendents(primer_dia=None):

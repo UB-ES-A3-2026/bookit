@@ -465,4 +465,5 @@ s'actualitzen aquí i al model abans d'implementar la resta d'endpoints.
   Owner; ara la recollida rep els mateixos textos que el lliurament a domicili.
 - **P10. Assignació de comandes.** Mentre el Product Owner no digui qui assigna les comandes i quan, ho fa el
   sistema sol en marcar-les com a llestes, amb l'ordre `assigna_comandes` per a les que es queden sense repartidor.
-  Cada lliurament ocupa 30 minuts i es busca a partir de l'endemà.
+  Cada lliurament ocupa 30 minuts i es busca a partir de l'endemà. En assignar-la, la comanda entra a la ruta del dia
+  del repartidor (vegeu `docs/api-repartidor.md`).
