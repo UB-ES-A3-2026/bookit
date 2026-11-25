@@ -95,6 +95,13 @@ amb `{"detail": "La parada no es pot completar."}`, i marcar com a fallida una
 parada completada o cancel·lada retorna **409** amb
 `{"detail": "La parada no es pot marcar com a fallida."}`.
 
+Completar el lliurament d'una comanda que encara no s'ha recollit (comanda
+`preparada`) retorna **409** amb
+`{"detail": "Primer has de completar la recollida d'aquesta comanda a la biblioteca."}`.
+La comanda es queda com estava. A la pantalla de la ruta, el botó "Completada"
+del lliurament no s'activa fins que s'ha completat la recollida de la mateixa
+comanda.
+
 ## Consultar la ruta del dia
 
 `GET /api/prestecs/repartidor/ruta-avui/`

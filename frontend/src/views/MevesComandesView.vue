@@ -1,14 +1,11 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import NotificacionsCapcalera from "../components/NotificacionsCapcalera.vue";
-import logoImage from "../assets/bookit-logo.jpg";
-import { useSessioStore } from "../stores/sessio.js";
+import LayoutCompte from "../components/LayoutCompte.vue";
 import { cancellaComanda, llistaMevesComandes } from "../services/comandesUsuari.js";
 import { formataDia, textEstat, textLliurament } from "../utils/comandes.js";
 
 const router = useRouter();
-const sessio = useSessioStore();
 
 const comandes = ref([]);
 const carregant = ref(true);
@@ -18,11 +15,6 @@ const cancelant = ref({});
 
 const CONFIRMACIO_CANCELACIO = "Segur que vols cancel·lar aquesta comanda?";
 const ERROR_COMANDA_SORTIDA = "Aquesta comanda ja ha sortit i no es pot cancel·lar";
-
-function tancaSessio() {
-  sessio.tancarSessio();
-  router.push({ name: "home" });
-}
 
 async function carregaComandes() {
   carregant.value = true;
@@ -86,33 +78,12 @@ onMounted(carregaComandes);
 </script>
 
 <template>
-  <main class="comandes-page">
-    <header class="site-header">
-      <RouterLink class="brand" to="/" aria-label="bookit inici">
-        <span
-          class="brand-mark"
-          :style="{ backgroundImage: `url(${logoImage})` }"
-          aria-hidden="true"
-        ></span>
-        <span>bookit.</span>
-      </RouterLink>
-
-      <div class="header-accions">
-        <span class="header-link">Les meves comandes</span>
-        <NotificacionsCapcalera />
-        <button type="button" class="logout-button" @click="tancaSessio">
-          Tancar sessió
-        </button>
-      </div>
-    </header>
-
+  <LayoutCompte
+    titol="Les meves comandes"
+    apartat="Comandes"
+    descripcio="Consulta en quin estat és cada comanda i quan t'arribarà."
+  >
     <section class="comandes-content">
-      <p class="eyebrow">El meu espai</p>
-      <h1>Les meves comandes</h1>
-      <p class="description">
-        Consulta en quin estat és cada comanda i quan t'arribarà.
-      </p>
-
       <p v-if="carregant" class="estat" role="status">Carregant les comandes...</p>
 
       <div v-else-if="error" class="estat estat-error" role="alert">
@@ -175,106 +146,12 @@ onMounted(carregaComandes);
         </li>
       </ul>
     </section>
-  </main>
+  </LayoutCompte>
 </template>
 
 <style scoped>
-.comandes-page {
-  min-height: 100svh;
-  color: #241914;
-  background: #f5ecdc;
-}
-
-.site-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem 1rem;
-  min-height: 62px;
-  padding: 0.5rem max(1.25rem, calc((100% - 1170px) / 2));
-  background: #fffdf9;
-  box-sizing: border-box;
-}
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  color: #271d1a;
-  font-size: 1.25rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  text-decoration: none;
-}
-
-.brand-mark {
-  display: block;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.35rem;
-  background-position: center 36%;
-  background-size: auto 240%;
-}
-
-.header-accions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 1.25rem;
-}
-
-.header-link {
-  color: #241914;
-  font-weight: 700;
-}
-
-.logout-button {
-  padding: 0.55rem 1rem;
-  border: 0;
-  border-radius: 0.55rem;
-  color: #fff;
-  background: #980000;
-  font: inherit;
-  font-size: 0.9rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.logout-button:hover,
-.logout-button:focus-visible {
-  background: #740000;
-}
-
 .comandes-content {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 3.5rem 1.25rem;
-}
-
-.eyebrow {
-  margin: 0 0 0.75rem;
-  color: #a00000;
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-}
-
-h1 {
-  margin: 0;
-  color: #241914;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(2.2rem, 4vw, 2.8rem);
-  line-height: 1.15;
-  letter-spacing: -0.03em;
-}
-
-.description {
-  max-width: 34rem;
-  margin: 0.75rem 0 2rem;
-  color: #4d4541;
-  line-height: 1.6;
+  min-width: 0;
 }
 
 .estat {

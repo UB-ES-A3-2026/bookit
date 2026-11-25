@@ -1,14 +1,12 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import logoImage from "../assets/bookit-logo.jpg";
-import { useSessioStore } from "../stores/sessio.js";
+import CapcaleraApp from "../components/CapcaleraApp.vue";
 import { desaFranges, llistaFranges } from "../services/franges.js";
 
 const DIES = ["Dilluns", "Dimarts", "Dimecres", "Dijous", "Divendres", "Dissabte", "Diumenge"];
 
 const router = useRouter();
-const sessio = useSessioStore();
 
 const franges = ref([]);
 const desades = ref("[]");
@@ -56,11 +54,6 @@ function afegeixFranja(dia) {
 function treuFranja(franja) {
   franges.value = franges.value.filter((element) => element.clau !== franja.clau);
   netejaAvisos();
-}
-
-function tancaSessio() {
-  sessio.tancarSessio();
-  router.push({ name: "home" });
 }
 
 async function carregaFranges() {
@@ -123,25 +116,7 @@ onMounted(carregaFranges);
 
 <template>
   <main class="franges-page">
-    <header class="site-header">
-      <RouterLink class="brand" to="/" aria-label="bookit inici">
-        <span
-          class="brand-mark"
-          :style="{ backgroundImage: `url(${logoImage})` }"
-          aria-hidden="true"
-        ></span>
-        <span>bookit.</span>
-      </RouterLink>
-
-      <div class="header-accions">
-        <RouterLink class="header-link" :to="{ name: 'espai-repartidor' }">
-          El meu espai
-        </RouterLink>
-        <button type="button" class="logout-button" @click="tancaSessio">
-          Tancar sessió
-        </button>
-      </div>
-    </header>
+    <CapcaleraApp />
 
     <section class="franges-content">
       <p class="eyebrow">Espai de repartidor</p>
@@ -237,67 +212,6 @@ onMounted(carregaFranges);
   min-height: 100svh;
   color: #241914;
   background: #f5ecdc;
-}
-
-.site-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem 1rem;
-  min-height: 62px;
-  padding: 0.5rem max(1.25rem, calc((100% - 1170px) / 2));
-  background: #fffdf9;
-  box-sizing: border-box;
-}
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  color: #271d1a;
-  font-size: 1.25rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  text-decoration: none;
-}
-
-.brand-mark {
-  display: block;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.35rem;
-  background-position: center 36%;
-  background-size: auto 240%;
-}
-
-.header-accions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 1.25rem;
-}
-
-.header-link {
-  color: #241914;
-  font-weight: 700;
-}
-
-.logout-button {
-  padding: 0.55rem 1rem;
-  border: 0;
-  border-radius: 0.55rem;
-  color: #fff;
-  background: #980000;
-  font: inherit;
-  font-size: 0.9rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.logout-button:hover,
-.logout-button:focus-visible {
-  background: #740000;
 }
 
 .franges-content {

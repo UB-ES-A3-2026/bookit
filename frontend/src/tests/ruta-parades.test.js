@@ -35,6 +35,11 @@ function parada(id, ordre, tipus, extra = {}) {
 }
 
 const ruta = () => [parada(18, 1, "recollida"), parada(19, 2, "lliurament")];
+// La mateixa comanda, amb la recollida ja feta: el lliurament ja es pot completar.
+const rutaRecollida = () => [
+  parada(18, 1, "recollida", { estat: "en_cami", estat_parada: "completada" }),
+  parada(19, 2, "lliurament", { estat: "en_cami" }),
+];
 
 function errorHttp(status, data = {}) {
   return Object.assign(new Error("error"), { response: { status, data } });
@@ -94,6 +99,53 @@ describe("botons de les parades pendents", () => {
   });
 });
 
+describe("lliurament abans de la recollida", () => {
+  it("no deixa completar el lliurament mentre la recollida està pendent i ho explica", async () => {
+    servei.llistaRutaAvui.mockResolvedValue(ruta());
+    await renderitza();
+
+    expect(parades()[1].find(".boto-completada").attributes("disabled")).toBeDefined();
+    expect(parades()[1].find(".avis-recollida").text()).toBe(
+      "Primer marca la recollida d'aquesta comanda a la biblioteca.",
+    );
+    expect(parades()[0].find(".boto-completada").attributes("disabled")).toBeUndefined();
+    expect(parades()[0].find(".avis-recollida").exists()).toBe(false);
+
+    await parades()[1].find(".boto-completada").trigger("click");
+    expect(servei.completaParada).not.toHaveBeenCalled();
+  });
+
+  it("el lliurament es pot marcar com a fallit encara que no s'hagi recollit", async () => {
+    servei.llistaRutaAvui.mockResolvedValue(ruta());
+    await renderitza();
+
+    expect(parades()[1].find(".boto-fallida").attributes("disabled")).toBeUndefined();
+  });
+
+  it("un cop recollida, el lliurament es pot completar", async () => {
+    servei.llistaRutaAvui.mockResolvedValueOnce(ruta()).mockResolvedValueOnce(rutaRecollida());
+    servei.completaParada.mockResolvedValue({ id: 18, estat: "completada" });
+    await renderitza();
+
+    await boto(0, "Completada").trigger("click");
+    await flushPromises();
+
+    expect(parades()[1].find(".boto-completada").attributes("disabled")).toBeUndefined();
+    expect(parades()[1].find(".avis-recollida").exists()).toBe(false);
+  });
+
+  it("la recollida pendent d'una altra comanda no bloqueja el lliurament", async () => {
+    servei.llistaRutaAvui.mockResolvedValue([
+      parada(18, 1, "recollida", { estat: "en_cami", estat_parada: "completada" }),
+      parada(20, 2, "recollida", { comanda: 13 }),
+      parada(19, 3, "lliurament", { estat: "en_cami" }),
+    ]);
+    await renderitza();
+
+    expect(parades()[2].find(".boto-completada").attributes("disabled")).toBeUndefined();
+  });
+});
+
 describe("marcar una parada com a completada", () => {
   it("crida l'endpoint, mostra la confirmació i recarrega la ruta", async () => {
     servei.llistaRutaAvui
@@ -116,7 +168,7 @@ describe("marcar una parada com a completada", () => {
   });
 
   it("mostra el missatge del backend si la parada no es pot completar (409)", async () => {
-    servei.llistaRutaAvui.mockResolvedValue(ruta());
+    servei.llistaRutaAvui.mockResolvedValue(rutaRecollida());
     servei.completaParada.mockRejectedValue(
       errorHttp(409, { detail: "Cal recollir la comanda abans de lliurar-la." }),
     );
@@ -133,17 +185,21 @@ describe("marcar una parada com a completada", () => {
   });
 
   it("en fer una altra acció esborra l'error d'una parada anterior", async () => {
-    servei.llistaRutaAvui.mockResolvedValue(ruta());
+    // Dues recollides de comandes diferents.
+    servei.llistaRutaAvui.mockResolvedValue([
+      parada(18, 1, "recollida"),
+      parada(20, 2, "recollida", { comanda: 13 }),
+    ]);
     servei.completaParada
       .mockRejectedValueOnce(errorHttp(409, { detail: "La comanda no permet completar aquest lliurament." }))
-      .mockResolvedValueOnce({ id: 18, estat: "completada" });
+      .mockResolvedValueOnce({ id: 20, estat: "completada" });
     await renderitza();
 
-    await boto(1, "Completada").trigger("click");
-    await flushPromises();
-    expect(parades()[1].find(".error-parada").exists()).toBe(true);
-
     await boto(0, "Completada").trigger("click");
+    await flushPromises();
+    expect(parades()[0].find(".error-parada").exists()).toBe(true);
+
+    await boto(1, "Completada").trigger("click");
     await flushPromises();
 
     expect(wrapper.find(".error-parada").exists()).toBe(false);
@@ -326,7 +382,7 @@ describe("estat de cada parada", () => {
 describe("mentre s'envia una acció", () => {
   it("desactiva tots els botons i no permet enviar dues vegades", async () => {
     const pendent = promesaPendent();
-    servei.llistaRutaAvui.mockResolvedValue(ruta());
+    servei.llistaRutaAvui.mockResolvedValueOnce(ruta()).mockResolvedValueOnce(rutaRecollida());
     servei.completaParada.mockReturnValue(pendent.promesa);
     await renderitza();
 

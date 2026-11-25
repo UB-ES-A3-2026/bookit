@@ -64,6 +64,14 @@ describe("notificacions de la capçalera", () => {
     expect(servei.llistaNotificacions).not.toHaveBeenCalled();
   });
 
+  it("el botó és una campaneta amb el nom per als lectors de pantalla", async () => {
+    await renderitza();
+
+    const boto = wrapper.get(".notificacions-boto");
+    expect(boto.find("svg.campaneta").attributes("aria-hidden")).toBe("true");
+    expect(boto.get(".nomes-lector").text()).toBe("Notificacions");
+  });
+
   it("compta només les noves", async () => {
     await renderitza();
 

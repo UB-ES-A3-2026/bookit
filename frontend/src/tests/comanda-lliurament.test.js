@@ -1,5 +1,6 @@
 import { createApp } from "vue";
 import { createMemoryHistory, createRouter } from "vue-router";
+import { ambRutesCompte } from "./rutesCompte.js";
 import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ComandaView from "../views/ComandaView.vue";
@@ -17,7 +18,7 @@ let app;
 async function renderitza() {
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: [{ path: "/comanda", name: "comanda", component: ComandaView }],
+    routes: ambRutesCompte([{ path: "/comanda", name: "comanda", component: ComandaView }]),
   });
   await router.push("/comanda");
   await router.isReady();

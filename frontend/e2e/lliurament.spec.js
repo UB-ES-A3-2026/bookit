@@ -6,8 +6,14 @@ import { test, expect } from "@playwright/test";
 
 const URL_COSTOS = "**/api/prestecs/comandes/cost-enviament/";
 const URL_COMANDA = "**/api/prestecs/comandes/";
+const URL_NOTIFICACIONS = "**/api/prestecs/notificacions/";
 
 async function prepararComanda(page) {
+  // La capçalera demana les notificacions (US8). Amb el token de prova el backend
+  // respondria 401, es tancaria la sessió i la cistella quedaria buida.
+  await page.route(URL_NOTIFICACIONS, (ruta) =>
+    ruta.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
+  );
   await page.addInitScript(() => {
     sessionStorage.setItem(
       "bookit.sessio",

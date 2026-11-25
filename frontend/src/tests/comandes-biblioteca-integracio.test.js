@@ -161,9 +161,10 @@ describe("dades de la llista (CP-US10-05)", () => {
 });
 
 describe("navegació", () => {
-  it("s'hi arriba des del catàleg", async () => {
+  it("s'hi arriba des del menú de l'usuari al catàleg", async () => {
     respon([comanda(12, null)]);
     await obre("/cataleg", "biblioteca");
+    await clica(".menu-usuari__boto");
     await clica('a[href="/biblioteca/comandes"]');
 
     await vi.waitFor(() => expect(numeros()).toEqual([12]));
