@@ -77,10 +77,23 @@ comanda a la ruta, la comanda tampoc queda assignada. Com que l'assignació busc
 a partir de l'endemà, la ruta d'avui només té les comandes que es van assignar
 abans d'avui.
 
-Si una parada falla i la comanda es torna a planificar (US13-T3), cal treure
-abans les parades antigues de la ruta. Si la comanda torna al mateix repartidor
-i al mateix dia, les parades que encara hi siguin es reaprofiten i no es
-dupliquen.
+Si una parada falla, la comanda es torna a planificar:
+
+- si ha fallat el lliurament (comanda `en_cami`), la comanda torna a
+  `preparada` (US13-T3);
+- si ha fallat abans de sortir de la biblioteca, per exemple la recollida
+  (comanda `preparada`), la comanda continua `preparada` (US13-T12).
+
+En tots dos casos, les altres parades pendents de la comanda es cancel·len, la
+comanda es queda sense repartidor ni horari i es torna a assignar. Si no troba
+cap forat, es queda `preparada` sense repartidor fins que l'ordre
+`assigna_comandes` la pugui assignar. Si torna al mateix repartidor i al mateix
+dia, es reaprofiten les seves parades d'aquella ruta i tornen a estar pendents.
+
+Errors de les parades: completar una parada fallida o cancel·lada retorna **409**
+amb `{"detail": "La parada no es pot completar."}`, i marcar com a fallida una
+parada completada o cancel·lada retorna **409** amb
+`{"detail": "La parada no es pot marcar com a fallida."}`.
 
 ## Consultar la ruta del dia
 
