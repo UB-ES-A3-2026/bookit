@@ -8,7 +8,7 @@ import {
   lliuraComandaRecollida,
   marcaComandaPreparada,
 } from "../services/comandesBiblioteca.js";
-import { formataData, formataDia, textEstat } from "../utils/comandes.js";
+import { formataDia, textEstat, textLliurament } from "../utils/comandes.js";
 
 const router = useRouter();
 const sessio = useSessioStore();
@@ -185,7 +185,7 @@ onMounted(() => carregaComandes());
             <div>
               <dt>Lliurament</dt>
               <dd class="data-lliurament">
-                {{ comanda.data_lliurament ? formataData(comanda.data_lliurament) : "Sense data" }}
+                {{ textLliurament(comanda) }}
               </dd>
             </div>
             <div>

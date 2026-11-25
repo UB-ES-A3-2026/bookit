@@ -417,6 +417,9 @@ repartidor (US12) es farà a partir d'aquestes assignacions.
   forat que comença abans. Si dos repartidors poden començar a la mateixa hora, es tria el que té menys lliuraments
   aquell dia.
 - Només es fan servir repartidors actius amb el perfil validat.
+- Només s'assignen les comandes a domicili. Les de recollida no tenen repartidor ni `data_lliurament`: l'usuari les
+  recull a la biblioteca i la biblioteca les marca com a lliurades (US7-T8, US14-T10). El frontend hi mostra
+  "Recollida a la biblioteca" en lloc de la data.
 
 En assignar-la, la comanda guarda el repartidor, la `data_lliurament` i l'hora d'inici i de final del lliurament. De
 moment, d'aquests camps les respostes de l'API només mostren la `data_lliurament`.
