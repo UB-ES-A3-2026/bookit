@@ -9,6 +9,7 @@ import ComandesBibliotecaView from "../views/ComandesBibliotecaView.vue";
 const servei = vi.hoisted(() => ({
   llistaComandesBiblioteca: vi.fn(),
   marcaComandaPreparada: vi.fn(),
+  lliuraComandaRecollida: vi.fn(),
 }));
 
 vi.mock("../services/comandesBiblioteca.js", () => servei);
@@ -396,6 +397,118 @@ describe("Llesta per a recollida", () => {
   it("amb un 403 torna a l'inici", async () => {
     servei.llistaComandesBiblioteca.mockResolvedValue(comandes);
     servei.marcaComandaPreparada.mockRejectedValue({ response: { status: 403 } });
+    const router = await renderitza();
+
+    await botons()[0].trigger("click");
+    await flushPromises();
+
+    expect(router.currentRoute.value.name).toBe("home");
+  });
+});
+
+describe("Lliurada a l'usuari", () => {
+  const TEXT_BOTO = "Lliurada a l'usuari";
+  const recollida = (id, estat = "preparada") => ({ ...comanda(id, estat, null), tipus_lliurament: "recollida" });
+  const domicili = (id, estat = "preparada") => ({ ...comanda(id, estat, "2026-11-28"), tipus_lliurament: "domicili" });
+
+  function botons() {
+    return wrapper.findAll("button").filter((boto) => boto.text() === TEXT_BOTO);
+  }
+
+  function targeta(id) {
+    return wrapper.findAll(".comanda").find((element) => element.get("h2").text() === `Comanda ${id}`);
+  }
+
+  it("només surt a les comandes de recollida preparades, amb l'avís", async () => {
+    servei.llistaComandesBiblioteca.mockResolvedValue([
+      recollida(12),
+      recollida(13, "rebuda"),
+      domicili(4),
+      recollida(8, "cancellada"),
+    ]);
+    await renderitza();
+
+    expect(botons()).toHaveLength(1);
+    expect(targeta(12).text()).toContain(TEXT_BOTO);
+    expect(targeta(12).get(".avis-recollida").text()).toBe(
+      "L'usuari la recull a la biblioteca: marca-la com a lliurada quan la vingui a buscar.",
+    );
+    expect(targeta(13).find(".avis-recollida").exists()).toBe(false);
+    expect(targeta(4).text()).not.toContain(TEXT_BOTO);
+    expect(targeta(8).text()).not.toContain(TEXT_BOTO);
+  });
+
+  it("la lliura, la treu de la llista i ho confirma", async () => {
+    servei.llistaComandesBiblioteca.mockResolvedValue([recollida(12), domicili(4)]);
+    servei.lliuraComandaRecollida.mockResolvedValue({ ...recollida(12, "lliurada") });
+    await renderitza();
+
+    await botons()[0].trigger("click");
+    await flushPromises();
+
+    expect(servei.lliuraComandaRecollida).toHaveBeenCalledExactlyOnceWith(12);
+    expect(targeta(12)).toBeUndefined();
+    expect(targeta(4)).toBeDefined();
+    expect(wrapper.get(".missatge-lliurada").text()).toBe("La comanda 12 s'ha lliurat a l'usuari.");
+    expect(servei.llistaComandesBiblioteca).toHaveBeenCalledTimes(1);
+  });
+
+  it("si era l'última, diu que no en queda cap i manté el missatge", async () => {
+    servei.llistaComandesBiblioteca.mockResolvedValue([recollida(12)]);
+    servei.lliuraComandaRecollida.mockResolvedValue(recollida(12, "lliurada"));
+    await renderitza();
+
+    await botons()[0].trigger("click");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("No tens cap comanda pendent.");
+    expect(wrapper.get(".missatge-lliurada").text()).toBe("La comanda 12 s'ha lliurat a l'usuari.");
+  });
+
+  it("mostra el 409 de l'API i torna a demanar la llista", async () => {
+    servei.llistaComandesBiblioteca.mockResolvedValueOnce([recollida(12)]).mockResolvedValueOnce([recollida(12, "cancellada")]);
+    servei.lliuraComandaRecollida.mockRejectedValue({
+      response: { status: 409, data: { detail: "Aquesta comanda no es pot lliurar perquè està cancel·lada." } },
+    });
+    await renderitza();
+
+    await botons()[0].trigger("click");
+    await flushPromises();
+
+    expect(targeta(12).get('[role="alert"]').text()).toBe("Aquesta comanda no es pot lliurar perquè està cancel·lada.");
+    expect(targeta(12).get(".etiqueta").text()).toBe("Cancel·lada");
+    expect(servei.llistaComandesBiblioteca).toHaveBeenCalledTimes(2);
+    expect(wrapper.find(".missatge-lliurada").exists()).toBe(false);
+  });
+
+  it("si falla la connexió, ho diu i manté la comanda", async () => {
+    servei.llistaComandesBiblioteca.mockResolvedValue([recollida(12)]);
+    servei.lliuraComandaRecollida.mockRejectedValue(new Error("Network Error"));
+    await renderitza();
+
+    await botons()[0].trigger("click");
+    await flushPromises();
+
+    expect(targeta(12).get('[role="alert"]').text()).toBe(
+      "No s'ha pogut marcar la comanda com a lliurada. Torna-ho a provar més tard.",
+    );
+    expect(botons()).toHaveLength(1);
+  });
+
+  it("no envia dues peticions si es clica dues vegades", async () => {
+    servei.llistaComandesBiblioteca.mockResolvedValue([recollida(12)]);
+    servei.lliuraComandaRecollida.mockReturnValue(new Promise(() => {}));
+    await renderitza();
+
+    await botons()[0].trigger("click");
+    await wrapper.findAll("button").find((boto) => boto.text() === "Marcant...").trigger("click");
+
+    expect(servei.lliuraComandaRecollida).toHaveBeenCalledTimes(1);
+  });
+
+  it("amb un 403 torna a l'inici", async () => {
+    servei.llistaComandesBiblioteca.mockResolvedValue([recollida(12)]);
+    servei.lliuraComandaRecollida.mockRejectedValue({ response: { status: 403 } });
     const router = await renderitza();
 
     await botons()[0].trigger("click");
