@@ -185,6 +185,10 @@ class ParadaRutaSerializer(serializers.Serializer):
     tipus = serializers.CharField(read_only=True)
     comanda = serializers.IntegerField(source="comanda_id", read_only=True)
     estat = serializers.CharField(source="comanda.estat", read_only=True)
+    # Estat propi de la parada (US13-T5): el frontend amaga els botons de les
+    # parades que ja s'han completat o han fallat.
+    estat_parada = serializers.CharField(source="estat", read_only=True)
+    motiu = serializers.CharField(read_only=True)
     llibres = serializers.SerializerMethodField()
     adreca = serializers.SerializerMethodField()
 
@@ -217,3 +221,34 @@ class ParadaRutaSerializer(serializers.Serializer):
             "latitud": coordenada(comanda.latitud_lliurament),
             "longitud": coordenada(comanda.longitud_lliurament),
         }
+
+
+class ParadaCompletadaSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    ordre = serializers.IntegerField(read_only=True)
+    tipus = serializers.CharField(read_only=True)
+    estat = serializers.CharField(read_only=True)
+    completada_el = serializers.DateTimeField(read_only=True)
+    comanda = serializers.IntegerField(source="comanda_id", read_only=True)
+
+class FallarParadaSerializer(serializers.Serializer):
+    motiu = serializers.CharField(
+        max_length=500,
+        allow_blank=False,
+        trim_whitespace=True,
+        error_messages={
+            "required": "Aquest camp és obligatori.",
+            "blank": "Aquest camp és obligatori.",
+            "max_length": "El motiu no pot tenir més de 500 caràcters.",
+        },
+    )
+
+
+class ParadaFallidaSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    ordre = serializers.IntegerField(read_only=True)
+    tipus = serializers.CharField(read_only=True)
+    estat = serializers.CharField(read_only=True)
+    motiu = serializers.CharField(read_only=True)
+    completada_el = serializers.DateTimeField(read_only=True)
+    comanda = serializers.IntegerField(source="comanda_id", read_only=True)

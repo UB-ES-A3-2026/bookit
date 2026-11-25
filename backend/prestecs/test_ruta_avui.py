@@ -351,3 +351,47 @@ def test_parametre_repartidor_extra_no_canvia_l_aillament(monkeypatch):
 
     assert resposta.status_code == status.HTTP_200_OK
     assert [parada["id"] for parada in resposta.data] == [parada_propia.id]
+
+
+def test_la_ruta_inclou_l_estat_i_el_motiu_de_cada_parada(monkeypatch):
+    """US13-T5: el frontend necessita saber quines parades ja s'han fet."""
+    avui = date(2026, 11, 24)
+    monkeypatch.setattr(
+        "prestecs.views.timezone.localdate",
+        lambda: avui,
+    )
+    repartidor = crea_repartidor()
+    comanda = Comanda.objects.create(
+        usuari=crea_usuari(),
+        biblioteca=crea_biblioteca(),
+        repartidor=repartidor,
+        estat=Comanda.Estat.EN_CAMI,
+        data_lliurament=avui,
+    )
+    ruta = Ruta.objects.create(repartidor=repartidor, data=avui)
+    Parada.objects.create(
+        ruta=ruta,
+        comanda=comanda,
+        tipus=Parada.Tipus.RECOLLIDA,
+        ordre=1,
+        estat=Parada.Estat.COMPLETADA,
+    )
+    Parada.objects.create(
+        ruta=ruta,
+        comanda=comanda,
+        tipus=Parada.Tipus.LLIVRAMENT,
+        ordre=2,
+        estat=Parada.Estat.FALLIDA,
+        motiu="No hi havia ningú al domicili.",
+    )
+
+    resposta = client_repartidor(repartidor).get(URL_RUTA_AVUI)
+
+    assert resposta.status_code == status.HTTP_200_OK
+    assert [parada["estat_parada"] for parada in resposta.data] == [
+        "completada",
+        "fallida",
+    ]
+    assert resposta.data[0]["motiu"] == ""
+    assert resposta.data[1]["motiu"] == "No hi havia ningú al domicili."
+    assert resposta.data[0]["estat"] == "en_cami"

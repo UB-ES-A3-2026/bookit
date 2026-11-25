@@ -97,8 +97,9 @@ def afegeix_a_la_ruta(comanda):
     torna a calcular l'ordre de tota la ruta (US12-T2), que segueix l'hora de
     lliurament de cada comanda.
 
-    Si una parada falla i la comanda es torna a planificar (US13-T3), qui la
-    replanifica ha de treure abans les parades antigues de la ruta.
+    Si la comanda es torna a planificar (US13-T3, US13-T12) i cau a la mateixa
+    ruta on ja era, les seves parades fallides o cancel·lades tornen a estar
+    pendents: una ruta només pot tenir una parada de cada tipus per comanda.
     """
     # Es crida des de `assigna_comanda`, amb els repartidors bloquejats: dues
     # assignacions no poden afegir parades a la mateixa ruta alhora.
@@ -109,9 +110,13 @@ def afegeix_a_la_ruta(comanda):
     # Ordre provisional al final de la ruta: no pot coincidir amb cap altre.
     seguent = (ruta.parades.aggregate(Max("ordre"))["ordre__max"] or 0) + 1
     for posicio, tipus in enumerate((Parada.Tipus.RECOLLIDA, Parada.Tipus.LLIVRAMENT)):
-        Parada.objects.get_or_create(
+        parada, creada = Parada.objects.get_or_create(
             ruta=ruta, comanda=comanda, tipus=tipus, defaults={"ordre": seguent + posicio}
         )
+        if not creada and parada.estat in (Parada.Estat.FALLIDA, Parada.Estat.CANCELLADA):
+            parada.estat = Parada.Estat.PENDENT
+            parada.motiu = ""
+            parada.save(update_fields=["estat", "motiu"])
 
     calcula_i_desaa_ordre_ruta(ruta)
     return ruta

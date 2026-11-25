@@ -77,10 +77,23 @@ comanda a la ruta, la comanda tampoc queda assignada. Com que l'assignació busc
 a partir de l'endemà, la ruta d'avui només té les comandes que es van assignar
 abans d'avui.
 
-Si una parada falla i la comanda es torna a planificar (US13-T3), cal treure
-abans les parades antigues de la ruta. Si la comanda torna al mateix repartidor
-i al mateix dia, les parades que encara hi siguin es reaprofiten i no es
-dupliquen.
+Si una parada falla, la comanda es torna a planificar:
+
+- si ha fallat el lliurament (comanda `en_cami`), la comanda torna a
+  `preparada` (US13-T3);
+- si ha fallat abans de sortir de la biblioteca, per exemple la recollida
+  (comanda `preparada`), la comanda continua `preparada` (US13-T12).
+
+En tots dos casos, les altres parades pendents de la comanda es cancel·len, la
+comanda es queda sense repartidor ni horari i es torna a assignar. Si no troba
+cap forat, es queda `preparada` sense repartidor fins que l'ordre
+`assigna_comandes` la pugui assignar. Si torna al mateix repartidor i al mateix
+dia, es reaprofiten les seves parades d'aquella ruta i tornen a estar pendents.
+
+Errors de les parades: completar una parada fallida o cancel·lada retorna **409**
+amb `{"detail": "La parada no es pot completar."}`, i marcar com a fallida una
+parada completada o cancel·lada retorna **409** amb
+`{"detail": "La parada no es pot marcar com a fallida."}`.
 
 ## Consultar la ruta del dia
 
@@ -104,6 +117,11 @@ part del contracte i no permeten seleccionar un altre repartidor.
 Retorna una llista plana sense paginació. Les parades estan ordenades pel camp
 `ordre` calculat per US12-T2 i desat a la base de dades.
 
+Les parades d'una comanda que l'usuari ha cancel·lat (US20) no hi surten. En
+consultar la ruta, les que encara estaven pendents es marquen com a
+`cancellada` (US13-T11). Si es prova de completar-ne una, es retorna el 409 de
+parada en estat final.
+
 Si no existeix una ruta creada per al repartidor i la data local actual, retorna
 una llista buida:
 
@@ -121,6 +139,8 @@ Exemple amb dues parades d'una mateixa comanda:
     "tipus": "recollida",
     "comanda": 12,
     "estat": "preparada",
+    "estat_parada": "pendent",
+    "motiu": "",
     "llibres": [
       {
         "id": 7,
@@ -145,6 +165,8 @@ Exemple amb dues parades d'una mateixa comanda:
     "tipus": "lliurament",
     "comanda": 12,
     "estat": "preparada",
+    "estat_parada": "pendent",
+    "motiu": "",
     "llibres": [
       {
         "id": 7,
@@ -172,6 +194,8 @@ Exemple amb dues parades d'una mateixa comanda:
 | `tipus` | text | No | Sí | `recollida` o `lliurament`. |
 | `comanda` | enter | No | Sí | Identificador de la comanda associada. |
 | `estat` | text | No | Sí | Estat actual de la comanda. |
+| `estat_parada` | text | No | Sí | Estat de la parada: `pendent`, `completada`, `fallida` o `cancellada`. |
+| `motiu` | text | No | Sí | Motiu d'una parada fallida; text buit en els altres casos. |
 | `llibres` | llista | No | Sí | Llibres de la comanda: `id`, `titol`, `autor` i `portada`. |
 | `adreca` | objecte | No | Sí | Ubicació de la parada i dades de biblioteca quan correspon. |
 
@@ -330,6 +354,15 @@ Regles proposades:
 - no es pot completar una parada fora de la ruta del repartidor;
 - no es pot completar una parada que ja no correspon a l'estat actual;
 - no es pot saltar la recollida quan es té una comanda amb aquesta dependència.
+
+Canvi d'estat de la comanda en completar una parada (US13-T10):
+
+- completar la recollida passa la comanda de `preparada` a `en_cami`, i l'usuari
+  rep la notificació amb el nom del repartidor de la ruta;
+- completar el lliurament la passa d'`en_cami` a `lliurada`;
+- si la comanda no pot fer aquest canvi (per exemple, perquè encara no s'ha
+  recollit o perquè s'ha cancel·lat), la parada no es completa i es retorna
+  **409** amb `{"detail": "La comanda no permet completar aquest lliurament."}`.
 
 ## `[proposat]` Reportar una incidència
 

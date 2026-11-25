@@ -4,11 +4,13 @@ from django.urls import path
 
 from prestecs.views import (
     CancellarComandaView,
+    CompletarParadaView,
     ComandaLlestaView,
     ComandaRecollidaView,
     ComandesBibliotecaView,
     ComandesView,
     CostEnviamentView,
+    FallarParadaView,
     NotificacioLlegidaView,
     NotificacionsLlegidesView,
     NotificacionsView,
@@ -53,5 +55,15 @@ urlpatterns = [
         "repartidor/ruta-avui/",
         RutaAvuiView.as_view(),
         name="ruta-avui-repartidor",
+    ),
+    path(
+        "repartidor/parades/<int:pk>/completar/",
+        CompletarParadaView.as_view(),
+        name="completar-parada",
+    ),
+    path(
+        "repartidor/parades/<int:pk>/fallida/",
+        FallarParadaView.as_view(),
+        name="fallar-parada",
     ),
 ]

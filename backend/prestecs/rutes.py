@@ -4,7 +4,7 @@ from itertools import count
 
 from django.db import transaction
 
-from prestecs.models import Parada, Ruta
+from prestecs.models import Comanda, Parada, Ruta
 
 
 class DadesRutaInconsistents(ValueError):
@@ -113,7 +113,9 @@ def ordena_parades(parades):
 def calcula_i_desaa_ordre_ruta(ruta):
     """Calcula i desa l'ordre definitiu d'una ruta de manera atòmica.
 
-    Retorna la llista de parades ja ordenades.
+    Retorna la llista de parades ja ordenades, sense les cancel·lades. Les parades
+    pendents d'una comanda que l'usuari ha cancel·lat es marquen com a cancel·lades
+    (US13-T11): el repartidor ja no hi ha d'anar.
     """
 
     with transaction.atomic():
@@ -125,7 +127,13 @@ def calcula_i_desaa_ordre_ruta(ruta):
             .values_list("pk", flat=True)
         )
 
-        parades = list(
+        Parada.objects.filter(
+            ruta=ruta_bloquejada,
+            estat=Parada.Estat.PENDENT,
+            comanda__estat=Comanda.Estat.CANCELLADA,
+        ).update(estat=Parada.Estat.CANCELLADA)
+
+        totes = list(
             Parada.objects.select_related(
                 "comanda",
                 "comanda__usuari",
@@ -137,18 +145,23 @@ def calcula_i_desaa_ordre_ruta(ruta):
             .order_by("id")
         )
 
+        cancellades = [parada for parada in totes if parada.estat == Parada.Estat.CANCELLADA]
+        parades = [parada for parada in totes if parada.estat != Parada.Estat.CANCELLADA]
         ordenades = ordena_parades(parades)
 
-        if not ordenades:
+        if not totes:
             return []
 
-        offset_temporal = len(parades) + 1
-        for index, parada in enumerate(ordenades, start=1):
+        # Les cancel·lades van al final perquè els números d'ordre de la ruta
+        # (únics per ruta) no coincideixin amb els de les parades que es mostren.
+        numerades = ordenades + cancellades
+        offset_temporal = len(totes) + 1
+        for index, parada in enumerate(numerades, start=1):
             parada.ordre = offset_temporal + index
-        Parada.objects.bulk_update(ordenades, ["ordre"])
+        Parada.objects.bulk_update(numerades, ["ordre"])
 
-        for index, parada in enumerate(ordenades, start=1):
+        for index, parada in enumerate(numerades, start=1):
             parada.ordre = index
-        Parada.objects.bulk_update(ordenades, ["ordre"])
+        Parada.objects.bulk_update(numerades, ["ordre"])
 
     return ordenades
