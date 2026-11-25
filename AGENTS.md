@@ -41,7 +41,7 @@ Ja hi ha els projectes de backend i frontend i la base de dades PostgreSQL; Djan
 - Tests E2E amb Playwright (des de `frontend/`): `npx playwright install chromium` la primera vegada i
   `npm run test:e2e`. Els tests són a `frontend/e2e/` (`*.spec.js`) i aixequen Vite si no n'hi ha cap al port 5173.
 - Tests unitaris del frontend amb Vitest: des de `frontend/`, executeu `npm run test` un cop s'hagi completat US0-T21 i el script estigui configurat.
-- CI (`.github/workflows/ci.yml`): a cada PR executa `manage.py check` i `pytest` amb un PostgreSQL 16 temporal,
+- CI (`.github/workflows/ci.yml`): a cada PR i a cada commit que arriba a `main` executa `manage.py check` i `pytest` amb un PostgreSQL 16 temporal,
   i `npm ci`, `npm run build` i `npm run test` (quan existeixi l'script) al frontend. Ha d'acabar en verd abans del merge.
 
 ## Build i execució
