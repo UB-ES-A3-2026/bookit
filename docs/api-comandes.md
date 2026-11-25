@@ -43,7 +43,7 @@ Tots els endpoints requereixen la capçalera `Authorization: Bearer <access>` (v
 |---|---|---|
 | `rebuda` | Rebuda | En confirmar la comanda. És l'estat inicial. |
 | `preparada` | Preparada | Quan la biblioteca la marca com a "Llesta per a recollida" (US15). |
-| `en_cami` | En camí | Quan el repartidor la recull a la biblioteca (US12 i US13). |
+| `en_cami` | En camí | Quan el repartidor completa la recollida a la biblioteca (US13-T10). |
 | `lliurada` | Lliurada | Quan el repartidor marca el lliurament com a completat (US13) o, si és una recollida, quan la biblioteca la lliura a l'usuari (US7-T8). Es creen els préstecs dels llibres (US19). |
 | `cancellada` | Cancel·lada | Quan l'usuari la cancel·la abans que surti (US20). |
 
@@ -357,6 +357,9 @@ la biblioteca de la comanda, amb el compte actiu; un usuari o un repartidor rebe
 Una comanda de recollida no passa per `en_cami`: va directament de `preparada` a `lliurada`. En lliurar-la, l'usuari
 rep la notificació de lliurament (US8) i es creen els préstecs dels llibres (US19).
 
+Al frontend, la pàgina de comandes pendents de la biblioteca mostra el botó "Lliurada a l'usuari" a les comandes de
+recollida preparades (US7-T9). En marcar-la, la comanda surt de la llista.
+
 ### Resposta correcta
 
 **200 OK**. La comanda amb el format de [Comanda](#comanda) i l'estat `lliurada`.
@@ -389,6 +392,9 @@ En cancel·lar-la, la biblioteca torna a tenir un exemplar més de cada llibre d
 a cancel·lada a la llista de comandes pendents (US10). Si la biblioteca ha tret algun llibre del seu catàleg
 mentrestant, aquell exemplar no s'hi torna.
 
+Si la comanda ja estava assignada a un repartidor (US14), es queda sense repartidor ni `data_lliurament`, i el seu
+forat torna a estar lliure per a altres comandes (US20-T8).
+
 ### Errors
 
 | Cas | Estat | Resposta |
@@ -414,6 +420,9 @@ repartidor (US12) es farà a partir d'aquestes assignacions.
   forat que comença abans. Si dos repartidors poden començar a la mateixa hora, es tria el que té menys lliuraments
   aquell dia.
 - Només es fan servir repartidors actius amb el perfil validat.
+- Només s'assignen les comandes a domicili. Les de recollida no tenen repartidor ni `data_lliurament`: l'usuari les
+  recull a la biblioteca i la biblioteca les marca com a lliurades (US7-T8, US14-T10). El frontend hi mostra
+  "Recollida a la biblioteca" en lloc de la data.
 
 En assignar-la, la comanda guarda el repartidor, la `data_lliurament` i l'hora d'inici i de final del lliurament. De
 moment, d'aquests camps les respostes de l'API només mostren la `data_lliurament`.
@@ -456,4 +465,5 @@ s'actualitzen aquí i al model abans d'implementar la resta d'endpoints.
   Owner; ara la recollida rep els mateixos textos que el lliurament a domicili.
 - **P10. Assignació de comandes.** Mentre el Product Owner no digui qui assigna les comandes i quan, ho fa el
   sistema sol en marcar-les com a llestes, amb l'ordre `assigna_comandes` per a les que es queden sense repartidor.
-  Cada lliurament ocupa 30 minuts i es busca a partir de l'endemà.
+  Cada lliurament ocupa 30 minuts i es busca a partir de l'endemà. En assignar-la, la comanda entra a la ruta del dia
+  del repartidor (vegeu `docs/api-repartidor.md`).

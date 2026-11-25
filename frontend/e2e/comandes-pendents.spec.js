@@ -135,4 +135,31 @@ test.describe("comandes pendents de la biblioteca (US10)", () => {
 
     await expect(page).toHaveURL("/");
   });
+
+  test("US7-T9 · lliura a l'usuari una comanda de recollida", async ({ page }) => {
+    await entrarComBiblioteca(page);
+    await simularComandes(page, [
+      { ...comanda({ id: 12, estat: "preparada", data: null }), tipus_lliurament: "recollida" },
+      { ...comanda({ id: 4, estat: "preparada", titol: "La plaça del Diamant" }), tipus_lliurament: "domicili" },
+    ]);
+    let cridada = false;
+    await page.route("**/api/prestecs/biblioteca/comandes/12/recollida/", async (ruta) => {
+      cridada = true;
+      await ruta.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ...comanda({ id: 12, estat: "lliurada", data: null }), tipus_lliurament: "recollida" }),
+      });
+    });
+    await obrirComandes(page);
+
+    await expect(targeta(page, 4).getByRole("button", { name: "Lliurada a l'usuari", exact: true })).toHaveCount(0);
+    await expect(targeta(page, 12).getByText("L'usuari la recull a la biblioteca", { exact: false })).toBeVisible();
+    await targeta(page, 12).getByRole("button", { name: "Lliurada a l'usuari", exact: true }).click();
+
+    await expect(page.getByRole("status").getByText("La comanda 12 s'ha lliurat a l'usuari.", { exact: true })).toBeVisible();
+    await expect(targeta(page, 12)).toHaveCount(0);
+    await expect(targeta(page, 4)).toBeVisible();
+    expect(cridada).toBe(true);
+  });
 });

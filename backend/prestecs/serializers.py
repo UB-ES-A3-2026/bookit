@@ -165,3 +165,90 @@ class NotificacioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notificacio
         fields = ("id", "comanda", "text", "llegida", "creada")
+
+
+def coordenada(valor):
+    """Coordenada com a número JSON (no com a text, com faria `DecimalField`)."""
+    return float(valor) if valor is not None else None
+
+
+class LlibreParadaSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    titol = serializers.CharField(read_only=True)
+    autor = serializers.CharField(read_only=True)
+    portada = serializers.CharField(read_only=True)
+
+
+class ParadaRutaSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    ordre = serializers.IntegerField(read_only=True)
+    tipus = serializers.CharField(read_only=True)
+    comanda = serializers.IntegerField(source="comanda_id", read_only=True)
+    estat = serializers.CharField(source="comanda.estat", read_only=True)
+    # Estat propi de la parada (US13-T5): el frontend amaga els botons de les
+    # parades que ja s'han completat o han fallat.
+    estat_parada = serializers.CharField(source="estat", read_only=True)
+    motiu = serializers.CharField(read_only=True)
+    llibres = serializers.SerializerMethodField()
+    adreca = serializers.SerializerMethodField()
+
+    def get_llibres(self, parada):
+        linies = parada.comanda.linies.all()
+        llibres = [linia.llibre for linia in linies]
+        return LlibreParadaSerializer(llibres, many=True).data
+
+    def get_adreca(self, parada):
+        comanda = parada.comanda
+
+        # Les coordenades són per al mapa de la ruta (US12-T13); valen `null` si no
+        # se saben, i llavors la parada només surt a la llista.
+        if parada.tipus == "recollida":
+            biblioteca = comanda.biblioteca.biblioteca
+            return {
+                "biblioteca": {
+                    "id": comanda.biblioteca_id,
+                    "nom": biblioteca.nom,
+                },
+                "text": None,
+                "latitud": coordenada(biblioteca.latitud),
+                "longitud": coordenada(biblioteca.longitud),
+            }
+
+        return {
+            "biblioteca": None,
+            # Les comandes anteriors a `adreca_lliurament` no la tenen desada.
+            "text": comanda.adreca_lliurament or comanda.usuari.address,
+            "latitud": coordenada(comanda.latitud_lliurament),
+            "longitud": coordenada(comanda.longitud_lliurament),
+        }
+
+
+class ParadaCompletadaSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    ordre = serializers.IntegerField(read_only=True)
+    tipus = serializers.CharField(read_only=True)
+    estat = serializers.CharField(read_only=True)
+    completada_el = serializers.DateTimeField(read_only=True)
+    comanda = serializers.IntegerField(source="comanda_id", read_only=True)
+
+class FallarParadaSerializer(serializers.Serializer):
+    motiu = serializers.CharField(
+        max_length=500,
+        allow_blank=False,
+        trim_whitespace=True,
+        error_messages={
+            "required": "Aquest camp és obligatori.",
+            "blank": "Aquest camp és obligatori.",
+            "max_length": "El motiu no pot tenir més de 500 caràcters.",
+        },
+    )
+
+
+class ParadaFallidaSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    ordre = serializers.IntegerField(read_only=True)
+    tipus = serializers.CharField(read_only=True)
+    estat = serializers.CharField(read_only=True)
+    motiu = serializers.CharField(read_only=True)
+    completada_el = serializers.DateTimeField(read_only=True)
+    comanda = serializers.IntegerField(source="comanda_id", read_only=True)

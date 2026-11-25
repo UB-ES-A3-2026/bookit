@@ -5,7 +5,7 @@ import NotificacionsCapcalera from "../components/NotificacionsCapcalera.vue";
 import logoImage from "../assets/bookit-logo.jpg";
 import { useSessioStore } from "../stores/sessio.js";
 import { cancellaComanda, llistaMevesComandes } from "../services/comandesUsuari.js";
-import { formataData, formataDia, textEstat } from "../utils/comandes.js";
+import { formataDia, textEstat, textLliurament } from "../utils/comandes.js";
 
 const router = useRouter();
 const sessio = useSessioStore();
@@ -147,7 +147,7 @@ onMounted(carregaComandes);
             <div v-if="comanda.estat !== 'cancellada'">
               <dt>{{ comanda.estat === "lliurada" ? "Data de lliurament" : "Lliurament previst" }}</dt>
               <dd class="data-lliurament">
-                {{ comanda.data_lliurament ? formataData(comanda.data_lliurament) : "Sense data" }}
+                {{ textLliurament(comanda) }}
               </dd>
             </div>
           </dl>

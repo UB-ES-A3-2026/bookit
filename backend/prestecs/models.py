@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -50,6 +51,22 @@ class Comanda(models.Model):
     )
     # On es porta la comanda. Buida si l'usuari la recull a la biblioteca.
     adreca_lliurament = models.TextField(blank=True, default="")
+    # Ubicació de `adreca_lliurament` per al mapa de la ruta (US12-T13). Es
+    # geocodifica en confirmar la comanda; queda buida si no s'ha pogut fer.
+    latitud_lliurament = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+    )
+    longitud_lliurament = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+    )
     # En euros. Es desa en confirmar la comanda, perquè no canviï si després
     # canvia la tarifa.
     cost_enviament = models.DecimalField(max_digits=6, decimal_places=2, default=0)
@@ -180,6 +197,88 @@ class LiniaComanda(models.Model):
 
     def __str__(self):
         return f"{self.llibre} (comanda {self.comanda_id})"
+
+class Ruta(models.Model):
+    repartidor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        limit_choices_to={"role": "repartidor"},
+        on_delete=models.PROTECT,
+        related_name="rutes",
+    )
+    data = models.DateField()
+
+    class Meta:
+        verbose_name = "ruta"
+        verbose_name_plural = "rutes"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["repartidor", "data"],
+                name="una_ruta_per_repartidor_i_data",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Ruta de {self.repartidor} - {self.data:%d/%m/%Y}"
+
+
+class Parada(models.Model):
+    class Tipus(models.TextChoices):
+        RECOLLIDA = "recollida", "Recollida"
+        LLIVRAMENT = "lliurament", "Lliurament"
+    class Estat(models.TextChoices):
+        PENDENT = "pendent", "Pendent"
+        COMPLETADA = "completada", "Completada"
+        FALLIDA = "fallida", "Fallida"
+        CANCELLADA = "cancellada", "Cancel·lada"
+
+    ruta = models.ForeignKey(
+        Ruta,
+        on_delete=models.CASCADE,
+        related_name="parades",
+    )
+    comanda = models.ForeignKey(
+        Comanda,
+        on_delete=models.PROTECT,
+        related_name="parades",
+    )
+    tipus = models.CharField(
+        max_length=11,
+        choices=Tipus.choices,
+    )
+    ordre = models.PositiveSmallIntegerField()
+
+    estat = models.CharField(
+        max_length=11,
+        choices=Estat.choices,
+        default=Estat.PENDENT,
+    )
+    completada_el = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+    motiu = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+    )
+
+    class Meta:
+        ordering = ["ordre", "id"]
+        verbose_name = "parada"
+        verbose_name_plural = "parades"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["ruta", "ordre"],
+                name="una_parada_per_ordre_i_ruta",
+            ),
+            models.UniqueConstraint(
+                fields=["ruta", "comanda", "tipus"],
+                name="una_parada_per_comanda_tipus_i_ruta",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.get_tipus_display()} - comanda {self.comanda_id} ({self.ordre})"
 
 
 class Prestec(models.Model):

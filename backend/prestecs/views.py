@@ -1,29 +1,46 @@
 """Vistes de l'API del mòdul prestecs."""
 
 from django.db.models import F
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from cataleg.permisos import EsBibliotecaActiva
 from prestecs.assignacio import assigna_comanda
-from prestecs.models import Comanda, Prestec
+from prestecs.models import Comanda, Parada, Prestec, Ruta
 from prestecs.permisos import EsUsuariActiu
+from prestecs.rutes import DadesRutaInconsistents, calcula_i_desaa_ordre_ruta
 from prestecs.serializers import (
     SENSE_ESTOC,
     ComandaBibliotecaSerializer,
     ComandaSerializer,
     ConfirmacioComandaSerializer,
+    FallarParadaSerializer,
     NotificacioSerializer,
+    ParadaCompletadaSerializer,
+    ParadaFallidaSerializer,
+    ParadaRutaSerializer,
     PrestecSerializer,
 )
 from prestecs.serveis import (
     LlibresSenseEstoc,
+    ParadaAmbComandaInvalida,
+    ParadaEnEstatTerminal,
+    ParadaFallarJaFallida,
+    ParadaJaCompletada,
+    ParadaNoEsPotFallar,
     TransicioNoPermesa,
     cancella_comanda,
     canvia_estat,
+    completa_parada,
     confirma_comanda,
     cost_enviament,
+    desa_coordenades_lliurament,
+    fallar_parada,
 )
+from usuaris.permisos import EsRepartidorValidat
 
 # Literal dels criteris d'acceptació de la US20.
 JA_HA_SORTIT = "Aquesta comanda ja ha sortit i no es pot cancel·lar"
@@ -68,6 +85,9 @@ class ComandesView(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Les coordenades són per al mapa del repartidor (US12-T13): si el
+        # geocodificador falla, la comanda es crea igualment.
+        desa_coordenades_lliurament(comanda)
         return Response(ComandaSerializer(comanda).data, status=status.HTTP_201_CREATED)
 
 
@@ -170,10 +190,11 @@ class ComandesBibliotecaView(generics.ListAPIView):
 class ComandaLlestaView(generics.GenericAPIView):
     """La biblioteca marca una comanda seva com a llesta per a recollida (US15-T1).
 
-    "Llesta per a recollida" és l'estat `preparada` (US8). En aquest moment
-    s'assigna a un repartidor si n'hi ha cap amb un forat a les seves franges
-    (US14). Si no, es queda preparada fins que l'ordre `assigna_comandes` la pugui
-    assignar.
+    "Llesta per a recollida" és l'estat `preparada` (US8). Si és a domicili, en
+    aquest moment s'assigna a un repartidor si n'hi ha cap amb un forat a les seves
+    franges (US14). Si no, es queda preparada fins que l'ordre `assigna_comandes` la
+    pugui assignar. Les comandes de recollida no s'assignen: les lliura la mateixa
+    biblioteca (US7-T8).
     """
 
     permission_classes = [EsBibliotecaActiva]
@@ -234,6 +255,33 @@ def missatge_no_llesta(estat_actual):
     estat = Comanda.Estat(estat_actual).label.lower()
     return f"Aquesta comanda no es pot marcar com a llesta perquè està {estat}."
 
+class RutaAvuiView(APIView):
+    permission_classes = [EsRepartidorValidat]
+
+    def get(self, request):
+        ruta = (
+            Ruta.objects
+            .filter(
+                repartidor=request.user,
+                data=timezone.localdate(),
+            )
+            .first()
+        )
+
+        if ruta is None:
+            return Response([], status=status.HTTP_200_OK)
+
+        try:
+            parades = calcula_i_desaa_ordre_ruta(ruta)
+        except DadesRutaInconsistents:
+            return Response(
+                {"detail": "La ruta conté dades inconsistents."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        dades = ParadaRutaSerializer(parades, many=True).data
+        return Response(dades, status=status.HTTP_200_OK)
+
 
 class PrestecsView(generics.ListAPIView):
     """Llibres que l'usuari autenticat té en préstec (US19-T2).
@@ -251,4 +299,66 @@ class PrestecsView(generics.ListAPIView):
             Prestec.objects.filter(usuari=self.request.user, data_devolucio__isnull=True)
             .select_related("llibre", "biblioteca__biblioteca")
             .order_by("data_limit", "id")
+        )
+
+
+class CompletarParadaView(APIView):
+    permission_classes = [EsRepartidorValidat]
+
+    def post(self, request, pk):
+        parada = get_object_or_404(
+            Parada.objects.select_related("ruta", "comanda"),
+            pk=pk,
+            ruta__repartidor=request.user,
+        )
+
+        try:
+            parada = completa_parada(parada)
+        except ParadaJaCompletada as error:
+            return Response(
+                {"detail": str(error)},
+                status=status.HTTP_409_CONFLICT,
+            )
+        except (ParadaEnEstatTerminal, ParadaAmbComandaInvalida) as error:
+            return Response(
+                {"detail": str(error)},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        dades = ParadaCompletadaSerializer(parada).data
+        return Response(dades, status=status.HTTP_200_OK)
+
+class FallarParadaView(APIView):
+    permission_classes = [EsRepartidorValidat]
+
+    def post(self, request, pk):
+        parada = get_object_or_404(
+            Parada.objects.select_related("ruta"),
+            pk=pk,
+            ruta__repartidor=request.user,
+        )
+
+        serializer = FallarParadaSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            parada = fallar_parada(
+                parada,
+                serializer.validated_data["motiu"],
+            )
+        except ParadaFallarJaFallida as error:
+            if error.motiu != serializer.validated_data["motiu"]:
+                return Response(
+                    {"detail": "La parada ja està fallida amb un motiu diferent."},
+                    status=status.HTTP_409_CONFLICT,
+                )
+        except ParadaNoEsPotFallar as error:
+            return Response(
+                {"detail": str(error)},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        return Response(
+            ParadaFallidaSerializer(parada).data,
+            status=status.HTTP_200_OK,
         )

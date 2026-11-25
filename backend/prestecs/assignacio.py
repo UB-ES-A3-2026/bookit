@@ -4,15 +4,23 @@ Una comanda preparada (llesta per a recollida, US15) s'assigna al primer forat
 lliure d'un repartidor validat. Cada lliurament ocupa `DURADA_LLIURAMENT_MINUTS`
 i ha de cabre sencer dins d'una franja de disponibilitat del repartidor, sense
 trepitjar els altres lliuraments que ja té aquell dia.
+
+En assignar-la, la comanda entra a la ruta d'aquell dia del repartidor amb dues
+parades: la recollida a la biblioteca i el lliurament (US12-T12).
+
+Les comandes de recollida no s'assignen: no les porta cap repartidor, sinó que
+l'usuari les recull a la biblioteca (US7-T8, US14-T10).
 """
 
 from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Max
 from django.utils import timezone
 
-from prestecs.models import Comanda
+from prestecs.models import Comanda, Parada, Ruta
+from prestecs.rutes import calcula_i_desaa_ordre_ruta
 from usuaris.models import FranjaDisponibilitat, PerfilRepartidor
 
 # Dies, a partir del primer, en què es busca un forat. Amb una setmana es passa
@@ -28,8 +36,12 @@ def assigna_comanda(comanda, primer_dia=None):
     Si n'hi ha dos a la mateixa hora, tria el repartidor amb menys lliuraments
     aquell dia.
 
+    També posa la comanda a la ruta del repartidor per a aquell dia
+    (`afegeix_a_la_ruta`). Si això falla, la comanda tampoc queda assignada.
+
     Retorna `True` si l'ha assignada. Si la comanda no està preparada, ja té
-    repartidor o no hi ha cap forat, no la toca i retorna `False`.
+    repartidor, és de recollida a la biblioteca o no hi ha cap forat, no la toca i
+    retorna `False`.
     """
     primer_dia = primer_dia or timezone.localdate() + timedelta(days=1)
     durada = timedelta(minutes=settings.DURADA_LLIURAMENT_MINUTS)
@@ -43,7 +55,11 @@ def assigna_comanda(comanda, primer_dia=None):
             .order_by("pk")
         )
         actual = Comanda.objects.select_for_update().get(pk=comanda.pk)
-        if actual.estat != Comanda.Estat.PREPARADA or actual.repartidor_id is not None:
+        if (
+            actual.estat != Comanda.Estat.PREPARADA
+            or actual.repartidor_id is not None
+            or actual.tipus_lliurament == Comanda.TipusLliurament.RECOLLIDA
+        ):
             return False
 
         for dies in range(DIES_A_BUSCAR):
@@ -66,20 +82,57 @@ def assigna_comanda(comanda, primer_dia=None):
                     "actualitzada",
                 ]
             )
+            afegeix_a_la_ruta(actual)
             for camp in ("repartidor_id", "data_lliurament", "hora_inici_lliurament", "hora_fi_lliurament"):
                 setattr(comanda, camp, getattr(actual, camp))
             return True
     return False
 
 
-def assigna_pendents(primer_dia=None):
-    """Prova d'assignar totes les comandes preparades que encara no tenen repartidor.
+def afegeix_a_la_ruta(comanda):
+    """Posa una comanda assignada a la ruta del dia del seu repartidor (US12-T12).
 
-    Les més antigues van primer. Retorna quantes s'han assignat i quantes no.
+    Si el repartidor encara no té ruta per al dia del lliurament, la crea. Hi
+    afegeix la recollida a la biblioteca i el lliurament, si encara no hi són, i
+    torna a calcular l'ordre de tota la ruta (US12-T2), que segueix l'hora de
+    lliurament de cada comanda.
+
+    Si la comanda es torna a planificar (US13-T3, US13-T12) i cau a la mateixa
+    ruta on ja era, les seves parades fallides o cancel·lades tornen a estar
+    pendents: una ruta només pot tenir una parada de cada tipus per comanda.
+    """
+    # Es crida des de `assigna_comanda`, amb els repartidors bloquejats: dues
+    # assignacions no poden afegir parades a la mateixa ruta alhora.
+    ruta, _ = Ruta.objects.get_or_create(
+        repartidor_id=comanda.repartidor_id, data=comanda.data_lliurament
+    )
+
+    # Ordre provisional al final de la ruta: no pot coincidir amb cap altre.
+    seguent = (ruta.parades.aggregate(Max("ordre"))["ordre__max"] or 0) + 1
+    for posicio, tipus in enumerate((Parada.Tipus.RECOLLIDA, Parada.Tipus.LLIVRAMENT)):
+        parada, creada = Parada.objects.get_or_create(
+            ruta=ruta, comanda=comanda, tipus=tipus, defaults={"ordre": seguent + posicio}
+        )
+        if not creada and parada.estat in (Parada.Estat.FALLIDA, Parada.Estat.CANCELLADA):
+            parada.estat = Parada.Estat.PENDENT
+            parada.motiu = ""
+            parada.save(update_fields=["estat", "motiu"])
+
+    calcula_i_desaa_ordre_ruta(ruta)
+    return ruta
+
+
+def assigna_pendents(primer_dia=None):
+    """Prova d'assignar totes les comandes a domicili preparades que encara no tenen repartidor.
+
+    Les més antigues van primer. Retorna quantes s'han assignat i quantes no. Les
+    comandes de recollida no hi compten, perquè no s'assignen mai.
     """
     assignades = sense_repartidor = 0
     pendents = Comanda.objects.filter(
-        estat=Comanda.Estat.PREPARADA, repartidor__isnull=True
+        estat=Comanda.Estat.PREPARADA,
+        repartidor__isnull=True,
+        tipus_lliurament=Comanda.TipusLliurament.DOMICILI,
     ).order_by("creada", "id")
     for comanda in pendents:
         if assigna_comanda(comanda, primer_dia):
