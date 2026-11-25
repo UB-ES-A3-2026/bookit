@@ -262,6 +262,15 @@ class ParadaAmbComandaInvalida(Exception):
         super().__init__("La comanda no permet completar aquest lliurament.")
 
 
+class LliuramentSenseRecollida(ParadaAmbComandaInvalida):
+    """S'ha intentat completar el lliurament d'una comanda que encara no s'ha recollit."""
+
+    def __init__(self):
+        Exception.__init__(
+            self, "Primer has de completar la recollida d'aquesta comanda a la biblioteca."
+        )
+
+
 def completa_parada(parada):
     """Completa una parada i canvia l'estat de la comanda en la mateixa transacció.
 
@@ -294,6 +303,10 @@ def completa_parada(parada):
             nou_estat = Comanda.Estat.EN_CAMI
         else:
             nou_estat = Comanda.Estat.LLIURADA
+            if parada.comanda.estat == Comanda.Estat.PREPARADA:
+                # Una comanda no pot passar de preparada a lliurada sense sortir de
+                # la biblioteca: el repartidor ha de completar abans la recollida.
+                raise LliuramentSenseRecollida()
         try:
             canvia_estat(
                 parada.comanda,
