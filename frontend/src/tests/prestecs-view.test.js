@@ -2,6 +2,7 @@ import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import PrestecsView from "../views/PrestecsView.vue";
+import { useSessioStore } from "../stores/sessio.js";
 
 const serveiPrestecs = vi.hoisted(() => ({
   llistaPrestecs: vi.fn(),
@@ -16,10 +17,10 @@ vi.mock("vue-router", () => ({
   },
 }));
 
-function muntaPrestecs() {
+function muntaPrestecs(pinia = createPinia()) {
   return mount(PrestecsView, {
     global: {
-      plugins: [createPinia()],
+      plugins: [pinia],
       components: {
         RouterLink: {
           template: "<a><slot /></a>",
@@ -113,5 +114,21 @@ describe("Els meus préstecs", () => {
     await vi.waitFor(() =>
       expect(wrapper.text()).toContain("No tens cap llibre en préstec"),
     );
+  });
+
+  it("té la targeta de l'usuari a la capçalera", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    useSessioStore().iniciarSessio({
+      accessToken: "token-de-prova",
+      rol: "usuari",
+      usuari: { nom: "Laia Vidal" },
+    });
+    serveiPrestecs.llistaPrestecs.mockResolvedValue([]);
+
+    const wrapper = muntaPrestecs(pinia);
+
+    expect(wrapper.get("header .menu-usuari__boto").text()).toContain("Laia Vidal");
+    expect(wrapper.find("header .logout-button").exists()).toBe(true);
   });
 });

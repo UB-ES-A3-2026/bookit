@@ -154,7 +154,11 @@ onUnmounted(() => {
       :aria-controls="idPanell"
       @click="commuta"
     >
-      Notificacions
+      <svg class="campaneta" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+        <path d="M10 21h4" />
+      </svg>
+      <span class="nomes-lector">Notificacions</span>
       <span v-if="noves" class="comptador">
         {{ noves
         }}<span class="nomes-lector">{{
@@ -235,27 +239,61 @@ onUnmounted(() => {
 }
 
 .notificacions-boto {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.55rem 0.8rem;
-  border: 1px solid #dfd1bd;
-  border-radius: 0.55rem;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 1px solid #e4d8cc;
+  border-radius: 50%;
   color: #241914;
-  background: #fff;
+  background: #fffdf9;
   font: inherit;
-  font-size: 0.9rem;
-  font-weight: 700;
   cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
+.notificacions-boto:hover,
+.notificacions-boto[aria-expanded="true"] {
+  border-color: #c9b6a4;
+  box-shadow: 0 0.2rem 0.6rem rgb(60 30 10 / 10%);
+}
+
+.notificacions-boto:focus-visible {
+  outline: 3px solid #ffbf47;
+  outline-offset: 2px;
+}
+
+.campaneta {
+  width: 1.2rem;
+  height: 1.2rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+/* El nombre de notificacions noves surt com una bombolla sobre la campaneta. */
 .comptador {
-  min-width: 1.3rem;
-  padding: 0 0.3rem;
+  position: absolute;
+  top: -0.3rem;
+  right: -0.3rem;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.25rem;
+  border: 2px solid #fffdf9;
   border-radius: 999px;
   color: #fff;
   background: #980000;
+  font-size: 0.65rem;
+  font-weight: 800;
+  line-height: 1.15rem;
   text-align: center;
+  box-sizing: content-box;
 }
 
 .nomes-lector {

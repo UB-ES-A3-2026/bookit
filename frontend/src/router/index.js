@@ -157,7 +157,7 @@ const router = createRouter({
       path: "/comanda",
       name: "comanda",
       component: ComandaView,
-      meta: { titol: "La meva comanda" },
+      meta: { titol: "La meva cistella" },
       beforeEnter: nomesUsuaris,
     },
     {

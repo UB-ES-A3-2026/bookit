@@ -1,5 +1,6 @@
 import { createApp } from "vue";
 import { createMemoryHistory, createRouter } from "vue-router";
+import { ambRutesCompte } from "./rutesCompte.js";
 import { createPinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ComandaView from "../views/ComandaView.vue";
@@ -22,10 +23,10 @@ async function escriuAdreca(element, adreca = "C/ Major 1") {
 async function renderitza(llibres = []) {
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: [
+    routes: ambRutesCompte([
       { path: "/", name: "home", component: { template: "<p>Inici</p>" } },
       { path: "/comanda", name: "comanda", component: ComandaView },
-    ],
+    ]),
   });
   router.push("/comanda");
   await router.isReady();
@@ -66,9 +67,7 @@ describe("La meva comanda", () => {
 
     expect(element.querySelector(".header-quote")).not.toBeNull();
     expect(element.querySelector(".account-sidebar")).not.toBeNull();
-    expect(element.querySelector(".comanda-content h1").textContent).toBe(
-      "Les meves comandes",
-    );
+    expect(element.querySelector("h1").textContent).toBe("La meva cistella");
     expect(element.querySelector(".order-card")).not.toBeNull();
     expect(
       element.querySelector(".resum-comanda .primary-button").textContent,

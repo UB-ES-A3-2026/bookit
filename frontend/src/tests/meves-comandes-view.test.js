@@ -1,6 +1,7 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { createMemoryHistory, createRouter } from "vue-router";
+import { ambRutesCompte } from "./rutesCompte.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSessioStore } from "../stores/sessio.js";
 import router, { nomesUsuaris } from "../router/index.js";
@@ -25,11 +26,10 @@ let pinia;
 async function renderitza() {
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: [
+    routes: ambRutesCompte([
       { path: "/", name: "home", component: { template: "<p />" } },
       { path: "/pagina", name: "pagina", component: { template: "<p />" } },
-
-    ],
+    ]),
   });
   await router.push("/pagina");
   wrapper = mount(MevesComandesView, { global: { plugins: [pinia, router] } });
@@ -190,6 +190,20 @@ describe("Les meves comandes", () => {
     await renderitza();
 
     expect(wrapper.find("header .notificacions-boto").exists()).toBe(true);
+  });
+
+  it("té la targeta de l'usuari a la capçalera", async () => {
+    useSessioStore().iniciarSessio({
+      accessToken: "token-de-prova",
+      rol: "usuari",
+      usuari: { nom: "Laia Vidal" },
+    });
+    servei.llistaMevesComandes.mockResolvedValue(comandes);
+    notificacions.llistaNotificacions.mockResolvedValue([]);
+    await renderitza();
+
+    expect(wrapper.get("header .menu-usuari__boto").text()).toContain("Laia Vidal");
+    expect(wrapper.find("header .logout-button").exists()).toBe(true);
   });
 
   it("mostra que està carregant", async () => {

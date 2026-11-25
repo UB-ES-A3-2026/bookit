@@ -1,8 +1,7 @@
 <script setup>
 import { onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
-import logoImage from "../assets/bookit-logo.jpg";
-import { useSessioStore } from "../stores/sessio.js";
+import CapcaleraApp from "../components/CapcaleraApp.vue";
 import {
   actualitzaExemplars,
   editaLlibre,
@@ -11,7 +10,6 @@ import {
 } from "../services/cataleg.js";
 
 const router = useRouter();
-const sessio = useSessioStore();
 
 const llibres = ref([]);
 const carregant = ref(true);
@@ -28,11 +26,6 @@ const formulariEdicio = reactive({
 
 function textExemplars(quantitat) {
   return quantitat === 1 ? "1 exemplar" : `${quantitat} exemplars`;
-}
-
-function tancaSessio() {
-  sessio.tancarSessio();
-  router.push({ name: "home" });
 }
 
 function iniciaEdicio(llibre) {
@@ -152,37 +145,23 @@ onMounted(carregaCataleg);
 
 <template>
   <main class="cataleg-page">
-    <header class="site-header">
-      <RouterLink class="brand" to="/" aria-label="bookit inici">
-        <span
-          class="brand-mark"
-          :style="{ backgroundImage: `url(${logoImage})` }"
-          aria-hidden="true"
-        ></span>
-        <span>bookit.</span>
-      </RouterLink>
-
-      <div class="header-accions">
-        <span class="header-link">Catàleg</span>
-        <RouterLink class="header-link" :to="{ name: 'comandes-biblioteca' }">
-          Comandes pendents
-        </RouterLink>
-        <RouterLink class="afegir-link" :to="{ name: 'cataleg-afegir' }">
-          Afegir un llibre
-        </RouterLink>
-        <button type="button" class="logout-button" @click="tancaSessio">
-          Tancar sessió
-        </button>
-      </div>
-    </header>
+    <CapcaleraApp />
 
     <section class="cataleg-content">
-      <p class="eyebrow">Espai de biblioteca</p>
-      <h1>El meu catàleg</h1>
-      <p class="description">
-        Aquests són els llibres que la teva biblioteca ofereix a bookit i els
-        exemplars que en tens de cadascun.
-      </p>
+      <div class="capcalera-cataleg">
+        <div>
+          <p class="eyebrow">Espai de biblioteca</p>
+          <h1>El meu catàleg</h1>
+          <p class="description">
+            Aquests són els llibres que la teva biblioteca ofereix a bookit i els
+            exemplars que en tens de cadascun.
+          </p>
+        </div>
+        <RouterLink class="afegir-link" :to="{ name: 'cataleg-afegir' }">
+          <span aria-hidden="true">+</span>
+          Afegir un llibre
+        </RouterLink>
+      </div>
 
       <p v-if="carregant" class="estat" role="status">Carregant el catàleg...</p>
 
@@ -285,53 +264,33 @@ onMounted(carregaCataleg);
   background: #f5ecdc;
 }
 
-.site-header {
+.cataleg-content {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 3.5rem 1.25rem;
+}
+
+.capcalera-cataleg {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  min-height: 62px;
-  padding: 0 max(1.25rem, calc((100% - 1170px) / 2));
-  background: #fffdf9;
-  box-sizing: border-box;
-}
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  color: #271d1a;
-  font-size: 1.25rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  text-decoration: none;
-}
-
-.brand-mark {
-  display: block;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.35rem;
-  background-position: center 36%;
-  background-size: auto 240%;
-}
-
-.header-accions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.5rem 1.25rem;
-  padding: 0.5rem 0;
+  gap: 1.5rem;
 }
 
 .afegir-link {
-  padding: 0.55rem 1rem;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  padding: 0.65rem 1.1rem;
   border-radius: 0.55rem;
   color: #fff;
-  background: #a00000;
-  font-size: 0.9rem;
+  background: #980000;
+  box-shadow: 0 0.2rem 0.35rem rgb(72 0 0 / 20%);
   font-weight: 700;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .afegir-link:hover,
@@ -339,33 +298,11 @@ onMounted(carregaCataleg);
   background: #720000;
 }
 
-.logout-button {
-  padding: 0.55rem 1rem;
-  border: 0;
-  border-radius: 0.55rem;
-  color: #fff;
-  background: #980000;
-  font: inherit;
-  font-size: 0.9rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.logout-button:hover,
-.logout-button:focus-visible {
-  background: #740000;
-}
-
-.header-link {
-  color: #241914;
-  font-size: 1.05rem;
-  font-weight: 700;
-}
-
-.cataleg-content {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 3.5rem 1.25rem;
+@media (max-width: 600px) {
+  .capcalera-cataleg {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
 
 .eyebrow {

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
-import logoImage from "../assets/bookit-logo.jpg";
+import CapcaleraApp from "../components/CapcaleraApp.vue";
 import { afegeixLlibre } from "../services/cataleg.js";
 import { useSessioStore } from "../stores/sessio.js";
 import { esEnllacValid, esIsbnValid } from "../utils/validacions.js";
@@ -162,18 +162,7 @@ async function enviaFormulari() {
 
 <template>
   <main class="afegir-page">
-    <header class="site-header">
-      <RouterLink class="brand" to="/" aria-label="bookit inici">
-        <span
-          class="brand-mark"
-          :style="{ backgroundImage: `url(${logoImage})` }"
-          aria-hidden="true"
-        ></span>
-        <span>bookit.</span>
-      </RouterLink>
-
-      <RouterLink class="header-link" :to="{ name: 'cataleg' }">Catàleg</RouterLink>
-    </header>
+    <CapcaleraApp />
 
     <div class="afegir-content">
       <section class="afegir-intro">
@@ -315,43 +304,6 @@ async function enviaFormulari() {
   min-height: 100svh;
   color: #241914;
   background: #f5ecdc;
-}
-
-.site-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 62px;
-  padding: 0 max(1.25rem, calc((100% - 1170px) / 2));
-  background: #fffdf9;
-  box-sizing: border-box;
-}
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  color: #271d1a;
-  font-size: 1.25rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  text-decoration: none;
-}
-
-.brand-mark {
-  display: block;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.35rem;
-  background-position: center 36%;
-  background-size: auto 240%;
-}
-
-.header-link {
-  color: #241914;
-  font-size: 1.05rem;
-  font-weight: 700;
-  text-decoration: none;
 }
 
 .afegir-content {
