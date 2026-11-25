@@ -1,17 +1,14 @@
 <script setup>
-import { computed, ref } from "vue";
+import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { useSessioStore } from "../stores/sessio.js";
+import MenuUsuari from "../components/MenuUsuari.vue";
 import NotificacionsCapcalera from "../components/NotificacionsCapcalera.vue";
 import bibliotecaImage from "../assets/biblioteca.jpg";
 import logoImage from "../assets/bookit-logo.jpg";
 
 const router = useRouter();
 const sessio = useSessioStore();
-
-const nomUsuari = computed(() => {
-  return sessio.usuari?.nom ?? sessio.usuari?.correu ?? "Usuari";
-});
 
 const textCerca = ref("");
 const campCerca = ref(null);
@@ -48,35 +45,8 @@ function cercaLlibres() {
 
       <nav class="header-actions" aria-label="Compte">
         <template v-if="sessio.autenticat">
-          <RouterLink
-            class="addresses-link"
-            :to="{ name: 'adreces' }"
-          >
-            Les meves adreces
-          </RouterLink>
-          <RouterLink
-            v-if="sessio.rol === 'usuari'"
-            class="loans-link"
-            :to="{ name: 'prestecs' }"
-          >
-            Els meus préstecs
-          </RouterLink>
-          <RouterLink
-            v-if="sessio.rol === 'biblioteca'"
-            class="catalog-link"
-            :to="{ name: 'cataleg' }"
-          >
-            El meu catàleg
-          </RouterLink>
-          <RouterLink
-            v-if="sessio.rol === 'usuari'"
-            class="orders-link"
-            :to="{ name: 'meves-comandes' }"
-          >
-            Les meves comandes
-          </RouterLink>
-          <span class="user-name">{{ nomUsuari }}</span>
           <NotificacionsCapcalera />
+          <MenuUsuari />
           <button class="logout-button" type="button" @click="sessio.tancarSessio">
             Tancar sessió
           </button>
@@ -250,72 +220,6 @@ function cercaLlibres() {
 .login-link:hover,
 .login-link:focus-visible {
   color: #980000;
-}
-
-.catalog-link,
-.loans-link {
-  padding: 0.65rem 1.2rem;
-  border-radius: 0.55rem;
-  color: #fff;
-  background: #980000;
-  box-shadow: 0 0.2rem 0.35rem rgb(72 0 0 / 20%);
-  font-weight: 700;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.addresses-link {
-  padding: 0.65rem 1.2rem;
-  border: 1px solid #980000;
-  border-radius: 0.55rem;
-  color: #980000;
-  font-weight: 700;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.addresses-link:hover,
-.addresses-link:focus-visible {
-  color: #720000;
-  background: #fbeaea;
-}
-
-.catalog-link:hover,
-.catalog-link:focus-visible,
-.loans-link:hover,
-.loans-link:focus-visible {
-  background: #720000;
-}
-
-.orders-link {
-  color: #980000;
-  font-size: 0.9rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.user-name {
-  color: #241914;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.logout-button {
-  padding: 0.65rem 1.2rem;
-  border: 0;
-  border-radius: 0.55rem;
-  color: #fff;
-  background: #980000;
-  box-shadow: 0 0.2rem 0.35rem rgb(72 0 0 / 20%);
-  font: inherit;
-  font-weight: 700;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.logout-button:hover,
-.logout-button:focus-visible {
-  background: #740000;
 }
 
 .register-button {
@@ -555,14 +459,8 @@ function cercaLlibres() {
 }
 
 /* Amb la sessió iniciada, la cita no hi cap fins que la pantalla és ampla. */
-@media (min-width: 701px) and (max-width: 1400px) {
-  .site-header:has(.user-name) {
-    grid-template-columns: 1fr auto;
-  }
+@media (min-width: 701px) and (max-width: 1100px) {
 
-  .site-header:has(.user-name) .header-quote {
-    display: none;
-  }
 }
 
 @media (max-width: 700px) {
@@ -581,12 +479,6 @@ function cercaLlibres() {
     justify-content: flex-end;
     gap: 0.75rem;
     font-size: 0.85rem;
-  }
-
-  .addresses-link,
-  .catalog-link,
-  .logout-button {
-    padding: 0.45rem 0.55rem;
   }
 
   .hero-section {

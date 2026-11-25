@@ -1,8 +1,11 @@
 <script setup>
 import { computed } from "vue";
 import { useRoute } from "vue-router";
+import CapcaleraApp from "../components/CapcaleraApp.vue";
+import { useSessioStore } from "../stores/sessio.js";
 
 const route = useRoute();
+const sessio = useSessioStore();
 
 const titol = computed(() =>
   route.name === "espai-repartidor" ? "Espai de repartidor" : "Catàleg",
@@ -10,34 +13,43 @@ const titol = computed(() =>
 </script>
 
 <template>
-  <main class="role-page">
-    <section class="role-card" aria-labelledby="role-title">
-      <h1 id="role-title">{{ titol }}</h1>
-      <p>Has iniciat sessió correctament.</p>
-      <template v-if="route.name === 'espai-repartidor'">
-        <p class="role-action">
-          <RouterLink :to="{ name: 'ruta-repartidor' }">La meva ruta d'avui</RouterLink>
-        </p>
-        <p class="role-action">
-          <RouterLink :to="{ name: 'franges-repartidor' }">
-            Les meves franges de disponibilitat
-          </RouterLink>
-        </p>
-      </template>
-      <RouterLink to="/">Tornar a l'inici</RouterLink>
-    </section>
-  </main>
+  <div class="role-page">
+    <CapcaleraApp v-if="sessio.autenticat" />
+    <main class="role-main">
+      <section class="role-card" aria-labelledby="role-title">
+        <h1 id="role-title">{{ titol }}</h1>
+        <p>Has iniciat sessió correctament.</p>
+        <template v-if="route.name === 'espai-repartidor'">
+          <p class="role-action">
+            <RouterLink :to="{ name: 'ruta-repartidor' }">La meva ruta d'avui</RouterLink>
+          </p>
+          <p class="role-action">
+            <RouterLink :to="{ name: 'franges-repartidor' }">
+              Les meves franges de disponibilitat
+            </RouterLink>
+          </p>
+        </template>
+        <RouterLink to="/">Tornar a l'inici</RouterLink>
+      </section>
+    </main>
+  </div>
 </template>
 
 <style scoped>
 .role-page {
-  display: grid;
+  display: flex;
   min-height: 100svh;
+  flex-direction: column;
+  color: #241914;
+  background: #f9f4eb;
+}
+
+.role-main {
+  display: grid;
+  flex: 1;
   padding: 1.5rem;
   place-items: center;
   box-sizing: border-box;
-  color: #241914;
-  background: #f9f4eb;
 }
 
 .role-card {

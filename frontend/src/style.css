@@ -271,3 +271,41 @@ code {
     border-right-color: var(--border);
   }
 }
+
+/* Botó "Tancar sessió" de la capçalera: el mateix aspecte a totes les pàgines. */
+.logout-button {
+  padding: 0.55rem 1rem;
+  border: 0;
+  border-radius: 0.55rem;
+  color: #fff;
+  background: #980000;
+  box-shadow: 0 0.2rem 0.35rem rgb(72 0 0 / 20%);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.logout-button:hover,
+.logout-button:focus-visible {
+  background: #720000;
+}
+
+.logout-button:focus-visible {
+  outline: 3px solid #ffbf47;
+  outline-offset: 2px;
+}
+
+.logout-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+@media (max-width: 700px) {
+  .logout-button {
+    padding: 0.45rem 0.65rem;
+    font-size: 0.75rem;
+  }
+}

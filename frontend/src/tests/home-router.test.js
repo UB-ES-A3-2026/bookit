@@ -16,6 +16,8 @@ const routes = [
   { path: "/comandes", name: "meves-comandes", component: { render: () => null } },
   // I als préstecs de l'usuari (US19).
   { path: "/prestecs", name: "prestecs", component: { render: () => null } },
+  // El menú de l'usuari també porta a la cistella.
+  { path: "/comanda", name: "comanda", component: { render: () => null } },
 ];
 
 const muntarAplicacio = async (autenticada = false) => {
@@ -64,8 +66,14 @@ describe("rutes publiques", () => {
     aplicacio.aplicacio.unmount();
   });
 
-  it("mostra l'enllaç a les adreces quan hi ha una sessió", async () => {
+  it("mostra l'enllaç a les adreces dins del menú de l'usuari quan hi ha una sessió", async () => {
     const aplicacio = await muntarAplicacio(true);
+
+    // Amb el menú tancat la capçalera només mostra el botó amb el nom.
+    expect(aplicacio.contenidor.querySelector('a[href="/adreces"]')).toBeNull();
+
+    aplicacio.contenidor.querySelector(".menu-usuari__boto").click();
+    await nextTick();
 
     expect(
       aplicacio.contenidor.querySelector('a[href="/adreces"]')?.textContent,

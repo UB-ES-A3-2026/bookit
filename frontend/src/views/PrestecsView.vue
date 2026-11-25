@@ -1,12 +1,8 @@
 <script setup>
 import { onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
-import logoImage from "../assets/bookit-logo.jpg";
+import LayoutCompte from "../components/LayoutCompte.vue";
 import { llistaPrestecs } from "../services/prestecs.js";
-import { useSessioStore } from "../stores/sessio.js";
 
-const router = useRouter();
-const sessio = useSessioStore();
 
 const prestecs = ref([]);
 const carregant = ref(true);
@@ -15,11 +11,6 @@ const error = ref("");
 function formatData(data) {
   const [any, mes, dia] = data.split("-");
   return `${dia}/${mes}/${any}`;
-}
-
-function tancaSessio() {
-  sessio.tancarSessio();
-  router.push({ name: "home" });
 }
 
 async function carregaPrestecs() {
@@ -38,29 +29,12 @@ onMounted(carregaPrestecs);
 </script>
 
 <template>
-  <main class="prestecs-page">
-    <header class="site-header">
-      <RouterLink class="brand" to="/" aria-label="bookit inici">
-        <span
-          class="brand-mark"
-          :style="{ backgroundImage: `url(${logoImage})` }"
-          aria-hidden="true"
-        ></span>
-        <span>bookit.</span>
-      </RouterLink>
-
-      <div class="header-accions">
-        <span class="header-link">Els meus préstecs</span>
-        <button type="button" class="logout-button" @click="tancaSessio">
-          Tancar sessió
-        </button>
-      </div>
-    </header>
-
+  <LayoutCompte
+    titol="Els meus préstecs"
+    apartat="Préstecs"
+    descripcio="Consulta els llibres que tens i fins quan els pots tenir."
+  >
     <section class="prestecs-content">
-      <p class="eyebrow">Els meus llibres</p>
-      <h1>Els meus préstecs</h1>
-
       <p v-if="carregant" class="estat" role="status">
         Carregant els préstecs...
       </p>
@@ -118,57 +92,10 @@ onMounted(carregaPrestecs);
         </li>
       </ul>
     </section>
-  </main>
+  </LayoutCompte>
 </template>
 
 <style scoped>
-.prestecs-page {
-  min-height: 100svh;
-  color: #241914;
-  background: #f9f4eb;
-}
-
-.site-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 62px;
-  padding: 0 max(1.25rem, calc((100% - 1170px) / 2));
-  background: #fffdf9;
-  box-sizing: border-box;
-}
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  color: #271d1a;
-  font-size: 1.25rem;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.brand-mark {
-  display: block;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.35rem;
-  background-position: center 36%;
-  background-size: auto 240%;
-}
-
-.header-accions {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.header-link {
-  color: #a00000;
-  font-weight: 700;
-}
-
-.logout-button,
 .secondary-button,
 .return-button {
   padding: 0.65rem 1.1rem;
@@ -178,7 +105,6 @@ onMounted(carregaPrestecs);
   cursor: pointer;
 }
 
-.logout-button,
 .return-button:not(:disabled) {
   border: 0;
   color: #fff;
@@ -193,24 +119,7 @@ onMounted(carregaPrestecs);
 }
 
 .prestecs-content {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 3rem 1.25rem;
-}
-
-.eyebrow {
-  margin: 0 0 0.75rem;
-  color: #a00000;
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-}
-
-h1 {
-  margin: 0 0 1.5rem;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(2rem, 4vw, 2.6rem);
+  min-width: 0;
 }
 
 .estat {

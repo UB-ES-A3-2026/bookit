@@ -1,6 +1,7 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { createMemoryHistory, createRouter } from "vue-router";
+import { ambRutesCompte } from "./rutesCompte.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSessioStore } from "../stores/sessio.js";
 import router, { nomesRepartidors } from "../router/index.js";
@@ -18,11 +19,11 @@ let pinia;
 async function renderitza() {
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: [
+    routes: ambRutesCompte([
       { path: "/", name: "home", component: { template: "<p />" } },
       { path: "/pagina", name: "pagina", component: { template: "<p />" } },
       { path: "/repartidor", name: "espai-repartidor", component: { template: "<p />" } },
-    ],
+    ]),
   });
   await router.push("/pagina");
   wrapper = mount(RutaView, { global: { plugins: [pinia, router] } });

@@ -93,6 +93,7 @@ describe("les meves comandes", () => {
   it("s'hi arriba des de l'inici i es demanen a l'API", async () => {
     comandes = [comanda(12, "rebuda")];
     await obre("/", "usuari");
+    await clica(".menu-usuari__boto");
     await clica('a[href="/comandes"]');
 
     await vi.waitFor(() => expect(wrapper.find(".comanda").exists()).toBe(true));

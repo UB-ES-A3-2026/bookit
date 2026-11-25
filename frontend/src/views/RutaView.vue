@@ -1,9 +1,8 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import CapcaleraApp from "../components/CapcaleraApp.vue";
 import MapaParades from "../components/MapaParades.vue";
-import logoImage from "../assets/bookit-logo.jpg";
-import { useSessioStore } from "../stores/sessio.js";
 import { completaParada, fallaParada, llistaRutaAvui } from "../services/ruta.js";
 
 const TIPUS = { recollida: "Recollida", lliurament: "Lliurament" };
@@ -22,7 +21,6 @@ const ESTATS = {
 };
 
 const router = useRouter();
-const sessio = useSessioStore();
 
 const parades = ref([]);
 const carregant = ref(true);
@@ -52,11 +50,6 @@ function llocParada(parada) {
     return parada.adreca?.biblioteca?.nom ?? "Biblioteca no disponible";
   }
   return parada.adreca?.text || "Adreça no disponible";
-}
-
-function tancaSessio() {
-  sessio.tancarSessio();
-  router.push({ name: "home" });
 }
 
 // Una parada sense `estat_parada` es tracta com a pendent.
@@ -199,25 +192,7 @@ onMounted(carregaRuta);
 
 <template>
   <main class="ruta-page">
-    <header class="site-header">
-      <RouterLink class="brand" to="/" aria-label="bookit inici">
-        <span
-          class="brand-mark"
-          :style="{ backgroundImage: `url(${logoImage})` }"
-          aria-hidden="true"
-        ></span>
-        <span>bookit.</span>
-      </RouterLink>
-
-      <div class="header-accions">
-        <RouterLink class="header-link" :to="{ name: 'espai-repartidor' }">
-          El meu espai
-        </RouterLink>
-        <button type="button" class="logout-button" @click="tancaSessio">
-          Tancar sessió
-        </button>
-      </div>
-    </header>
+    <CapcaleraApp />
 
     <section class="ruta-content">
       <p class="eyebrow">Espai de repartidor</p>
@@ -363,67 +338,6 @@ onMounted(carregaRuta);
   min-height: 100svh;
   color: #241914;
   background: #f5ecdc;
-}
-
-.site-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem 1rem;
-  min-height: 62px;
-  padding: 0.5rem max(1.25rem, calc((100% - 1170px) / 2));
-  background: #fffdf9;
-  box-sizing: border-box;
-}
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  color: #271d1a;
-  font-size: 1.25rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  text-decoration: none;
-}
-
-.brand-mark {
-  display: block;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.35rem;
-  background-position: center 36%;
-  background-size: auto 240%;
-}
-
-.header-accions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 1.25rem;
-}
-
-.header-link {
-  color: #241914;
-  font-weight: 700;
-}
-
-.logout-button {
-  padding: 0.55rem 1rem;
-  border: 0;
-  border-radius: 0.55rem;
-  color: #fff;
-  background: #980000;
-  font: inherit;
-  font-size: 0.9rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.logout-button:hover,
-.logout-button:focus-visible {
-  background: #740000;
 }
 
 .ruta-content {
