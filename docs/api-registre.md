@@ -70,12 +70,15 @@ defecte de Django REST Framework). El frontend mostra cada missatge sota el camp
 |---|---|---|
 | Correu ja registrat | `correu` | `Aquest correu electrònic ja està registrat` |
 | Carnet ja registrat | `num_carnet` | `Aquest usuari ja està registrat` |
-| Format de carnet incorrecte | `num_carnet` | `El format d’aquest carnet no és vàlid` |
+| Format de carnet incorrecte | `num_carnet` | `El format d'aquest carnet no és vàlid` |
 | Camp obligatori buit o absent | el camp | `Aquest camp és obligatori.` |
 | Correu amb format incorrecte o de més de 254 caràcters | `correu` | `Introduïu una adreça de correu electrònic vàlida.` |
 | Contrasenya no vàlida | `contrasenya` | Missatges dels validadors de Django |
 
 El correu no distingeix majúscules i minúscules per comprovar si ja està registrat. La contrasenya es valida
 amb els validadors configurats de Django i no es retorna mai.
+
+Si dues persones es registren alhora amb el mateix correu o el mateix carnet, només es crea un compte. L'altra rep el
+mateix missatge de duplicat que si hagués arribat després, no un error del servidor (US1-T22, US1-T27).
 
 Les peticions amb un mètode diferent de `POST` reben una resposta **405 Method Not Allowed**.
