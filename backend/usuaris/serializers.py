@@ -6,7 +6,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import RegexValidator
 from django.core.mail import send_mail
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from rest_framework import serializers
@@ -18,9 +18,13 @@ from rest_framework_simplejwt.serializers import (
     TokenRefreshSerializer,
 )
 
-from usuaris.models import Biblioteca, PerfilRepartidor, Usuari
+from usuaris.geocodificacio import geocodifica_adreca
+from usuaris.models import Adreca, Biblioteca, FranjaDisponibilitat, PerfilRepartidor, Usuari
 from usuaris.validacions import (
+    ADRECA_FORA_ZONA_SERVEI,
+    normalitza_codi_postal,
     normalitza,
+    valida_codi_postal_zona,
     valida_dni_nie,
     valida_matricula,
     valida_num_seguretat_social,
@@ -28,6 +32,9 @@ from usuaris.validacions import (
 )
 
 CAMP_OBLIGATORI = "Aquest camp és obligatori."
+# Literals dels criteris d'acceptació de la US1.
+CORREU_JA_REGISTRAT = "Aquest correu electrònic ja està registrat"
+CARNET_JA_REGISTRAT = "Aquest usuari ja està registrat"
 VERIFICA_CORREU = "Verifica el teu correu"
 # Missatges de l'inici de sessió d'un repartidor que encara no pot entrar.
 MISSATGES_ESTAT_REPARTIDOR = {
@@ -120,7 +127,7 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
         validators=[
             UniqueValidator(
                 queryset=Usuari.objects.all(),
-                message="Aquest correu electrònic ja està registrat",
+                message=CORREU_JA_REGISTRAT,
                 lookup="iexact",
             )
         ],
@@ -147,7 +154,7 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
             ),
             UniqueValidator(
                 queryset=Usuari.objects.all(),
-                message="Aquest usuari ja està registrat",
+                message=CARNET_JA_REGISTRAT,
             ),
         ],
         error_messages={
@@ -194,7 +201,18 @@ class UsuariRegistreSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         password = validated_data.pop("password")
-        return Usuari.objects.create_user(password=password, **validated_data)
+        try:
+            with transaction.atomic():
+                return Usuari.objects.create_user(password=password, **validated_data)
+        except IntegrityError as error:
+            # Dos registres alhora amb el mateix correu o carnet poden passar tots dos
+            # els validadors: la base de dades rebutja el segon. En lloc d'un error
+            # 500, rep el mateix missatge que si hagués arribat després (US1-T22).
+            if Usuari.objects.filter(email__iexact=validated_data["email"]).exists():
+                raise serializers.ValidationError({"correu": [CORREU_JA_REGISTRAT]}) from error
+            if Usuari.objects.filter(library_card_number=validated_data["library_card_number"]).exists():
+                raise serializers.ValidationError({"num_carnet": [CARNET_JA_REGISTRAT]}) from error
+            raise
 
 
 class IniciSessioSerializer(TokenObtainPairSerializer):
@@ -507,3 +525,170 @@ class RepartidorRegistreSerializer(serializers.ModelSerializer):
             )
             PerfilRepartidor.objects.create(usuari=usuari, **perfil)
         return usuari
+
+
+# Missatges del contracte de les franges (docs/api-franges.md).
+DIA_INVALID = "Tria un dia de la setmana, del 0 (dilluns) al 6 (diumenge)."
+HORA_INVALIDA = "Escriu l'hora amb el format HH:MM."
+FRANJA_AL_REVES = "La franja ha d'acabar després de començar."
+FRANGES_NO_SON_LLISTA = "Envia les franges en una llista."
+ERRORS_HORA = {**ERRORS_OBLIGATORI, "invalid": HORA_INVALIDA}
+
+
+class FranjaSerializer(serializers.ModelSerializer):
+    """Una franja de disponibilitat del repartidor (US14-T2)."""
+
+    dia = serializers.ChoiceField(
+        choices=FranjaDisponibilitat.Dia.choices,
+        error_messages={**ERRORS_OBLIGATORI, "invalid_choice": DIA_INVALID},
+    )
+    hora_inici = serializers.TimeField(
+        format="%H:%M", input_formats=["%H:%M"], error_messages=ERRORS_HORA
+    )
+    hora_fi = serializers.TimeField(
+        format="%H:%M", input_formats=["%H:%M"], error_messages=ERRORS_HORA
+    )
+
+    class Meta:
+        model = FranjaDisponibilitat
+        fields = ("id", "dia", "hora_inici", "hora_fi")
+
+    def validate(self, dades):
+        if dades["hora_fi"] <= dades["hora_inici"]:
+            raise serializers.ValidationError({"hora_fi": [FRANJA_AL_REVES]})
+        return dades
+
+
+class FrangesSerializer(serializers.Serializer):
+    """Totes les franges del repartidor, que substitueixen les que tenia.
+
+    Una llista buida vol dir que el repartidor no està disponible cap dia.
+    """
+
+    franges = FranjaSerializer(many=True, allow_empty=True, error_messages=ERRORS_OBLIGATORI)
+
+    def to_internal_value(self, data):
+        # DRF posaria aquest error dins de `non_field_errors`; així surt com els
+        # altres, directament a `franges`.
+        franges = data.get("franges") if isinstance(data, dict) else None
+        if franges is not None and not isinstance(franges, list):
+            raise serializers.ValidationError({"franges": [FRANGES_NO_SON_LLISTA]})
+        return super().to_internal_value(data)
+
+    def validate_franges(self, franges):
+        """Comprova que cap franja se'n trepitgi una altra del mateix dia.
+
+        Dues franges que es toquen (de 9:00 a 13:00 i de 13:00 a 17:00) no es
+        trepitgen.
+        """
+        ordenades = sorted(franges, key=lambda franja: (franja["dia"], franja["hora_inici"]))
+        for anterior, seguent in zip(ordenades, ordenades[1:]):
+            if anterior["dia"] == seguent["dia"] and seguent["hora_inici"] < anterior["hora_fi"]:
+                dia = FranjaDisponibilitat.Dia(anterior["dia"]).label.lower()
+                raise serializers.ValidationError(
+                    f"Les franges del {dia} de {anterior['hora_inici']:%H:%M} a "
+                    f"{anterior['hora_fi']:%H:%M} i de {seguent['hora_inici']:%H:%M} a "
+                    f"{seguent['hora_fi']:%H:%M} es trepitgen."
+                )
+        return franges
+
+
+class AdrecaSerializer(serializers.ModelSerializer):
+    predeterminada = serializers.BooleanField(read_only=True)
+    latitud = serializers.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        read_only=True,
+    )
+    longitud = serializers.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        read_only=True,
+    )
+
+    class Meta:
+        model = Adreca
+        fields = (
+            "id",
+            "municipi",
+            "carrer",
+            "pis",
+            "codi_postal",
+            "latitud",
+            "longitud",
+            "predeterminada",
+        )
+        read_only_fields = (
+            "id",
+            "latitud",
+            "longitud",
+            "predeterminada",
+        )
+
+    def validate_codi_postal(self, value):
+        codi_postal = normalitza_codi_postal(value)
+        try:
+            valida_codi_postal_zona(codi_postal)
+        except DjangoValidationError:
+            raise serializers.ValidationError(ADRECA_FORA_ZONA_SERVEI)
+        return codi_postal
+
+    def validate(self, attrs):
+        codi_postal = attrs.get("codi_postal")
+
+        if codi_postal is None and self.instance is not None:
+            codi_postal = self.instance.codi_postal
+
+        if codi_postal is not None:
+            codi_postal = normalitza_codi_postal(codi_postal)
+            try:
+                valida_codi_postal_zona(codi_postal)
+            except DjangoValidationError:
+                raise serializers.ValidationError(
+                    {"codi_postal": [ADRECA_FORA_ZONA_SERVEI]}
+                )
+            attrs["codi_postal"] = codi_postal
+
+        return attrs
+
+    def create(self, validated_data):
+        adreca = Adreca.objects.create(**validated_data)
+        coordenades = geocodifica_adreca(adreca)
+
+        adreca.latitud = None
+        adreca.longitud = None
+
+        if coordenades is not None:
+            adreca.latitud, adreca.longitud = coordenades
+
+        adreca.save(update_fields=["latitud", "longitud"])
+        return adreca
+
+    def update(self, instance, validated_data):
+        camps_ubicacio = {
+            "municipi",
+            "carrer",
+            "codi_postal",
+        }
+        ha_canviat_ubicacio = any(
+            camp in validated_data
+            and validated_data[camp] != getattr(instance, camp)
+            for camp in camps_ubicacio
+        )
+
+        for camp, valor in validated_data.items():
+            setattr(instance, camp, valor)
+        instance.save()
+
+        if ha_canviat_ubicacio:
+            coordenades = geocodifica_adreca(instance)
+
+            instance.latitud = None
+            instance.longitud = None
+
+            if coordenades is not None:
+                instance.latitud, instance.longitud = coordenades
+
+            instance.save(update_fields=["latitud", "longitud"])
+
+        return instance

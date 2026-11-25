@@ -9,6 +9,11 @@ from cataleg.views import (
     LlibreCatalegBibliotecaView,
 )
 
+from cataleg.views import (
+    BibliotequesAmbEstocLlibreView,
+    LlistaEsperaLlibreView,
+)
+
 app_name = "cataleg"
 
 urlpatterns = [
@@ -27,5 +32,16 @@ urlpatterns = [
         "biblioteca/llibres/<int:id>/exemplars/",
         ExemplarsCatalegBibliotecaView.as_view(),
         name="exemplars-cataleg-biblioteca",
+    ),
+    path(
+        "llibres/<int:id>/biblioteques/",
+        BibliotequesAmbEstocLlibreView.as_view(),
+        name="biblioteques-amb-estoc-llibre",
+    ),
+
+    path(
+        "llibres/<int:id>/llista-espera/",
+        LlistaEsperaLlibreView.as_view(),
+        name="llista-espera-llibre",
     ),
 ]

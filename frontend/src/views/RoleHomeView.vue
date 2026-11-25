@@ -14,6 +14,16 @@ const titol = computed(() =>
     <section class="role-card" aria-labelledby="role-title">
       <h1 id="role-title">{{ titol }}</h1>
       <p>Has iniciat sessió correctament.</p>
+      <template v-if="route.name === 'espai-repartidor'">
+        <p class="role-action">
+          <RouterLink :to="{ name: 'ruta-repartidor' }">La meva ruta d'avui</RouterLink>
+        </p>
+        <p class="role-action">
+          <RouterLink :to="{ name: 'franges-repartidor' }">
+            Les meves franges de disponibilitat
+          </RouterLink>
+        </p>
+      </template>
       <RouterLink to="/">Tornar a l'inici</RouterLink>
     </section>
   </main>
@@ -43,6 +53,10 @@ const titol = computed(() =>
 .role-card h1 {
   margin-top: 0;
   font-family: Georgia, "Times New Roman", serif;
+}
+
+.role-action {
+  margin: 1rem 0;
 }
 
 .role-card a {
