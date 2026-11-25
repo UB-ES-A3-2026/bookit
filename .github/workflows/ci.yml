@@ -1,14 +1,18 @@
-# CI: instal·la les dependències i executa els tests del backend i del frontend a cada pull request.
+# CI: instal·la les dependències i executa els tests del backend i del frontend a cada pull request
+# i a cada commit que arriba a main, que és el que es desplega.
 name: CI
 
 on:
   pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
 
-# Si es fa un push nou a la mateixa PR, es cancel·la l'execució anterior.
+# Si es fa un push nou a la mateixa PR, es cancel·la l'execució anterior. A main no: cada commit
+# que s'hi fusiona s'ha de comprovar sencer.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
