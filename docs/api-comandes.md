@@ -357,6 +357,9 @@ la biblioteca de la comanda, amb el compte actiu; un usuari o un repartidor rebe
 Una comanda de recollida no passa per `en_cami`: va directament de `preparada` a `lliurada`. En lliurar-la, l'usuari
 rep la notificació de lliurament (US8) i es creen els préstecs dels llibres (US19).
 
+Al frontend, la pàgina de comandes pendents de la biblioteca mostra el botó "Lliurada a l'usuari" a les comandes de
+recollida preparades (US7-T9). En marcar-la, la comanda surt de la llista.
+
 ### Resposta correcta
 
 **200 OK**. La comanda amb el format de [Comanda](#comanda) i l'estat `lliurada`.

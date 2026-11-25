@@ -5,6 +5,7 @@ import logoImage from "../assets/bookit-logo.jpg";
 import { useSessioStore } from "../stores/sessio.js";
 import {
   llistaComandesBiblioteca,
+  lliuraComandaRecollida,
   marcaComandaPreparada,
 } from "../services/comandesBiblioteca.js";
 import { formataData, formataDia, textEstat } from "../utils/comandes.js";
@@ -15,9 +16,17 @@ const sessio = useSessioStore();
 const comandes = ref([]);
 const carregant = ref(true);
 const error = ref("");
-// Comanda que s'està marcant com a llesta i missatges d'error de cada comanda.
+// Comanda que s'està marcant (com a llesta o com a lliurada) i missatges d'error
+// de cada comanda.
 const marcant = ref(null);
 const errorsComanda = ref({});
+const missatgeLliurada = ref("");
+
+// Les comandes de recollida preparades les ve a buscar l'usuari a la biblioteca
+// (US7-T8). La biblioteca les marca com a lliurades quan les hi dona.
+function esperaRecollida(comanda) {
+  return comanda.tipus_lliurament === "recollida" && comanda.estat === "preparada";
+}
 
 function tancaSessio() {
   sessio.tancarSessio();
@@ -48,35 +57,33 @@ async function carregaComandes({ silenciosa = false } = {}) {
   }
 }
 
-function textErrorMarcar(errorPeticio) {
+function textErrorMarcar(errorPeticio, accio) {
   const estat = errorPeticio.response?.status;
   if (estat === 409) {
     return (
       errorPeticio.response.data?.detail ??
-      "Aquesta comanda ja no es pot marcar com a llesta."
+      `Aquesta comanda ja no es pot marcar com a ${accio}.`
     );
   }
   if (estat === 404) {
     return "Aquesta comanda ja no existeix.";
   }
-  return "No s'ha pogut marcar la comanda com a llesta. Torna-ho a provar més tard.";
+  return `No s'ha pogut marcar la comanda com a ${accio}. Torna-ho a provar més tard.`;
 }
 
-async function marcaLlesta(comanda) {
+// Fa l'acció sobre la comanda i, si falla, en mostra l'error al costat.
+async function marca(comanda, peticio, accio, enAcabar) {
   if (marcant.value !== null) {
     return;
   }
   marcant.value = comanda.id;
+  missatgeLliurada.value = "";
   const errors = { ...errorsComanda.value };
   delete errors[comanda.id];
   errorsComanda.value = errors;
 
   try {
-    const actualitzada = await marcaComandaPreparada(comanda.id);
-    // La resposta no porta l'usuari: es conserva el que ja teníem.
-    comandes.value = comandes.value.map((actual) =>
-      actual.id === comanda.id ? { ...actual, ...actualitzada } : actual,
-    );
+    enAcabar(await peticio(comanda.id));
   } catch (errorPeticio) {
     const estat = errorPeticio.response?.status;
     if (estat === 403) {
@@ -85,7 +92,7 @@ async function marcaLlesta(comanda) {
     }
     errorsComanda.value = {
       ...errorsComanda.value,
-      [comanda.id]: textErrorMarcar(errorPeticio),
+      [comanda.id]: textErrorMarcar(errorPeticio, accio),
     };
     // Amb un 409 o un 404 la llista que es veu està desfasada: es torna a demanar.
     if (estat === 409 || estat === 404) {
@@ -94,6 +101,23 @@ async function marcaLlesta(comanda) {
   } finally {
     marcant.value = null;
   }
+}
+
+function marcaLlesta(comanda) {
+  return marca(comanda, marcaComandaPreparada, "llesta", (actualitzada) => {
+    // La resposta no porta l'usuari: es conserva el que ja teníem.
+    comandes.value = comandes.value.map((actual) =>
+      actual.id === comanda.id ? { ...actual, ...actualitzada } : actual,
+    );
+  });
+}
+
+function marcaLliurada(comanda) {
+  return marca(comanda, lliuraComandaRecollida, "lliurada", () => {
+    // Una comanda lliurada ja no és pendent: surt de la llista.
+    comandes.value = comandes.value.filter((actual) => actual.id !== comanda.id);
+    missatgeLliurada.value = `La comanda ${comanda.id} s'ha lliurat a l'usuari.`;
+  });
 }
 
 onMounted(() => carregaComandes());
@@ -127,6 +151,8 @@ onMounted(() => carregaComandes());
         a la més llunyana. Les que encara no tenen data surten al final.
       </p>
 
+      <p v-if="missatgeLliurada" class="missatge-lliurada" role="status">{{ missatgeLliurada }}</p>
+
       <p v-if="carregant" class="estat" role="status">Carregant les comandes...</p>
 
       <div v-else-if="error" class="estat estat-error" role="alert">
@@ -150,6 +176,9 @@ onMounted(() => carregaComandes());
           </div>
           <p v-if="comanda.estat === 'cancellada'" class="avis-cancellada">
             L'usuari l'ha cancel·lada: no cal preparar-la.
+          </p>
+          <p v-if="esperaRecollida(comanda)" class="avis-recollida">
+            L'usuari la recull a la biblioteca: marca-la com a lliurada quan la vingui a buscar.
           </p>
 
           <dl class="dades-comanda">
@@ -177,7 +206,7 @@ onMounted(() => carregaComandes());
           </ul>
 
           <div
-            v-if="comanda.estat === 'rebuda' || errorsComanda[comanda.id]"
+            v-if="comanda.estat === 'rebuda' || esperaRecollida(comanda) || errorsComanda[comanda.id]"
             class="accions-comanda"
           >
             <button
@@ -188,6 +217,15 @@ onMounted(() => carregaComandes());
               @click="marcaLlesta(comanda)"
             >
               {{ marcant === comanda.id ? "Marcant..." : "Llesta per a recollida" }}
+            </button>
+            <button
+              v-if="esperaRecollida(comanda)"
+              type="button"
+              class="primary-button"
+              :disabled="marcant !== null"
+              @click="marcaLliurada(comanda)"
+            >
+              {{ marcant === comanda.id ? "Marcant..." : "Lliurada a l'usuari" }}
             </button>
             <p v-if="errorsComanda[comanda.id]" class="error-comanda" role="alert">
               {{ errorsComanda[comanda.id] }}
@@ -443,6 +481,22 @@ h1 {
 .avis-cancellada {
   margin-top: 0.5rem;
   color: #870000;
+  font-weight: 700;
+}
+
+.avis-recollida {
+  margin-top: 0.5rem;
+  color: #355f4b;
+  font-weight: 700;
+}
+
+.missatge-lliurada {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #b9d8c6;
+  border-radius: 0.55rem;
+  color: #2d5a43;
+  background: #eef8f2;
   font-weight: 700;
 }
 </style>

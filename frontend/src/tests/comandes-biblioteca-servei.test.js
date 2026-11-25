@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { marcaComandaPreparada } from "../services/comandesBiblioteca.js";
+import { lliuraComandaRecollida, marcaComandaPreparada } from "../services/comandesBiblioteca.js";
 
 const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 
@@ -24,5 +24,22 @@ describe("marcaComandaPreparada", () => {
     api.post.mockRejectedValue(error);
 
     await expect(marcaComandaPreparada(12)).rejects.toBe(error);
+  });
+});
+
+describe("lliuraComandaRecollida", () => {
+  it("envia el POST a la ruta de recollida de la comanda, sense cos, i retorna la comanda", async () => {
+    const comanda = { id: 12, estat: "lliurada" };
+    api.post.mockResolvedValue({ data: comanda });
+
+    await expect(lliuraComandaRecollida(12)).resolves.toEqual(comanda);
+    expect(api.post).toHaveBeenCalledExactlyOnceWith("/prestecs/biblioteca/comandes/12/recollida/");
+  });
+
+  it("propaga l'error de l'API", async () => {
+    const error = { response: { status: 409, data: { detail: "Aquesta comanda ja està lliurada." } } };
+    api.post.mockRejectedValue(error);
+
+    await expect(lliuraComandaRecollida(12)).rejects.toBe(error);
   });
 });
