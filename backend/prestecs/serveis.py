@@ -205,41 +205,14 @@ class ParadaFallarJaFallida(Exception):
         self.motiu = motiu
 
 
-class ParadaEnEstatTerminal(Exception):
+class ParadaNoEsPotFallar(Exception):
+    """La parada ja està completada o cancel·lada i no es pot marcar com a fallida."""
+
     def __init__(self):
         super().__init__("La parada no es pot marcar com a fallida.")
 
 
 def fallar_parada(parada, motiu):
-    from prestecs.models import Parada
-
-    with transaction.atomic():
-        parada = (
-            Parada.objects.select_for_update()
-            .select_related("ruta")
-            .get(pk=parada.pk)
-        )
-
-        if parada.estat == Parada.Estat.FALLIDA:
-            if parada.motiu == motiu:
-                return parada
-            raise ParadaFallarJaFallida(parada.motiu)
-
-        if parada.estat in (
-            Parada.Estat.COMPLETADA,
-            Parada.Estat.CANCELLADA,
-        ):
-            raise ParadaEnEstatTerminal()
-
-        parada.estat = Parada.Estat.FALLIDA
-        parada.motiu = motiu
-        parada.save(update_fields=["estat", "motiu"])
-
-    return parada
-
-
-def fallar_parada(parada, motiu):
-    from prestecs.assignacio import assigna_comanda
     from prestecs.models import Parada
 
     with transaction.atomic():
@@ -258,31 +231,50 @@ def fallar_parada(parada, motiu):
             Parada.Estat.COMPLETADA,
             Parada.Estat.CANCELLADA,
         ):
-            raise ParadaEnEstatTerminal()
+            raise ParadaNoEsPotFallar()
 
         parada.estat = Parada.Estat.FALLIDA
         parada.motiu = motiu
         parada.save(update_fields=["estat", "motiu"])
 
-        if parada.comanda.estat == Comanda.Estat.EN_CAMI:
-            canvia_estat(
-                parada.comanda,
-                Comanda.Estat.PREPARADA,
-                des_de=[Comanda.Estat.EN_CAMI],
-            )
-            parada.comanda.repartidor = None
-            parada.comanda.data_lliurament = None
-            parada.comanda.hora_inici_lliurament = None
-            parada.comanda.hora_fi_lliurament = None
-            parada.comanda.save(
-                update_fields=[
-                    "repartidor",
-                    "data_lliurament",
-                    "hora_inici_lliurament",
-                    "hora_fi_lliurament",
-                    "actualitzada",
-                ]
-            )
-            assigna_comanda(parada.comanda)
+        comanda = parada.comanda
+        if comanda.estat == Comanda.Estat.EN_CAMI:
+            # Ha fallat el lliurament: la comanda torna a la biblioteca (US13-T3).
+            canvia_estat(comanda, Comanda.Estat.PREPARADA, des_de=[Comanda.Estat.EN_CAMI])
+            torna_a_planificar(comanda, parada)
+        elif comanda.estat == Comanda.Estat.PREPARADA:
+            # Ha fallat abans de sortir de la biblioteca, per exemple la recollida:
+            # la comanda continua preparada, però s'ha de tornar a planificar (US13-T12).
+            torna_a_planificar(comanda, parada)
 
     return parada
+
+
+def torna_a_planificar(comanda, parada_fallida):
+    """Treu la comanda de la ruta on era i la torna a assignar a un repartidor.
+
+    Les altres parades pendents de la comanda es cancel·len, perquè el repartidor
+    ja no hi ha d'anar. La comanda es queda sense repartidor ni horari i
+    `assigna_comanda` li busca un forat nou, amb les seves parades (US12-T12).
+    """
+    from prestecs.assignacio import assigna_comanda
+    from prestecs.models import Parada
+
+    Parada.objects.filter(comanda=comanda, estat=Parada.Estat.PENDENT).exclude(
+        pk=parada_fallida.pk
+    ).update(estat=Parada.Estat.CANCELLADA)
+
+    comanda.repartidor = None
+    comanda.data_lliurament = None
+    comanda.hora_inici_lliurament = None
+    comanda.hora_fi_lliurament = None
+    comanda.save(
+        update_fields=[
+            "repartidor",
+            "data_lliurament",
+            "hora_inici_lliurament",
+            "hora_fi_lliurament",
+            "actualitzada",
+        ]
+    )
+    assigna_comanda(comanda)

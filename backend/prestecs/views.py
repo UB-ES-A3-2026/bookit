@@ -34,6 +34,7 @@ from prestecs.serveis import (
     completa_parada,
     ParadaAmbComandaInvalida,
     ParadaEnEstatTerminal,
+    ParadaNoEsPotFallar,
     ParadaJaCompletada,
     ParadaFallarJaFallida,
     fallar_parada,
@@ -228,7 +229,7 @@ class FallarParadaView(APIView):
                     {"detail": "La parada ja està fallida amb un motiu diferent."},
                     status=status.HTTP_409_CONFLICT,
                 )
-        except ParadaEnEstatTerminal as error:
+        except ParadaNoEsPotFallar as error:
             return Response(
                 {"detail": str(error)},
                 status=status.HTTP_409_CONFLICT,
