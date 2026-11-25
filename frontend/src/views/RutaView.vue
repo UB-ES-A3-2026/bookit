@@ -57,6 +57,18 @@ function estaPendent(parada) {
   return (parada.estat_parada ?? "pendent") === "pendent";
 }
 
+// Un lliurament no es pot completar mentre la recollida de la mateixa comanda
+// estigui pendent: la comanda encara no ha sortit de la biblioteca.
+function esperaRecollida(parada) {
+  return (
+    parada.tipus === "lliurament" &&
+    parades.value.some(
+      (altra) =>
+        altra.comanda === parada.comanda && altra.tipus === "recollida" && estaPendent(altra),
+    )
+  );
+}
+
 function obreFallida(parada) {
   paradaFallant.value = parada.id;
   motiu.value = "";
@@ -250,13 +262,22 @@ onMounted(carregaRuta);
                 </li>
               </ul>
 
+              <p
+                v-if="estaPendent(parada) && esperaRecollida(parada)"
+                :id="`espera-recollida-${parada.id}`"
+                class="avis-recollida"
+              >
+                Primer marca la recollida d'aquesta comanda a la biblioteca.
+              </p>
+
               <div v-if="estaPendent(parada)" class="accions-parada">
                 <div v-if="paradaFallant !== parada.id" class="botons-parada">
                   <button
                     type="button"
                     class="boto-completada"
-                    :disabled="enviant !== null"
+                    :disabled="enviant !== null || esperaRecollida(parada)"
                     :aria-label="`Marcar la parada ${parada.ordre} com a completada`"
+                    :aria-describedby="esperaRecollida(parada) ? `espera-recollida-${parada.id}` : undefined"
                     @click="marcaCompletada(parada)"
                   >
                     {{ enviant === parada.id ? "Desant..." : "Completada" }}
@@ -566,6 +587,12 @@ h1 {
 
 .form-fallida textarea[aria-invalid="true"] {
   border-color: #980000;
+}
+
+.avis-recollida {
+  margin: 0.75rem 0 0;
+  color: #6b4f1d;
+  font-weight: 700;
 }
 
 .error-camp,
