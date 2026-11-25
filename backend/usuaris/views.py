@@ -1,9 +1,33 @@
 """Vistes de l'API del mòdul usuaris."""
 
-from rest_framework import generics
-from rest_framework.permissions import AllowAny
+import binascii
 
-from usuaris.serializers import UsuariRegistreSerializer
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.tokens import default_token_generator
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import IntegrityError, transaction
+from django.http import Http404
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
+from rest_framework import generics
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.status import (HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_409_CONFLICT)
+
+from usuaris.models import Adreca, FranjaDisponibilitat, Usuari
+from usuaris.permisos import EsRepartidorValidat
+from usuaris.serializers import (
+    AdrecaSerializer,
+    CAMP_OBLIGATORI,
+    BibliotecaRegistreSerializer,
+    FranjaSerializer,
+    FrangesSerializer,
+    RepartidorRegistreSerializer,
+    UsuariActualSerializer,
+    UsuariRegistreSerializer,
+    enviar_correu_verificacio,
+    missatges_contrasenya,
+)
 
 
 class RegistreView(generics.CreateAPIView):
@@ -19,3 +43,218 @@ class RegistreView(generics.CreateAPIView):
     # Sense autenticació: així una sessió oberta (p. ex. de l'admin)
     # no obliga a enviar el token CSRF.
     authentication_classes = []
+
+
+class UsuariActualView(generics.RetrieveAPIView):
+    """Retorna les dades i el rol de l'usuari del token (US2). Contracte a `docs/api-auth.md`.
+
+    Retorna 200 amb les dades de l'usuari o 401 si no hi ha un token vàlid.
+    """
+
+    serializer_class = UsuariActualSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+
+class RegistreRepartidorView(generics.CreateAPIView):
+    """Registra un repartidor nou (US1.1). Contracte a `docs/api-registre-repartidor.md`.
+
+    Retorna 201 amb les dades del repartidor i l'estat del perfil (sense la
+    contrasenya) o 400 amb els errors agrupats per camp.
+    """
+
+    serializer_class = RepartidorRegistreSerializer
+    # Endpoint públic, com el registre d'usuaris: mateixos motius que a RegistreView.
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+
+class RegistreBibliotecaView(generics.CreateAPIView):
+    """Registra una biblioteca amb el compte inactiu fins a verificar-lo."""
+
+    serializer_class = BibliotecaRegistreSerializer
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def perform_create(self, serializer):
+        biblioteca = serializer.save()
+        enviar_correu_verificacio(biblioteca.usuari)
+
+
+ENLLAC_INVALID = "L'enllaç de verificació no és vàlid o ha caducat."
+
+
+class VerificacioBibliotecaView(generics.GenericAPIView):
+    """Verificació del compte d'una biblioteca amb l'enllaç del correu.
+
+    El GET només comprova que l'enllaç sigui vàlid. El POST rep la contrasenya
+    que tria la biblioteca, la desa i activa el compte. Com que el token de Django
+    depèn de la contrasenya, en desar-la l'enllaç deixa de ser vàlid i només es
+    pot fer servir una vegada.
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def biblioteca_de_l_enllac(self, uidb64, token):
+        """Retorna l'usuari de la biblioteca de l'enllaç, o None si no és vàlid."""
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            usuari = Usuari.objects.get(pk=uid)
+        except (
+            TypeError,
+            ValueError,
+            OverflowError,
+            UnicodeDecodeError,
+            binascii.Error,
+            Usuari.DoesNotExist,
+        ):
+            return None
+
+        if (
+            usuari.role != Usuari.Role.BIBLIOTECA
+            or not hasattr(usuari, "biblioteca")
+            or not default_token_generator.check_token(usuari, token)
+        ):
+            return None
+        return usuari
+
+    def get(self, request, uidb64, token):
+        usuari = self.biblioteca_de_l_enllac(uidb64, token)
+        if usuari is None:
+            return Response({"detail": ENLLAC_INVALID}, status=HTTP_400_BAD_REQUEST)
+        return Response({"correu": usuari.email}, status=HTTP_200_OK)
+
+    def post(self, request, uidb64, token):
+        usuari = self.biblioteca_de_l_enllac(uidb64, token)
+        if usuari is None:
+            return Response({"detail": ENLLAC_INVALID}, status=HTTP_400_BAD_REQUEST)
+
+        contrasenya = request.data.get("contrasenya")
+        if not isinstance(contrasenya, str) or not contrasenya:
+            return Response(
+                {"contrasenya": [CAMP_OBLIGATORI]}, status=HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            validate_password(contrasenya, user=usuari)
+        except DjangoValidationError as error:
+            return Response(
+                {"contrasenya": missatges_contrasenya(error)},
+                status=HTTP_400_BAD_REQUEST,
+            )
+
+        usuari.set_password(contrasenya)
+        usuari.is_active = True
+        usuari.save(update_fields=["password", "is_active"])
+        return Response(
+            {"detail": "El compte de biblioteca s'ha verificat correctament."},
+            status=HTTP_200_OK,
+        )
+
+
+class FrangesRepartidorView(generics.GenericAPIView):
+    """Franges de disponibilitat del repartidor autenticat (US14-T2).
+
+    GET les retorna i PUT les substitueix totes per les que s'envien, perquè el
+    repartidor desa l'horari de la setmana sencer d'una vegada. Contracte a
+    `docs/api-franges.md`.
+    """
+
+    serializer_class = FrangesSerializer
+    permission_classes = [EsRepartidorValidat]
+
+    def resposta(self, perfil):
+        return Response({"franges": FranjaSerializer(perfil.franges.all(), many=True).data})
+
+    def get(self, request):
+        return self.resposta(request.user.perfil_repartidor)
+
+    def put(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        perfil = request.user.perfil_repartidor
+        with transaction.atomic():
+            perfil.franges.all().delete()
+            FranjaDisponibilitat.objects.bulk_create(
+                FranjaDisponibilitat(repartidor=perfil, **franja)
+                for franja in serializer.validated_data["franges"]
+            )
+        return self.resposta(perfil)
+
+
+class AdrecaListCreateView(generics.ListCreateAPIView):
+    """Llista i crea les adreces de l'usuari autenticat."""
+
+    serializer_class = AdrecaSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None
+
+    def get_queryset(self):
+        return Adreca.objects.filter(usuari=self.request.user).order_by("id")
+
+    def perform_create(self, serializer):
+        serializer.save(usuari=self.request.user)
+
+
+class AdrecaDetailView(
+    generics.RetrieveAPIView,
+    generics.UpdateAPIView,
+    generics.DestroyAPIView,
+):
+    """Consulta, edita i suprimeix una adreça pròpia."""
+
+    serializer_class = AdrecaSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = "id"
+
+    def get_queryset(self):
+        return Adreca.objects.filter(usuari=self.request.user).order_by("id")
+
+
+class AdrecaPredeterminadaView(generics.GenericAPIView):
+    """Marca una adreça com a predeterminada i desmarca l'anterior."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = AdrecaSerializer
+
+    def get_queryset(self):
+        return Adreca.objects.filter(
+            usuari=self.request.user
+        ).order_by("id")
+
+    def post(self, request, id):
+        try:
+            with transaction.atomic():
+                adreces = self.get_queryset().select_for_update()
+
+                adreca = adreces.filter(id=id).first()
+                if adreca is None:
+                    raise Http404
+
+                if adreca.predeterminada:
+                    return Response(
+                        AdrecaSerializer(adreca).data,
+                        status=HTTP_200_OK,
+                    )
+
+                adreces.filter(predeterminada=True).update(
+                    predeterminada=False
+                )
+
+                adreca.predeterminada = True
+                adreca.save(update_fields=["predeterminada"])
+
+        except IntegrityError:
+            return Response(
+                {"detail": "No s'ha pogut actualitzar l'adreça predeterminada."},
+                status=HTTP_409_CONFLICT,
+            )
+
+        return Response(
+            AdrecaSerializer(adreca).data,
+            status=HTTP_200_OK,
+        )
