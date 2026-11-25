@@ -167,9 +167,22 @@ def cancella_comanda(comanda):
 
     Si la biblioteca ha tret el llibre del seu catàleg mentrestant, no se li torna
     l'exemplar, perquè ja no l'ofereix.
+
+    Si la comanda ja estava assignada a un repartidor (US14), se li treuen el
+    repartidor, el dia i l'hora del lliurament: ja no l'ha de portar ningú
+    (US20-T8).
     """
     with transaction.atomic():
         canvia_estat(comanda, Comanda.Estat.CANCELLADA)
+        sense_lliurament = {
+            "repartidor": None,
+            "data_lliurament": None,
+            "hora_inici_lliurament": None,
+            "hora_fi_lliurament": None,
+        }
+        Comanda.objects.filter(pk=comanda.pk).update(**sense_lliurament)
+        for camp, valor in sense_lliurament.items():
+            setattr(comanda, camp, valor)
 
         llibres = comanda.linies.values_list("llibre_id", flat=True)
         # Bloquejats en el mateix ordre que en confirmar una comanda (per llibre),

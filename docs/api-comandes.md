@@ -392,6 +392,9 @@ En cancel·lar-la, la biblioteca torna a tenir un exemplar més de cada llibre d
 a cancel·lada a la llista de comandes pendents (US10). Si la biblioteca ha tret algun llibre del seu catàleg
 mentrestant, aquell exemplar no s'hi torna.
 
+Si la comanda ja estava assignada a un repartidor (US14), es queda sense repartidor ni `data_lliurament`, i el seu
+forat torna a estar lliure per a altres comandes (US20-T8).
+
 ### Errors
 
 | Cas | Estat | Resposta |
